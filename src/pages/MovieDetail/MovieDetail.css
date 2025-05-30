@@ -1,0 +1,1092 @@
+.movie-detail {
+    min-height: 100vh;
+    background-color: #0f0f0f;
+    color: #ffffff;
+  }
+  
+  .movie-detail-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 50vh;
+    color: #ffffff;
+  }
+  
+  .movie-detail-error {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 50vh;
+    text-align: center;
+    color: #ffffff;
+  }
+  
+  .movie-detail-error h2 {
+    color: #e74c3c;
+    margin-bottom: 1rem;
+  }
+  
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid #333;
+    border-top: 4px solid #e50914;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 1rem;
+  }
+  
+  @keyframes spin {
+    0% {
+      transform: rotate(0deg);
+    }
+    100% {
+      transform: rotate(360deg);
+    }
+  }
+  
+  /* Hero Section */
+  .movie-hero {
+    position: relative;
+    height: 80vh;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+  }
+  
+  .movie-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(90deg, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.6) 50%, rgba(0, 0, 0, 0.3) 100%);
+  }
+  
+  .movie-hero-content {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 3rem;
+    display: flex;
+    gap: 2rem;
+    align-items: flex-end;
+  }
+  
+  .movie-poster {
+    position: relative;
+    flex-shrink: 0;
+  }
+  
+  .movie-poster img {
+    width: 300px;
+    height: 450px;
+    object-fit: cover;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  }
+  
+  .play-trailer-btn {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(229, 9, 20, 0.9);
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+  }
+  
+  .play-trailer-btn:hover {
+    background: #e50914;
+  }
+  
+  .movie-info {
+    flex: 1;
+    max-width: 600px;
+  }
+  
+  .movie-title {
+    font-size: 3rem;
+    font-weight: 700;
+    margin: 0 0 0.5rem 0;
+    color: #ffffff;
+  }
+  
+  .original-title {
+    font-size: 1.2rem;
+    color: #cccccc;
+    margin: 0 0 1.5rem 0;
+    font-style: italic;
+  }
+  
+  .movie-meta {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .rating {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .star {
+    color: #ffc107;
+    font-size: 1.2rem;
+  }
+  
+  .star.filled {
+    color: #ffc107;
+  }
+  
+  .star.half {
+    background: linear-gradient(90deg, #ffc107 50%, #333 50%);
+    -webkit-text-fill-color: transparent;
+  }
+  
+  .star.empty {
+    color: #333;
+  }
+  
+  .rating-score {
+    color: #ffffff;
+    font-weight: 600;
+  }
+  
+  .duration,
+  .age-rating {
+    color: #cccccc;
+    font-weight: 500;
+  }
+  
+  .status {
+    padding: 0.25rem 0.75rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+  
+  .status.now-showing {
+    background: #27ae60;
+    color: white;
+  }
+  
+  .status.coming-soon {
+    background: #f39c12;
+    color: white;
+  }
+  
+  .status.ended {
+    background: #7f8c8d;
+    color: white;
+  }
+  
+  .movie-genres {
+    display: flex;
+    gap: 0.5rem;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+  }
+  
+  .genre-tag {
+    background: rgba(255, 255, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    font-size: 0.9rem;
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+  
+  .movie-description {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    color: #cccccc;
+    margin-bottom: 2rem;
+  }
+  
+  .movie-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  
+  .detail-item {
+    color: #cccccc;
+  }
+  
+  .detail-item strong {
+    color: #ffffff;
+  }
+  
+  .btn-book-now {
+    background: linear-gradient(135deg, #e50914 0%, #b8070f 100%);
+    color: white;
+    border: none;
+    padding: 1rem 2rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+  }
+  
+  .btn-book-now:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(229, 9, 20, 0.3);
+  }
+  
+  .btn-primary {
+    background: #e50914;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s ease;
+  }
+  
+  .btn-primary:hover {
+    background: #b8070f;
+  }
+  
+  /* Tabs */
+  .movie-tabs {
+    background: #1a1a1a;
+    padding: 0 3rem;
+    display: flex;
+    border-bottom: 1px solid #333;
+  }
+  
+  .tab-btn {
+    background: none;
+    border: none;
+    color: #cccccc;
+    padding: 1.5rem 2rem;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.3s ease;
+  }
+  
+  .tab-btn:hover {
+    color: #ffffff;
+  }
+  
+  .tab-btn.active {
+    color: #e50914;
+    border-bottom-color: #e50914;
+  }
+  
+  /* Tab Content */
+  .movie-content {
+    padding: 3rem;
+    background: #2f3346;
+  }
+  
+  /* Overview Tab */
+  .overview-tab {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 3rem;
+  }
+  
+  .cast-section h3,
+  .pricing-section h3 {
+    color: #ffffff;
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+  }
+  
+  .cast-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 1rem;
+  }
+  
+  .cast-member {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: 0.5rem;
+  }
+  
+  .actor-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #e50914;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 600;
+    font-size: 1.5rem;
+  }
+  
+  .actor-name {
+    color: #cccccc;
+    font-size: 0.9rem;
+  }
+  
+  .price-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .price-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1rem;
+    background: #1b1e2b;
+    border-radius: 8px;
+    border-left: 4px solid #e50914;
+  }
+  
+  .seat-type {
+    color: #ffffff;
+    font-weight: 500;
+  }
+  
+  .price {
+    color: #e50914;
+    font-weight: 600;
+    font-size: 1.1rem;
+  }
+  
+  /* Showtimes Tab */
+  .showtime-filters {
+    display: flex;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: #1b1e2b;
+    border-radius: 8px;
+    justify-content: space-between; /* This will push items to opposite ends */
+  }
+  
+  .filter-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+  
+  /* Make the date filter group take up more space */
+  .filter-group:first-child {
+    flex: 1;
+    margin-right: 2rem;
+  }
+  
+  /* Keep the cinema filter at a fixed width */
+  .filter-group:last-child {
+    flex-shrink: 0;
+    min-width: 200px;
+  }
+  
+  .filter-group label {
+    color: #ffffff;
+    font-weight: 500;
+  }
+  
+  .filter-group select {
+    padding: 0.75rem;
+    border: 1px solid #333;
+    border-radius: 6px;
+    background: #111527;
+    color: #ffffff;
+    font-size: 1rem;
+    min-width: 200px;
+  }
+  
+  .filter-group select:focus {
+    outline: none;
+    border-color: #e50914;
+  }
+  
+  /* Update responsive behavior */
+  @media (max-width: 768px) {
+    .showtime-filters {
+      flex-direction: column;
+      gap: 1rem;
+      justify-content: flex-start; /* Reset for mobile */
+    }
+  
+    .filter-group:first-child {
+      margin-right: 0;
+    }
+  
+    .filter-group:last-child {
+      min-width: auto;
+    }
+  }
+  
+  .showtimes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+  
+  .showtime-card {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    padding: 1.5rem;
+    background: #1b1e2b;
+    border-radius: 8px;
+    border: 1px solid #333;
+    transition: border-color 0.3s ease;
+  }
+  
+  .showtime-card:hover {
+    border-color: #e50914;
+  }
+  
+  .showtime-info h4 {
+    color: #ffffff;
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+  }
+  
+  .screen,
+  .datetime {
+    color: #cccccc;
+    margin: 0.25rem 0;
+    font-size: 0.9rem;
+  }
+  
+  .seat-availability {
+    flex: 1;
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+  }
+  
+  .seat-type {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 1rem;
+    background: #111527;
+    border-radius: 6px;
+  }
+  
+  .type-name {
+    color: #ffffff;
+    font-weight: 500;
+    font-size: 0.9rem;
+  }
+  
+  .availability {
+    color: #cccccc;
+    font-size: 0.8rem;
+  }
+  
+  .seat-type .price {
+    color: #e50914;
+    font-weight: 600;
+    font-size: 0.9rem;
+  }
+  
+  .btn-book {
+    background: #e50914;
+    color: white;
+    border: none;
+    padding: 0.75rem 1.5rem;
+    border-radius: 6px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    flex-shrink: 0;
+  }
+  
+  .btn-book:hover:not(:disabled) {
+    background: #b8070f;
+    transform: translateY(-1px);
+  }
+  
+  .btn-book:disabled {
+    background: #666;
+    cursor: not-allowed;
+    transform: none;
+  }
+  
+  .no-showtimes {
+    text-align: center;
+    padding: 3rem;
+    color: #cccccc;
+  }
+  
+  /* Reviews Tab */
+  .reviews-summary {
+    margin-bottom: 2rem;
+    padding: 2rem;
+    background: #1a1a1a;
+    border-radius: 8px;
+  }
+  
+  .rating-overview {
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+  }
+  
+  .avg-rating {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  
+  .rating-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #e50914;
+  }
+  
+  .rating-stars {
+    display: flex;
+    gap: 0.25rem;
+  }
+  
+  .rating-count {
+    color: #cccccc;
+    font-size: 0.9rem;
+  }
+  
+  .reviews-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+  
+  .review-card {
+    padding: 1.5rem;
+    background: #1a1a1a;
+    border-radius: 8px;
+    border: 1px solid #333;
+  }
+  
+  .review-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+  }
+  
+  .user-avatar {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+  
+  .review-meta {
+    flex: 1;
+  }
+  
+  .user-name {
+    color: #ffffff;
+    margin: 0 0 0.25rem 0;
+    font-size: 1rem;
+  }
+  
+  .review-rating {
+    display: flex;
+    gap: 0.25rem;
+    margin-bottom: 0.25rem;
+  }
+  
+  .review-rating .star {
+    font-size: 1rem;
+  }
+  
+  .review-date {
+    color: #cccccc;
+    font-size: 0.8rem;
+  }
+  
+  .review-comment {
+    color: #cccccc;
+    line-height: 1.6;
+    margin-bottom: 1rem;
+  }
+  
+  .review-actions {
+    display: flex;
+    gap: 1rem;
+  }
+  
+  .helpful-btn {
+    background: none;
+    border: 1px solid #333;
+    color: #cccccc;
+    padding: 0.5rem 1rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+  }
+  
+  .helpful-btn:hover {
+    border-color: #e50914;
+    color: #ffffff;
+  }
+  
+  .no-reviews {
+    text-align: center;
+    padding: 3rem;
+    color: #cccccc;
+  }
+  
+  /* Trailer Modal */
+  .trailer-modal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.9);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+    padding: 2rem;
+  }
+  
+  .trailer-content {
+    position: relative;
+    width: 100%;
+    max-width: 1000px;
+    aspect-ratio: 16/9;
+  }
+  
+  .trailer-content iframe {
+    width: 100%;
+    height: 100%;
+    border-radius: 8px;
+  }
+  
+  .close-trailer {
+    position: absolute;
+    top: -50px;
+    right: 0;
+    background: none;
+    border: none;
+    color: white;
+    font-size: 2rem;
+    cursor: pointer;
+    padding: 0.5rem;
+    z-index: 10000;
+  }
+  
+  .close-trailer:hover {
+    color: #e50914;
+  }
+  
+  /* Cinema Grouping Styles */
+  .cinema-group {
+    margin-bottom: 2rem;
+    background: #1b1e2b;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid #333;
+  }
+  
+  .cinema-header {
+    background: #111527;
+    padding: 1.5rem;
+    border-bottom: 1px solid #333;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .cinema-name {
+    color: #ffffff;
+    margin: 0;
+    font-size: 1.4rem;
+    font-weight: 600;
+  }
+  
+  .showtimes-count {
+    color: #cccccc;
+    margin: 0;
+    font-size: 0.9rem;
+  }
+  
+  .cinema-showtimes {
+    padding: 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  
+  /* Showtime Button Styles */
+  .showtime-btn {
+    background: #2c3247;
+    color: #ffffff;
+    border: 2px solid #404564;
+    padding: 0.75rem 1.25rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 1rem;
+    transition: all 0.3s ease;
+    min-width: 80px;
+    text-align: center;
+  }
+  
+  .showtime-btn:hover:not(:disabled) {
+    background: #e50914;
+    border-color: #e50914;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+  }
+  
+  .showtime-btn:disabled {
+    background: #444;
+    color: #888;
+    border-color: #555;
+    cursor: not-allowed;
+    transform: none;
+    opacity: 0.6;
+  }
+  
+  .showtime-btn:disabled:hover {
+    background: #444;
+    border-color: #555;
+    transform: none;
+    box-shadow: none;
+  }
+  
+  /* Enhanced Date Button Styles */
+  .date-buttons {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    margin-top: 0.5rem;
+    max-width: 100%;
+    overflow-x: auto;
+    padding-bottom: 0.5rem;
+  }
+  
+  .date-btn {
+    background: #2c3247;
+    color: #cccccc;
+    border: 2px solid #404564;
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    min-width: 100px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+  
+  .date-btn:hover {
+    background: #404564;
+    color: #ffffff;
+    border-color: #5a6380;
+    transform: translateY(-1px);
+  }
+  
+  .date-btn.active {
+    background: linear-gradient(135deg, #e50914 0%, #b8070f 100%);
+    color: #ffffff;
+    border-color: #e50914;
+    box-shadow: 0 4px 12px rgba(229, 9, 20, 0.3);
+  }
+  
+  .date-btn.active:hover {
+    background: linear-gradient(135deg, #ff1a25 0%, #d1080f 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 16px rgba(229, 9, 20, 0.4);
+  }
+  
+  /* Add a subtle animation for active state */
+  .date-btn.active::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s ease;
+  }
+  
+  .date-btn.active:hover::before {
+    left: 100%;
+  }
+  
+  /* Today indicator for current date */
+  .date-btn.today {
+    border-color: #f39c12;
+    position: relative;
+  }
+  
+  .date-btn.today::after {
+    content: "TODAY";
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    background: #f39c12;
+    color: #000;
+    font-size: 0.6rem;
+    font-weight: 700;
+    padding: 2px 6px;
+    border-radius: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  
+  /* Weekend styling */
+  .date-btn.weekend {
+    border-color: #9b59b6;
+    background: #3a2e4a;
+  }
+  
+  .date-btn.weekend:hover {
+    background: #4a3958;
+    border-color: #a569c7;
+  }
+  
+  /* Sold out styling */
+  .date-btn.sold-out {
+    background: #444;
+    color: #888;
+    border-color: #555;
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  .date-btn.sold-out:hover {
+    background: #444;
+    color: #888;
+    border-color: #555;
+    transform: none;
+  }
+  
+  /* Responsive adjustments for date buttons */
+  @media (max-width: 768px) {
+    .date-buttons {
+      gap: 0.5rem;
+      overflow-x: auto;
+      scrollbar-width: thin;
+      scrollbar-color: #404564 transparent;
+    }
+  
+    .date-buttons::-webkit-scrollbar {
+      height: 4px;
+    }
+  
+    .date-buttons::-webkit-scrollbar-track {
+      background: transparent;
+    }
+  
+    .date-buttons::-webkit-scrollbar-thumb {
+      background: #404564;
+      border-radius: 2px;
+    }
+  
+    .date-btn {
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      min-width: 90px;
+    }
+  
+    .date-btn.today::after {
+      font-size: 0.55rem;
+      padding: 1px 4px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .date-btn {
+      padding: 0.5rem 0.6rem;
+      font-size: 0.8rem;
+      min-width: 80px;
+    }
+  
+    .date-btn.today::after {
+      font-size: 0.5rem;
+      padding: 1px 3px;
+      top: -6px;
+      right: -6px;
+    }
+  }
+  
+  /* Responsive Design */
+  @media (max-width: 1200px) {
+    .movie-hero-content {
+      padding: 2rem;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+  
+    .movie-poster img {
+      width: 250px;
+      height: 375px;
+    }
+  
+    .movie-title {
+      font-size: 2.5rem;
+    }
+  
+    .overview-tab {
+      grid-template-columns: 1fr;
+      gap: 2rem;
+    }
+  }
+  
+  @media (max-width: 768px) {
+    .movie-hero {
+      height: 60vh;
+    }
+  
+    .movie-hero-content {
+      padding: 1rem;
+      position: static;
+      background: rgba(0, 0, 0, 0.8);
+    }
+  
+    .movie-poster img {
+      width: 200px;
+      height: 300px;
+    }
+  
+    .movie-title {
+      font-size: 2rem;
+    }
+  
+    .movie-meta {
+      gap: 1rem;
+    }
+  
+    .movie-tabs {
+      padding: 0 1rem;
+    }
+  
+    .tab-btn {
+      padding: 1rem;
+      font-size: 0.9rem;
+    }
+  
+    .movie-content {
+      padding: 1.5rem;
+    }
+  
+    .showtime-filters {
+      flex-direction: column;
+      gap: 1rem;
+    }
+  
+    .showtime-card {
+      flex-direction: column;
+      gap: 1rem;
+      text-align: center;
+    }
+  
+    .seat-availability {
+      grid-template-columns: 1fr;
+    }
+  
+    .cast-list {
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    }
+  
+    .cinema-header {
+      flex-direction: column;
+      gap: 0.5rem;
+      text-align: center;
+    }
+  
+    .cinema-showtimes {
+      padding: 1rem;
+      gap: 0.75rem;
+    }
+  
+    .showtime-btn {
+      flex: 1;
+      min-width: 70px;
+      padding: 0.6rem 1rem;
+      font-size: 0.9rem;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .movie-poster img {
+      width: 150px;
+      height: 225px;
+    }
+  
+    .movie-title {
+      font-size: 1.5rem;
+    }
+  
+    .tab-btn {
+      padding: 0.75rem 0.5rem;
+      font-size: 0.8rem;
+    }
+  
+    .movie-content {
+      padding: 1rem;
+    }
+  
+    .showtime-card {
+      padding: 1rem;
+    }
+  
+    .trailer-modal {
+      padding: 1rem;
+    }
+  
+    .close-trailer {
+      top: -40px;
+      font-size: 1.5rem;
+    }
+  
+    .cinema-header {
+      padding: 1rem;
+    }
+  
+    .cinema-name {
+      font-size: 1.2rem;
+    }
+  
+    .cinema-showtimes {
+      padding: 0.75rem;
+      gap: 0.5rem;
+    }
+  
+    .showtime-btn {
+      min-width: 60px;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.85rem;
+    }
+  }
+  

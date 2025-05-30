@@ -5,15 +5,18 @@ import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
 import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
+import MovieDetail from "../pages/MovieDetail/MovieDetail";
 
 const AppRoutes = () => {
   const location = useLocation();
 
   return (
     <Routes>
+      {/* Public routes with layout */}
       <Route element={<Layout key={location.pathname} showNavbar={true} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
+        <Route path="/movieDetail/:id" element={<MovieDetail />} />
       </Route>
 
       {/* Admin routes with nested structure */}
@@ -30,7 +33,6 @@ const AppRoutes = () => {
         <Route path="movies/add" element={<div>Add Movie</div>} />
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
-
       </Route>
     </Routes>
   );
