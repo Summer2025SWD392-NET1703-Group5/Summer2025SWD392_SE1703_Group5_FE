@@ -6,6 +6,7 @@ import { useLocation } from "react-router-dom";
 import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import MovieDetail from "../pages/MovieDetail/MovieDetail";
+import ManageUser from "../pages/ManageUser/ManageUser";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -23,8 +24,8 @@ const AppRoutes = () => {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="users/*" element={<div />} />
-        <Route path="users/all" element={<div />} />
+        <Route path="users/*" element={<ManageUser />} />
+        <Route path="users/all" element={<ManageUser />} />
         <Route path="users/add" element={<div>Add User</div>} />
         <Route path="users/roles" element={<div>User Roles</div>} />
 
