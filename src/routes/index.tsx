@@ -3,7 +3,7 @@ import HomePage from "../pages/HomePage/HomePage";
 import LoginPage from "../pages/LoginPage/LoginPage";
 import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
-
+import ViewMoviePage from "../pages/ViewMoviePage/ViewMoviePage";
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -13,6 +13,7 @@ const AppRoutes = () => {
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
       </Route>
+      <Route path="/movie" element={<ViewMoviePage />} />
     </Routes>
   );
 };
