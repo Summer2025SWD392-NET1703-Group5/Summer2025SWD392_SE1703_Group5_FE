@@ -19,7 +19,8 @@ const AppRoutes = () => {
       <Route element={<Layout key={location.pathname} showNavbar={true} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<Profile />} /> 
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/movie" element={<ViewMoviePage />} />
         <Route path="/movieDetail/:id" element={<MovieDetail />} />
       </Route>
 
@@ -38,7 +39,6 @@ const AppRoutes = () => {
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
       </Route>
-      <Route path="/movie" element={<ViewMoviePage />} />
     </Routes>
   );
 };

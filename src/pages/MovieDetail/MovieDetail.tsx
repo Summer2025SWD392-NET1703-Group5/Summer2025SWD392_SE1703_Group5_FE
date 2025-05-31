@@ -538,21 +538,25 @@ const MovieDetail: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="movie-detail-loading">
-        <div className="spinner"></div>
-        <p>Đang tải thông tin phim...</p>
+      <div className="movie-detail">
+        <div className="detail-loading">
+          <div className="detail-spinner"></div>
+          <p>Đang tải thông tin phim...</p>
+        </div>
       </div>
     );
   }
 
   if (!movie) {
     return (
-      <div className="movie-detail-error">
-        <h2>Không tìm thấy phim</h2>
-        <p>Phim bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
-        <button onClick={() => navigate("/movies")} className="btn-primary">
-          Quay lại danh sách phim
-        </button>
+      <div className="movie-detail">
+        <div className="detail-error">
+          <h2>Không tìm thấy phim</h2>
+          <p>Phim bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
+          <button onClick={() => navigate("/movies")} className="detail-btn-primary">
+            Quay lại danh sách phim
+          </button>
+        </div>
       </div>
     );
   }
@@ -560,40 +564,40 @@ const MovieDetail: React.FC = () => {
   return (
     <div className="movie-detail">
       {/* Hero Section */}
-      <div className="movie-hero" style={{ backgroundImage: `url(${movie.backdrop})` }}>
-        <div className="movie-hero-overlay">
-          <div className="movie-hero-content">
-            <div className="movie-poster">
+      <div className="detail-hero" style={{ backgroundImage: `url(${movie.backdrop})` }}>
+        <div className="detail-hero-overlay">
+          <div className="detail-hero-content">
+            <div className="detail-poster">
               <img src={movie.poster} alt={movie.title} />
-              <button className="play-trailer-btn" onClick={() => setShowTrailer(true)}>
+              <button className="detail-play-trailer-btn" onClick={() => setShowTrailer(true)}>
                 ▶ Xem Trailer
               </button>
             </div>
-            <div className="movie-info">
-              <h1 className="movie-title">{movie.title}</h1>
-              {movie.originalTitle !== movie.title && <p className="original-title">({movie.originalTitle})</p>}
+            <div className="detail-info">
+              <h1 className="detail-title">{movie.title}</h1>
+              {movie.originalTitle !== movie.title && <p className="detail-original-title">({movie.originalTitle})</p>}
 
-              <div className="movie-meta">
-                <span className="rating">
+              <div className="detail-meta">
+                <span className="detail-rating">
                   {renderStars(movie.rating)}
-                  <span className="rating-score">{movie.rating}/10</span>
+                  <span className="detail-rating-score">{movie.rating}/10</span>
                 </span>
-                <span className="duration">{formatDuration(movie.duration)}</span>
-                <span className="age-rating">{movie.ageRating}</span>
-                <span className={`status ${movie.status}`}>{getStatusText(movie.status)}</span>
+                <span className="detail-duration">{formatDuration(movie.duration)}</span>
+                <span className="detail-age-rating">{movie.ageRating}</span>
+                <span className={`detail-status ${movie.status}`}>{getStatusText(movie.status)}</span>
               </div>
 
-              <div className="movie-genres">
+              <div className="detail-genres">
                 {movie.genres.map((genre) => (
-                  <span key={genre} className="genre-tag">
+                  <span key={genre} className="detail-genre-tag">
                     {genre}
                   </span>
                 ))}
               </div>
 
-              <p className="movie-description">{movie.description}</p>
+              <p className="detail-description">{movie.description}</p>
 
-              <div className="movie-details">
+              <div className="detail-details">
                 <div className="detail-item">
                   <strong>Đạo diễn:</strong> {movie.director}
                 </div>
@@ -609,7 +613,7 @@ const MovieDetail: React.FC = () => {
               </div>
 
               {movie.status === "now-showing" && (
-                <button className="btn-book-now" onClick={() => setActiveTab("showtimes")}>
+                <button className="detail-btn-book-now" onClick={() => setActiveTab("showtimes")}>
                   Đặt vé ngay
                 </button>
               )}
@@ -619,15 +623,15 @@ const MovieDetail: React.FC = () => {
       </div>
 
       {/* Tabs Navigation */}
-      <div className="movie-tabs">
+      <div className="detail-tabs">
         <button
-          className={`tab-btn ${activeTab === "overview" ? "active" : ""}`}
+          className={`detail-tab-btn ${activeTab === "overview" ? "active" : ""}`}
           onClick={() => setActiveTab("overview")}
         >
           Tổng quan
         </button>
         <button
-          className={`tab-btn ${activeTab === "showtimes" ? "active" : ""}`}
+          className={`detail-tab-btn ${activeTab === "showtimes" ? "active" : ""}`}
           onClick={() => setActiveTab("showtimes")}
         >
           Lịch chiếu
@@ -635,35 +639,35 @@ const MovieDetail: React.FC = () => {
       </div>
 
       {/* Tab Content */}
-      <div className="movie-content">
+      <div className="detail-content">
         {activeTab === "overview" && (
-          <div className="overview-tab">
-            <div className="cast-section">
+          <div className="detail-overview-tab">
+            <div className="detail-cast-section">
               <h3>Diễn viên</h3>
-              <div className="cast-list">
+              <div className="detail-cast-list">
                 {movie.cast.map((actor) => (
-                  <div key={actor} className="cast-member">
-                    <div className="actor-avatar">{actor.charAt(0)}</div>
-                    <span className="actor-name">{actor}</span>
+                  <div key={actor} className="detail-cast-member">
+                    <div className="detail-actor-avatar">{actor.charAt(0)}</div>
+                    <span className="detail-actor-name">{actor}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="pricing-section">
+            <div className="detail-pricing-section">
               <h3>Giá vé</h3>
-              <div className="price-list">
-                <div className="price-item">
-                  <span className="seat-type">Ghế thường</span>
-                  <span className="price">{formatPrice(movie.price.standard)}</span>
+              <div className="detail-price-list">
+                <div className="detail-price-item">
+                  <span className="detail-seat-type">Ghế thường</span>
+                  <span className="detail-price">{formatPrice(movie.price.standard)}</span>
                 </div>
-                <div className="price-item">
-                  <span className="seat-type">Ghế VIP</span>
-                  <span className="price">{formatPrice(movie.price.vip)}</span>
+                <div className="detail-price-item">
+                  <span className="detail-seat-type">Ghế VIP</span>
+                  <span className="detail-price">{formatPrice(movie.price.vip)}</span>
                 </div>
-                <div className="price-item">
-                  <span className="seat-type">Ghế đôi</span>
-                  <span className="price">{formatPrice(movie.price.couple)}</span>
+                <div className="detail-price-item">
+                  <span className="detail-seat-type">Ghế đôi</span>
+                  <span className="detail-price">{formatPrice(movie.price.couple)}</span>
                 </div>
               </div>
             </div>
@@ -671,13 +675,15 @@ const MovieDetail: React.FC = () => {
         )}
 
         {activeTab === "showtimes" && (
-          <div className="showtimes-tab">
-            <div className="showtime-filters">
-              <div className="filter-group">
+          <div className="detail-showtimes-tab">
+            <div className="detail-showtime-filters">
+              <div className="detail-filter-group">
                 <label>Chọn ngày:</label>
-                <div className="date-buttons">
+                <div className="detail-date-buttons">
                   <button
-                    className={`date-btn ${selectedDate === new Date().toISOString().split("T")[0] ? "active" : ""}`}
+                    className={`detail-date-btn ${
+                      selectedDate === new Date().toISOString().split("T")[0] ? "active" : ""
+                    }`}
                     onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
                   >
                     Hôm nay
@@ -685,7 +691,7 @@ const MovieDetail: React.FC = () => {
                   {getAvailableDates().map((date) => (
                     <button
                       key={date}
-                      className={`date-btn ${selectedDate === date ? "active" : ""}`}
+                      className={`detail-date-btn ${selectedDate === date ? "active" : ""}`}
                       onClick={() => setSelectedDate(date)}
                     >
                       {new Date(date).toLocaleDateString("vi-VN", {
@@ -698,7 +704,7 @@ const MovieDetail: React.FC = () => {
                 </div>
               </div>
 
-              <div className="filter-group">
+              <div className="detail-filter-group">
                 <label>Chọn rạp:</label>
                 <select value={selectedCinema} onChange={(e) => setSelectedCinema(e.target.value)}>
                   <option value="all">Tất cả rạp</option>
@@ -711,24 +717,24 @@ const MovieDetail: React.FC = () => {
               </div>
             </div>
 
-            <div className="showtimes-list">
+            <div className="detail-showtimes-list">
               {Object.keys(getGroupedShowtimes()).length === 0 ? (
-                <div className="no-showtimes">
+                <div className="detail-no-showtimes">
                   <p>Không có lịch chiếu nào phù hợp với bộ lọc đã chọn.</p>
                 </div>
               ) : (
                 Object.entries(getGroupedShowtimes()).map(([cinema, cinemaShowtimes]) => (
-                  <div key={cinema} className="cinema-group">
-                    <div className="cinema-header">
-                      <h3 className="cinema-name">{cinema}</h3>
-                      <p className="showtimes-count">{cinemaShowtimes.length} suất chiếu</p>
+                  <div key={cinema} className="detail-cinema-group">
+                    <div className="detail-cinema-header">
+                      <h3 className="detail-cinema-name">{cinema}</h3>
+                      <p className="detail-showtimes-count">{cinemaShowtimes.length} suất chiếu</p>
                     </div>
 
-                    <div className="cinema-showtimes">
+                    <div className="detail-cinema-showtimes">
                       {cinemaShowtimes.map((showtime) => (
                         <button
                           key={showtime.id}
-                          className="showtime-btn"
+                          className="detail-showtime-btn"
                           onClick={() => handleBooking(showtime.id)}
                           disabled={
                             showtime.seatTypes.standard.available === 0 &&
@@ -750,9 +756,9 @@ const MovieDetail: React.FC = () => {
 
       {/* Trailer Modal */}
       {showTrailer && (
-        <div className="trailer-modal" onClick={() => setShowTrailer(false)}>
-          <div className="trailer-content" onClick={(e) => e.stopPropagation()}>
-            <button className="close-trailer" onClick={() => setShowTrailer(false)}>
+        <div className="detail-trailer-modal" onClick={() => setShowTrailer(false)}>
+          <div className="detail-trailer-content" onClick={(e) => e.stopPropagation()}>
+            <button className="detail-close-trailer" onClick={() => setShowTrailer(false)}>
               ✕
             </button>
             <iframe src={movie.trailer} title="Trailer phim" frameBorder="0" allowFullScreen></iframe>
