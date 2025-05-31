@@ -50,7 +50,7 @@ const Dashboard: React.FC = () => {
             totalUsers: 1250,
             totalMovies: 45,
             totalBookings: 3420,
-            totalRevenue: 125000,
+            totalRevenue: 3125000000, // 125000 USD converted to VND
             totalCinemas: 8,
             activeShowtimes: 120,
           });
@@ -59,56 +59,56 @@ const Dashboard: React.FC = () => {
             {
               id: "1",
               movieTitle: "Avengers: Endgame",
-              userName: "John Doe",
+              userName: "Nguyễn Văn An",
               date: "2025-05-29",
-              amount: 15.99,
+              amount: 399750, // 15.99 USD converted to VND
               status: "confirmed",
             },
             {
               id: "2",
               movieTitle: "Spider-Man: No Way Home",
-              userName: "Jane Smith",
+              userName: "Trần Thị Bình",
               date: "2025-05-29",
-              amount: 12.99,
+              amount: 324750, // 12.99 USD converted to VND
               status: "confirmed",
             },
             {
               id: "3",
               movieTitle: "The Batman",
-              userName: "Mike Johnson",
+              userName: "Lê Minh Châu",
               date: "2025-05-28",
-              amount: 14.99,
+              amount: 374750, // 14.99 USD converted to VND
               status: "pending",
             },
             {
               id: "4",
               movieTitle: "Doctor Strange",
-              userName: "Sarah Wilson",
+              userName: "Phạm Thị Dung",
               date: "2025-05-28",
-              amount: 13.99,
+              amount: 349750, // 13.99 USD converted to VND
               status: "confirmed",
             },
             {
               id: "5",
               movieTitle: "Black Panther",
-              userName: "Tom Brown",
+              userName: "Hoàng Văn Em",
               date: "2025-05-27",
-              amount: 15.99,
+              amount: 399750, // 15.99 USD converted to VND
               status: "cancelled",
             },
           ]);
 
           setTopMovies([
-            { id: "1", title: "Avengers: Endgame", bookings: 450, revenue: 6750 },
-            { id: "2", title: "Spider-Man: No Way Home", bookings: 380, revenue: 4940 },
-            { id: "3", title: "The Batman", bookings: 320, revenue: 4800 },
-            { id: "4", title: "Doctor Strange", bookings: 290, revenue: 4060 },
+            { id: "1", title: "Avengers: Endgame", bookings: 450, revenue: 168750000 }, // 6750 USD to VND
+            { id: "2", title: "Spider-Man: No Way Home", bookings: 380, revenue: 123500000 }, // 4940 USD to VND
+            { id: "3", title: "The Batman", bookings: 320, revenue: 120000000 }, // 4800 USD to VND
+            { id: "4", title: "Doctor Strange", bookings: 290, revenue: 101500000 }, // 4060 USD to VND
           ]);
 
           setLoading(false);
         }, 1000);
       } catch (error) {
-        console.error("Error fetching dashboard data:", error);
+        console.error("Lỗi khi tải dữ liệu dashboard:", error);
         setLoading(false);
       }
     };
@@ -122,14 +122,30 @@ const Dashboard: React.FC = () => {
       pending: "status-pending",
       cancelled: "status-cancelled",
     };
-    return <span className={`status-badge ${statusClasses[status as keyof typeof statusClasses]}`}>{status}</span>;
+    const statusText = {
+      confirmed: "Xác nhận",
+      pending: "Chờ xử lý",
+      cancelled: "Đã hủy",
+    };
+    return (
+      <span className={`status-badge ${statusClasses[status as keyof typeof statusClasses]}`}>
+        {statusText[status as keyof typeof statusText]}
+      </span>
+    );
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
   };
 
   if (loading) {
     return (
       <div className="dashboard-loading">
         <div className="spinner"></div>
-        <p>Loading dashboard...</p>
+        <p>Đang tải bảng điều khiển...</p>
       </div>
     );
   }
@@ -138,13 +154,13 @@ const Dashboard: React.FC = () => {
     <div className="dashboard">
       <div className="dashboard-header">
         <div className="header-content">
-          <h1>Admin Dashboard</h1>
-          <p>Welcome back! Here's what's happening at your cinema today.</p>
+          <h1>Bảng điều khiển quản trị</h1>
+          <p>Chào mừng trở lại! Đây là những gì đang diễn ra tại rạp chiếu phim của bạn hôm nay.</p>
         </div>
         <div className="header-actions">
           <button className="btn-primary">
             <span>📊</span>
-            Generate Report
+            Tạo báo cáo
           </button>
         </div>
       </div>
@@ -153,54 +169,54 @@ const Dashboard: React.FC = () => {
         <div className="stat-card">
           <div className="stat-icon users-icon">👥</div>
           <div className="stat-content">
-            <h3>Total Users</h3>
-            <p className="stat-number">{stats.totalUsers.toLocaleString()}</p>
-            <span className="stat-change positive">+12% from last month</span>
+            <h3>Tổng người dùng</h3>
+            <p className="stat-number">{stats.totalUsers.toLocaleString("vi-VN")}</p>
+            <span className="stat-change positive">+12% so với tháng trước</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-icon movies-icon">🎬</div>
           <div className="stat-content">
-            <h3>Active Movies</h3>
+            <h3>Phim đang chiếu</h3>
             <p className="stat-number">{stats.totalMovies}</p>
-            <span className="stat-change positive">+3 new releases</span>
+            <span className="stat-change positive">+3 phim mới phát hành</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-icon bookings-icon">🎫</div>
           <div className="stat-content">
-            <h3>Total Bookings</h3>
-            <p className="stat-number">{stats.totalBookings.toLocaleString()}</p>
-            <span className="stat-change positive">+8% this week</span>
+            <h3>Tổng đặt vé</h3>
+            <p className="stat-number">{stats.totalBookings.toLocaleString("vi-VN")}</p>
+            <span className="stat-change positive">+8% tuần này</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-icon revenue-icon">💰</div>
           <div className="stat-content">
-            <h3>Total Revenue</h3>
-            <p className="stat-number">${stats.totalRevenue.toLocaleString()}</p>
-            <span className="stat-change positive">+15% from last month</span>
+            <h3>Tổng doanh thu</h3>
+            <p className="stat-number">{formatPrice(stats.totalRevenue)}</p>
+            <span className="stat-change positive">+15% so với tháng trước</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-icon cinemas-icon">🏢</div>
           <div className="stat-content">
-            <h3>Cinema Locations</h3>
+            <h3>Địa điểm rạp</h3>
             <p className="stat-number">{stats.totalCinemas}</p>
-            <span className="stat-change neutral">Across 5 cities</span>
+            <span className="stat-change neutral">Trên 5 thành phố</span>
           </div>
         </div>
 
         <div className="stat-card">
           <div className="stat-icon showtimes-icon">🕐</div>
           <div className="stat-content">
-            <h3>Active Showtimes</h3>
+            <h3>Suất chiếu hoạt động</h3>
             <p className="stat-number">{stats.activeShowtimes}</p>
-            <span className="stat-change neutral">Today's schedule</span>
+            <span className="stat-change neutral">Lịch chiếu hôm nay</span>
           </div>
         </div>
       </div>
@@ -209,20 +225,20 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-section">
           <div className="recent-bookings">
             <div className="section-header">
-              <h2>Recent Bookings</h2>
+              <h2>Đặt vé gần đây</h2>
               <Link to="/admin/bookings/all" className="view-all-link">
-                View All →
+                Xem tất cả →
               </Link>
             </div>
             <div className="bookings-table">
               <table>
                 <thead>
                   <tr>
-                    <th>Movie</th>
-                    <th>Customer</th>
-                    <th>Date</th>
-                    <th>Amount</th>
-                    <th>Status</th>
+                    <th>Phim</th>
+                    <th>Khách hàng</th>
+                    <th>Ngày</th>
+                    <th>Số tiền</th>
+                    <th>Trạng thái</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -230,8 +246,8 @@ const Dashboard: React.FC = () => {
                     <tr key={booking.id}>
                       <td className="movie-title">{booking.movieTitle}</td>
                       <td>{booking.userName}</td>
-                      <td>{new Date(booking.date).toLocaleDateString()}</td>
-                      <td className="amount">${booking.amount}</td>
+                      <td>{new Date(booking.date).toLocaleDateString("vi-VN")}</td>
+                      <td className="amount">{formatPrice(booking.amount)}</td>
                       <td>{getStatusBadge(booking.status)}</td>
                     </tr>
                   ))}
@@ -244,9 +260,9 @@ const Dashboard: React.FC = () => {
         <div className="dashboard-sidebar">
           <div className="top-movies">
             <div className="section-header">
-              <h2>Top Movies</h2>
+              <h2>Phim hàng đầu</h2>
               <Link to="/admin/reports/movies" className="view-all-link">
-                View All →
+                Xem tất cả →
               </Link>
             </div>
             <div className="top-movies-list">
@@ -255,8 +271,8 @@ const Dashboard: React.FC = () => {
                   <div className="movie-rank">#{index + 1}</div>
                   <div className="movie-info">
                     <h4>{movie.title}</h4>
-                    <p>{movie.bookings} bookings</p>
-                    <p className="movie-revenue">${movie.revenue.toLocaleString()}</p>
+                    <p>{movie.bookings} lượt đặt</p>
+                    <p className="movie-revenue">{formatPrice(movie.revenue)}</p>
                   </div>
                 </div>
               ))}

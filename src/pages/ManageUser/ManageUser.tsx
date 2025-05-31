@@ -8,7 +8,7 @@ interface User {
   email: string;
   fullName: string;
   phone: string;
-  role: "admin" | "user" | "staff";
+  role: "admin" | "user" | "staff" | "manager";
   status: "active" | "inactive" | "banned";
   registeredDate: string;
   lastLogin: string;
@@ -41,73 +41,73 @@ const ManageUser: React.FC = () => {
             id: "1",
             username: "johndoe",
             email: "john.doe@email.com",
-            fullName: "John Doe",
-            phone: "+1234567890",
+            fullName: "Nguyễn Văn An",
+            phone: "+84901234567",
             role: "user",
             status: "active",
             registeredDate: "2024-01-15",
             lastLogin: "2025-05-29",
             totalBookings: 25,
-            totalSpent: 375.5,
+            totalSpent: 9387500, // 375.5 USD converted to VND
           },
           {
             id: "2",
             username: "janesmith",
             email: "jane.smith@email.com",
-            fullName: "Jane Smith",
-            phone: "+1234567891",
+            fullName: "Trần Thị Bình",
+            phone: "+84901234568",
             role: "admin",
             status: "active",
             registeredDate: "2023-12-10",
             lastLogin: "2025-05-28",
             totalBookings: 12,
-            totalSpent: 180.0,
+            totalSpent: 4500000, // 180 USD converted to VND
           },
           {
             id: "3",
             username: "mikejohnson",
             email: "mike.johnson@email.com",
-            fullName: "Mike Johnson",
-            phone: "+1234567892",
+            fullName: "Lê Minh Châu",
+            phone: "+84901234569",
             role: "staff",
             status: "active",
             registeredDate: "2024-02-20",
             lastLogin: "2025-05-27",
             totalBookings: 8,
-            totalSpent: 120.0,
+            totalSpent: 3000000, // 120 USD converted to VND
           },
           {
             id: "4",
             username: "sarahwilson",
             email: "sarah.wilson@email.com",
-            fullName: "Sarah Wilson",
-            phone: "+1234567893",
+            fullName: "Phạm Thị Dung",
+            phone: "+84901234570",
             role: "user",
             status: "inactive",
             registeredDate: "2024-03-05",
             lastLogin: "2025-04-15",
             totalBookings: 3,
-            totalSpent: 45.0,
+            totalSpent: 1125000, // 45 USD converted to VND
           },
           {
             id: "5",
             username: "tombrown",
             email: "tom.brown@email.com",
-            fullName: "Tom Brown",
-            phone: "+1234567894",
+            fullName: "Hoàng Văn Em",
+            phone: "+84901234571",
             role: "user",
             status: "banned",
             registeredDate: "2024-01-30",
             lastLogin: "2025-03-20",
             totalBookings: 5,
-            totalSpent: 75.0,
+            totalSpent: 1875000, // 75 USD converted to VND
           },
         ];
         setUsers(mockUsers);
         setLoading(false);
       }, 1000);
     } catch (error) {
-      console.error("Error fetching users:", error);
+      console.error("Lỗi khi tải danh sách người dùng:", error);
       setLoading(false);
     }
   };
@@ -149,7 +149,7 @@ const ManageUser: React.FC = () => {
 
   const handleBulkAction = (action: string) => {
     if (selectedUsers.length === 0) {
-      alert("Please select users first");
+      alert("Vui lòng chọn người dùng trước");
       return;
     }
 
@@ -170,7 +170,7 @@ const ManageUser: React.FC = () => {
         );
         break;
       case "delete":
-        if (window.confirm(`Are you sure you want to delete ${selectedUsers.length} users?`)) {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedUsers.length} người dùng?`)) {
           setUsers((prev) => prev.filter((user) => !selectedUsers.includes(user.id)));
         }
         break;
@@ -184,7 +184,7 @@ const ManageUser: React.FC = () => {
       ...userData,
       id: Date.now().toString(), // Generate a temporary ID
       registeredDate: new Date().toISOString().split("T")[0],
-      lastLogin: "Never",
+      lastLogin: "Chưa đăng nhập",
       totalBookings: 0,
       totalSpent: 0,
     };
@@ -193,11 +193,46 @@ const ManageUser: React.FC = () => {
     setShowAddModal(false);
   };
 
+  const getRoleText = (role: string) => {
+    switch (role) {
+      case "admin":
+        return "Quản trị viên";
+      case "staff":
+        return "Nhân viên";
+      case "user":
+        return "Người dùng";
+      case "manager":
+        return "Quản lý";
+      default:
+        return role;
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "active":
+        return "Hoạt động";
+      case "inactive":
+        return "Ngưng hoạt động";
+      case "banned":
+        return "Bị cấm";
+      default:
+        return status;
+    }
+  };
+
+  const formatPrice = (price: number) => {
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
+    }).format(price);
+  };
+
   if (loading) {
     return (
       <div className="manage-user-loading">
         <div className="spinner"></div>
-        <p>Loading users...</p>
+        <p>Đang tải danh sách người dùng...</p>
       </div>
     );
   }
@@ -206,13 +241,13 @@ const ManageUser: React.FC = () => {
     <div className="manage-user">
       <div className="manage-user-header">
         <div className="header-content">
-          <h1>Manage Users</h1>
-          <p>Manage user accounts, roles, and permissions</p>
+          <h1>Quản lý người dùng</h1>
+          <p>Quản lý tài khoản người dùng, vai trò và quyền hạn</p>
         </div>
         <div className="header-actions">
           <button className="btn-primary" onClick={() => setShowAddModal(true)}>
             <span>➕</span>
-            Add New User
+            Thêm người dùng mới
           </button>
         </div>
       </div>
@@ -221,7 +256,7 @@ const ManageUser: React.FC = () => {
         <div className="search-bar">
           <input
             type="text"
-            placeholder="Search users by name, email, or username..."
+            placeholder="Tìm kiếm theo tên, email hoặc tên đăng nhập..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -230,34 +265,35 @@ const ManageUser: React.FC = () => {
 
         <div className="filters">
           <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)} className="filter-select">
-            <option value="all">All Roles</option>
-            <option value="admin">Admin</option>
-            <option value="staff">Staff</option>
-            <option value="user">User</option>
+            <option value="all">Tất cả vai trò</option>
+            <option value="admin">Quản trị viên</option>
+            <option value="staff">Nhân viên</option>
+            <option value="user">Người dùng</option>
+            <option value="manager">Quản lý</option>
           </select>
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="filter-select">
-            <option value="all">All Status</option>
-            <option value="active">Active</option>
-            <option value="inactive">Inactive</option>
-            <option value="banned">Banned</option>
+            <option value="all">Tất cả trạng thái</option>
+            <option value="active">Hoạt động</option>
+            <option value="inactive">Ngưng hoạt động</option>
+            <option value="banned">Bị cấm</option>
           </select>
         </div>
 
         {selectedUsers.length > 0 && (
           <div className="bulk-actions">
-            <span className="selected-count">{selectedUsers.length} selected</span>
+            <span className="selected-count">Đã chọn {selectedUsers.length}</span>
             <button onClick={() => handleBulkAction("activate")} className="bulk-btn activate">
-              Activate
+              Kích hoạt
             </button>
             <button onClick={() => handleBulkAction("deactivate")} className="bulk-btn deactivate">
-              Deactivate
+              Vô hiệu hóa
             </button>
             <button onClick={() => handleBulkAction("ban")} className="bulk-btn ban">
-              Ban
+              Cấm
             </button>
             <button onClick={() => handleBulkAction("delete")} className="bulk-btn delete">
-              Delete
+              Xóa
             </button>
           </div>
         )}
@@ -274,14 +310,14 @@ const ManageUser: React.FC = () => {
                   onChange={handleSelectAll}
                 />
               </th>
-              <th>User</th>
+              <th>Người dùng</th>
               <th>Email</th>
-              <th>Phone</th>
-              <th>Role</th>
-              <th>Status</th>
-              <th>Registered</th>
-              <th>Bookings</th>
-              <th>Total Spent</th>
+              <th>Số điện thoại</th>
+              <th>Vai trò</th>
+              <th>Trạng thái</th>
+              <th>Ngày đăng ký</th>
+              <th>Số vé đã đặt</th>
+              <th>Tổng chi tiêu</th>
             </tr>
           </thead>
           <tbody>
@@ -311,9 +347,10 @@ const ManageUser: React.FC = () => {
                     onChange={(e) => handleRoleChange(user.id, e.target.value as "admin" | "user" | "staff")}
                     className="role-select"
                   >
-                    <option value="user">User</option>
-                    <option value="staff">Staff</option>
-                    <option value="admin">Admin</option>
+                    <option value="user">Người dùng</option>
+                    <option value="staff">Nhân viên</option>
+                    <option value="admin">Quản trị viên</option>
+                    <option value="manager">Quản lý</option>
                   </select>
                 </td>
                 <td>
@@ -322,14 +359,14 @@ const ManageUser: React.FC = () => {
                     onChange={(e) => handleStatusChange(user.id, e.target.value as "active" | "inactive" | "banned")}
                     className="status-select"
                   >
-                    <option value="active">Active</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="banned">Banned</option>
+                    <option value="active">Hoạt động</option>
+                    <option value="inactive">Ngưng hoạt động</option>
+                    <option value="banned">Bị cấm</option>
                   </select>
                 </td>
-                <td>{new Date(user.registeredDate).toLocaleDateString()}</td>
+                <td>{new Date(user.registeredDate).toLocaleDateString("vi-VN")}</td>
                 <td>{user.totalBookings}</td>
-                <td>${user.totalSpent.toFixed(2)}</td>
+                <td>{formatPrice(user.totalSpent)}</td>
               </tr>
             ))}
           </tbody>
@@ -343,7 +380,7 @@ const ManageUser: React.FC = () => {
             disabled={currentPage === 1}
             className="pagination-btn"
           >
-            Previous
+            Trước
           </button>
 
           <div className="pagination-numbers">
@@ -363,26 +400,26 @@ const ManageUser: React.FC = () => {
             disabled={currentPage === totalPages}
             className="pagination-btn"
           >
-            Next
+            Sau
           </button>
         </div>
       )}
 
       <div className="users-summary">
         <div className="summary-item">
-          <span className="summary-label">Total Users:</span>
+          <span className="summary-label">Tổng số người dùng:</span>
           <span className="summary-value">{users.length}</span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Active:</span>
+          <span className="summary-label">Hoạt động:</span>
           <span className="summary-value">{users.filter((u) => u.status === "active").length}</span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Inactive:</span>
+          <span className="summary-label">Ngưng hoạt động:</span>
           <span className="summary-value">{users.filter((u) => u.status === "inactive").length}</span>
         </div>
         <div className="summary-item">
-          <span className="summary-label">Banned:</span>
+          <span className="summary-label">Bị cấm:</span>
           <span className="summary-value">{users.filter((u) => u.status === "banned").length}</span>
         </div>
       </div>
