@@ -193,33 +193,33 @@ const ManageUser: React.FC = () => {
     setShowAddModal(false);
   };
 
-  const getRoleText = (role: string) => {
-    switch (role) {
-      case "admin":
-        return "Quản trị viên";
-      case "staff":
-        return "Nhân viên";
-      case "user":
-        return "Người dùng";
-      case "manager":
-        return "Quản lý";
-      default:
-        return role;
-    }
-  };
+  // const getRoleText = (role: string) => {
+  //   switch (role) {
+  //     case "admin":
+  //       return "Quản trị viên";
+  //     case "staff":
+  //       return "Nhân viên";
+  //     case "user":
+  //       return "Người dùng";
+  //     case "manager":
+  //       return "Quản lý";
+  //     default:
+  //       return role;
+  //   }
+  // };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "active":
-        return "Hoạt động";
-      case "inactive":
-        return "Ngưng hoạt động";
-      case "banned":
-        return "Bị cấm";
-      default:
-        return status;
-    }
-  };
+  // const getStatusText = (status: string) => {
+  //   switch (status) {
+  //     case "active":
+  //       return "Hoạt động";
+  //     case "inactive":
+  //       return "Ngưng hoạt động";
+  //     case "banned":
+  //       return "Bị cấm";
+  //     default:
+  //       return status;
+  //   }
+  // };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat("vi-VN", {

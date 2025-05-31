@@ -116,7 +116,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "1",
           movieId,
-          date: "2025-05-30",
+          date: "2025-05-31",
           time: "10:00",
           cinema: "CGV Vincom Center",
           screen: "Phòng chiếu 1",
@@ -129,7 +129,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "2",
           movieId,
-          date: "2025-05-30",
+          date: "2025-05-31",
           time: "14:30",
           cinema: "CGV Vincom Center",
           screen: "Phòng chiếu 2",
@@ -142,7 +142,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "3",
           movieId,
-          date: "2025-05-30",
+          date: "2025-05-31",
           time: "19:15",
           cinema: "Lotte Cinema",
           screen: "Phòng chiếu 3",
@@ -155,7 +155,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "4",
           movieId,
-          date: "2025-05-30",
+          date: "2025-05-31",
           time: "22:00",
           cinema: "Galaxy Cinema",
           screen: "Phòng chiếu 1",
@@ -170,7 +170,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "5",
           movieId,
-          date: "2025-05-31",
+          date: "2025-06-06",
           time: "09:30",
           cinema: "CGV Vincom Center",
           screen: "Phòng chiếu 1",
@@ -183,7 +183,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "6",
           movieId,
-          date: "2025-05-31",
+          date: "2025-06-06",
           time: "13:00",
           cinema: "Lotte Cinema",
           screen: "Phòng chiếu 2",
@@ -196,7 +196,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "7",
           movieId,
-          date: "2025-05-31",
+          date: "2025-06-06",
           time: "16:45",
           cinema: "Galaxy Cinema",
           screen: "Phòng chiếu 2",
@@ -209,7 +209,7 @@ const MovieDetail: React.FC = () => {
         {
           id: "8",
           movieId,
-          date: "2025-05-31",
+          date: "2025-06-06",
           time: "20:30",
           cinema: "BHD Star",
           screen: "Phòng chiếu 1",
@@ -677,10 +677,10 @@ const MovieDetail: React.FC = () => {
                 <label>Chọn ngày:</label>
                 <div className="date-buttons">
                   <button
-                    className={`date-btn ${selectedDate === "" ? "active" : ""}`}
-                    onClick={() => setSelectedDate("")}
+                    className={`date-btn ${selectedDate === new Date().toISOString().split("T")[0] ? "active" : ""}`}
+                    onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
                   >
-                    Tất cả ngày
+                    Hôm nay
                   </button>
                   {getAvailableDates().map((date) => (
                     <button
