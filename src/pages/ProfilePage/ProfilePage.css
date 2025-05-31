@@ -1,0 +1,204 @@
+/* ProfilePage.css */
+.profile-wrapper {
+    display: flex;
+    justify-content: flex-start; /* Đặt nội dung sát bên trái */
+    align-items: center;
+    min-height: 100vh;
+    background-color: #1a2c38; /* Màu nền tối */
+    padding: 24px 20px 24px 20px; /* Padding trái 20px, các phía khác 24px */
+    font-family: "Inter", Arial, sans-serif;
+  }
+  
+  .profile-container {
+    display: flex;
+    gap: 40px; /* Tăng khoảng cách giữa hai ô chính (menu và thông tin) */
+    justify-content: flex-start; /* Đảm bảo các ô bắt đầu từ bên trái */
+    align-items: stretch; /* Đảm bảo hai ô có chiều cao bằng nhau */
+    width: 100%;
+    max-width: 1200px; /* Giữ chiều rộng tối đa */
+  }
+  
+  /* Ô chung */
+  .profile-box {
+    background-color: #223540;
+    border-radius: 12px;
+    padding: 24px;
+    color: #e0e0e0;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Ô menu */
+  .profile-menu-box {
+    background-color: #223540;
+    max-width: 400px; /* Giữ chiều rộng ô menu */
+  }
+  
+  .profile-box-title {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 24px;
+    color: #ffffff;
+  }
+  
+  .profile-menu {
+    list-style: none;
+    padding: 0;
+  }
+  
+  .profile-menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: background-color 0.3s ease;
+  }
+  
+  .profile-menu-item:hover {
+    background-color: #2a3f4f;
+  }
+  
+  .profile-menu-item.active {
+    background-color: #3a5060;
+  }
+  
+  .profile-menu-icon {
+    margin-right: 12px;
+    font-size: 20px;
+  }
+  
+  .profile-menu-text {
+    font-size: 16px;
+    font-weight: 500;
+  }
+  
+  .profile-user-info {
+    margin-top: 24px;
+  }
+  
+  .profile-username {
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    color: #ffffff;
+  }
+  
+  .profile-email {
+    font-size: 14px;
+    color: #a0a0a0;
+    margin: 4px 0 0 0;
+  }
+  
+  .profile-logout-btn {
+    background-color: transparent;
+    border: 1px solid #e0e0e0;
+    color: #e0e0e0;
+    padding: 10px 20px;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 24px;
+    font-size: 15px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    width: 100%;
+  }
+  
+  .profile-logout-btn:hover {
+    background-color: #e0e0e0;
+    color: #1a2c38;
+  }
+  
+  /* Ô thông tin tài khoản */
+  .profile-info-box {
+    background-color: #223540;
+    max-width: 800px; /* Tăng chiều rộng để chứa hai cột thoáng hơn */
+  }
+  
+  .profile-info-title {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    color: #ffffff;
+  }
+  
+  .profile-info-subtitle {
+    font-size: 16px;
+    color: #a0a0a0;
+    margin-bottom: 32px;
+  }
+  
+  .profile-info-grid {
+    display: flex;
+    gap: 48px; /* Tăng khoảng cách giữa hai cột để thoáng hơn */
+  }
+  
+  .profile-info-column {
+    flex: 1; /* Đảm bảo hai cột có chiều rộng bằng nhau */
+  }
+  
+  .profile-info-section {
+    margin-bottom: 32px; /* Tăng khoảng cách giữa các trường thông tin */
+  }
+  
+  .profile-info-label {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 8px;
+    display: block;
+    color: #e0e0e0;
+  }
+  
+  .profile-info-input {
+    width: 100%;
+    padding: 12px 16px;
+    background-color: #2a3f4f;
+    border: 1px solid #3a5060;
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 16px;
+    transition: border-color 0.3s ease;
+  }
+  
+  .profile-info-input:focus {
+    border-color: #f5c518;
+    outline: none;
+  }
+  
+  .profile-update-btn {
+    background-color: #f5c518;
+    color: #1a2c38;
+    padding: 12px 24px;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    transition: background-color 0.3s ease;
+    box-shadow: 0 2px 8px rgba(245, 197, 24, 0.3);
+    width: 100%;
+  }
+  
+  .profile-update-btn:hover {
+    background-color: #e0b015;
+  }
+  
+  /* Responsive */
+  @media (max-width: 900px) {
+    .profile-container {
+      flex-direction: column;
+      align-items: center;
+    }
+  
+    .profile-box {
+      max-width: 100%;
+    }
+  
+    .profile-info-grid {
+      flex-direction: column;
+      gap: 0;
+    }
+  }

@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const api = axios.create({ baseURL: "https://localhost:7168/api/", });
+const api = axios.create({ baseURL: "http://localhost:3000/api/", });
 
 api.interceptors.request.use(
     function (config) {
@@ -32,8 +32,8 @@ api.interceptors.response.use(
         console.log('Error status:', error.response?.status);
 
         if (error.response?.status === 401 && 
-            !error.config.url.includes('/Auth/login') && 
-            !error.config.url.includes('/Auth/register')) {
+            !error.config.url.includes('/auth/login') && 
+            !error.config.url.includes('/auth/register')) {
             console.error('Unauthorized error - token may be invalid');
         }
     
