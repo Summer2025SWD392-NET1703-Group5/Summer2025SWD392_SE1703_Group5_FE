@@ -1,19 +1,19 @@
 import React, { useState, useEffect } from "react";
 import "./ManageUser.css";
 import AddUserModal from "./components/AddUserModal";
+import { getAllUsers } from "../../config/UserApi";
 
 interface User {
   id: string;
-  username: string;
-  email: string;
   fullName: string;
+  email: string;
   phone: string;
-  role: "admin" | "user" | "staff" | "manager";
-  status: "active" | "inactive" | "banned";
-  registeredDate: string;
+  address: string;
+  dateOfBirth: string;
+  sex: string;
+  role: string;
+  status: string;
   lastLogin: string;
-  totalBookings: number;
-  totalSpent: number;
 }
 
 const ManageUser: React.FC = () => {
@@ -36,74 +36,13 @@ const ManageUser: React.FC = () => {
     try {
       // Mock data - replace with actual API call
       setTimeout(() => {
-        const mockUsers: User[] = [
-          {
-            id: "1",
-            username: "johndoe",
-            email: "john.doe@email.com",
-            fullName: "Nguyễn Văn An",
-            phone: "+84901234567",
-            role: "user",
-            status: "active",
-            registeredDate: "2024-01-15",
-            lastLogin: "2025-05-29",
-            totalBookings: 25,
-            totalSpent: 9387500, // 375.5 USD converted to VND
-          },
-          {
-            id: "2",
-            username: "janesmith",
-            email: "jane.smith@email.com",
-            fullName: "Trần Thị Bình",
-            phone: "+84901234568",
-            role: "admin",
-            status: "active",
-            registeredDate: "2023-12-10",
-            lastLogin: "2025-05-28",
-            totalBookings: 12,
-            totalSpent: 4500000, // 180 USD converted to VND
-          },
-          {
-            id: "3",
-            username: "mikejohnson",
-            email: "mike.johnson@email.com",
-            fullName: "Lê Minh Châu",
-            phone: "+84901234569",
-            role: "staff",
-            status: "active",
-            registeredDate: "2024-02-20",
-            lastLogin: "2025-05-27",
-            totalBookings: 8,
-            totalSpent: 3000000, // 120 USD converted to VND
-          },
-          {
-            id: "4",
-            username: "sarahwilson",
-            email: "sarah.wilson@email.com",
-            fullName: "Phạm Thị Dung",
-            phone: "+84901234570",
-            role: "user",
-            status: "inactive",
-            registeredDate: "2024-03-05",
-            lastLogin: "2025-04-15",
-            totalBookings: 3,
-            totalSpent: 1125000, // 45 USD converted to VND
-          },
-          {
-            id: "5",
-            username: "tombrown",
-            email: "tom.brown@email.com",
-            fullName: "Hoàng Văn Em",
-            phone: "+84901234571",
-            role: "user",
-            status: "banned",
-            registeredDate: "2024-01-30",
-            lastLogin: "2025-03-20",
-            totalBookings: 5,
-            totalSpent: 1875000, // 75 USD converted to VND
-          },
-        ];
-        setUsers(mockUsers);
+        getAllUsers()
+          .then((data) => {
+            setUsers(data);
+          })
+          .catch((error) => {
+            console.error("Lỗi khi tải danh sách người dùng:", error);
+          });
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -115,8 +54,7 @@ const ManageUser: React.FC = () => {
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
       user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.username.toLowerCase().includes(searchTerm.toLowerCase());
+      user.email.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesRole = roleFilter === "all" || user.role === roleFilter;
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
 
@@ -185,8 +123,6 @@ const ManageUser: React.FC = () => {
       id: Date.now().toString(), // Generate a temporary ID
       registeredDate: new Date().toISOString().split("T")[0],
       lastLogin: "Chưa đăng nhập",
-      totalBookings: 0,
-      totalSpent: 0,
     };
 
     setUsers((prev) => [newUser, ...prev]);
@@ -315,9 +251,8 @@ const ManageUser: React.FC = () => {
               <th>Số điện thoại</th>
               <th>Vai trò</th>
               <th>Trạng thái</th>
-              <th>Ngày đăng ký</th>
-              <th>Số vé đã đặt</th>
-              <th>Tổng chi tiêu</th>
+              <th>Ngày đăng nhập gần nhất</th>
+              <th>Hành động</th>
             </tr>
           </thead>
           <tbody>
@@ -335,7 +270,6 @@ const ManageUser: React.FC = () => {
                     <div className="user-avatar">{user.fullName.charAt(0)}</div>
                     <div className="user-details">
                       <span className="user-name">{user.fullName}</span>
-                      <span className="username">@{user.username}</span>
                     </div>
                   </div>
                 </td>
@@ -364,9 +298,6 @@ const ManageUser: React.FC = () => {
                     <option value="banned">Bị cấm</option>
                   </select>
                 </td>
-                <td>{new Date(user.registeredDate).toLocaleDateString("vi-VN")}</td>
-                <td>{user.totalBookings}</td>
-                <td>{formatPrice(user.totalSpent)}</td>
               </tr>
             ))}
           </tbody>

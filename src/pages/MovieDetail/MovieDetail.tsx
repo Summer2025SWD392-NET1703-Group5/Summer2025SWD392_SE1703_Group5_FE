@@ -681,9 +681,7 @@ const MovieDetail: React.FC = () => {
                 <label>Chọn ngày:</label>
                 <div className="detail-date-buttons">
                   <button
-                    className={`detail-date-btn ${
-                      selectedDate === new Date().toISOString().split("T")[0] ? "active" : ""
-                    }`}
+                    className={`detail-date-btn ${selectedDate === new Date().toISOString().split("T")[0] ? "active" : ""}`}
                     onClick={() => setSelectedDate(new Date().toISOString().split("T")[0])}
                   >
                     Hôm nay
