@@ -4,7 +4,7 @@ import ticket from "../../assets/images/ticket-icon.png"
 import Header from "../../components/Header/Header";
 import { PlaySquareOutlined } from '@ant-design/icons';
 import api from "../../config/axios";
-
+import loading from "../../assets/images/loading.gif";
 interface Movie {
   Movie_ID: number;
   Movie_Name: string;
@@ -59,7 +59,9 @@ const ViewMoviePage = () => {
   }, [activeFilter]);
 
   if (isLoading) {
-    return <div>Đang tải...</div>;
+    return <div className="loading-wrapper">
+    <img src={loading} alt="Loading..." className="loading-gif" />
+  </div>
   }
 
   if (error) {
