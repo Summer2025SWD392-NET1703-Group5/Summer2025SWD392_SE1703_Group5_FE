@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import "./ViewMoviePage.css";
-import ticket from "../../assets/images/ticket-icon.png"
+import ticket from "../../assets/images/ticket-icon.png";
 import Header from "../../components/Header/Header";
 import { PlaySquareOutlined } from '@ant-design/icons';
 import api from "../../config/axios";
