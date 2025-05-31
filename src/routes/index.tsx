@@ -4,7 +4,7 @@ import LoginPage from "../pages/LoginPage/LoginPage";
 import Profile from "../pages/ProfilePage/ProfilePage"; // Import trang Profile
 import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
-
+import ViewMoviePage from "../pages/ViewMoviePage/ViewMoviePage";
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -15,6 +15,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<Profile />} /> 
       </Route>
+      <Route path="/movie" element={<ViewMoviePage />} />
     </Routes>
   );
 };
