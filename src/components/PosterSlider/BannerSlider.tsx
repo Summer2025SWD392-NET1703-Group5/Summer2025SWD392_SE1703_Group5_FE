@@ -1,6 +1,8 @@
 import React from "react";
 import Slider from "react-slick";
-import "./BannerSlider.css"; // Tạo file này để custom style
+import { CustomArrowProps } from "react-slick";
+import { AiOutlineLeft, AiOutlineRight } from "react-icons/ai";
+import "./BannerSlider.css";
 import poster1 from "../../assets/images/poster1.png"
 import poster2 from "../../assets/images/poster2.png"
 const banners = [
@@ -12,9 +14,19 @@ const banners = [
     image: poster2,
     alt: "Banner 2",
   },
-  // Thêm các banner khác ở đây
 ];
+//Custom arrow components
+const NextArrow = ({ onClick }: CustomArrowProps) => (
+  <div className="custom-arrow next" onClick={onClick}>
+    <AiOutlineRight size={24} />
+  </div>
+);
 
+const PrevArrow = ({ onClick }: CustomArrowProps) => (
+  <div className="custom-arrow prev" onClick={onClick}>
+    <AiOutlineLeft size={24} />
+  </div>
+);
 const BannerSlider = () => {
   const settings = {
     dots: true,
@@ -25,6 +37,8 @@ const BannerSlider = () => {
     arrows: true,
     autoplay: true,
     autoplaySpeed: 4000,
+    nextArrow: <NextArrow />,
+    prevArrow: <PrevArrow />,
   };
 
   return (

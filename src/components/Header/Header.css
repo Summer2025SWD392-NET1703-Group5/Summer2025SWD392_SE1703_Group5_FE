@@ -37,7 +37,6 @@ body {
   font-weight: 700;
 }
 
-
 .header__search {
   display: flex;
   align-items: center;
@@ -51,6 +50,7 @@ body {
 
 .header__search-icon {
   margin-right: 8px;
+  margin-left: -15px;
   font-size: 1.2rem;
 }
 
@@ -67,6 +67,11 @@ body {
   display: flex;
   align-items: center;
   gap: 24px;
+}
+
+.header__nav img {
+  height: 40px;
+  cursor: pointer;
 }
 
 .header__nav a {

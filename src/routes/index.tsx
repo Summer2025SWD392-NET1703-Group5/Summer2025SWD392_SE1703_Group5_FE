@@ -4,6 +4,7 @@ import LoginPage from "../pages/LoginPage/LoginPage";
 import Profile from "../pages/ProfilePage/ProfilePage"; // Import trang Profile
 import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
+import ViewMoviePage from "../pages/ViewMoviePage/ViewMoviePage";
 import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import MovieDetail from "../pages/MovieDetail/MovieDetail";
@@ -37,6 +38,7 @@ const AppRoutes = () => {
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
       </Route>
+      <Route path="/movie" element={<ViewMoviePage />} />
     </Routes>
   );
 };
