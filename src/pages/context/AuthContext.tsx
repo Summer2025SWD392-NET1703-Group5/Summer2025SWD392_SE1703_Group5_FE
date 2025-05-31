@@ -4,9 +4,9 @@ import { toast } from "react-toastify";
 
 interface User {
   userId: string;
-  fullName: string;
-  email: string;
-  role: string;
+  fullName?: string;
+  email?: string;
+  role?: string;
 }
 
 interface AuthState {
@@ -27,7 +27,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error("useAuth phải được sử dụng trong AuthProvider");
   }
   return context;
 };
@@ -42,7 +42,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
     const email = localStorage.getItem("email");
     const role = localStorage.getItem("role");
 
-    if (token && userId && fullName && email && role) {
+    if (token && userId) {
       return {
         user: { userId, fullName, email, role },
         token,
@@ -64,31 +64,32 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
   const login = async (email: string, password: string) => {
     setAuthState((prev) => ({ ...prev, isLoading: true, error: null }));
     try {
-      const response = await api.post("/Auth/login", { email, password });
-      const {
-        token,
-        userId,
-        fullName,
-        email: userEmail,
-        tokenExpiration,
-        role,
-      } = response.data;
+      const response = await api.post("/auth/login", {
+        Email: email,
+        Password: password,
+      });
+      const { token, user, role } = response.data; // Lấy role từ response.data
 
-      console.log("API response:", response.data);
+      console.log("Phản hồi API:", response.data);
 
-      if (!token) {
-        throw new Error("Token không hợp lệ");
+      if (!token || !user?.userId) {
+        throw new Error("Token hoặc userId không hợp lệ");
       }
 
+      const userId = user.userId.toString();
+      const fullName = user.fullName || ""; // Sử dụng fullName từ API nếu có
+      const userEmail = user.email || email; // Sử dụng email từ API nếu có, nếu không thì lấy từ form
+      const userRole = user.role || ""; // Sử dụng role từ API
+
+      // Lưu các giá trị vào localStorage
       localStorage.setItem("token", token);
-      localStorage.setItem("userId", userId.toString());
+      localStorage.setItem("userId", userId);
       localStorage.setItem("fullName", fullName);
       localStorage.setItem("email", userEmail);
-      localStorage.setItem("tokenExpiration", tokenExpiration);
-      localStorage.setItem("role", role);
+      localStorage.setItem("role", userRole);
 
       setAuthState({
-        user: { userId: userId.toString(), fullName, email: userEmail, role },
+        user: { userId, fullName, email: userEmail, role: userRole },
         token,
         isAuthenticated: true,
         isLoading: false,
