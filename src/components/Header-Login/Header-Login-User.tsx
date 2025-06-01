@@ -43,9 +43,9 @@ const HeaderLoginUser: React.FC = () => {
     localStorage.clear();
     setUser(null);
     setShowDropdown(false);
-    window.location.reload();
+    window.location.href = "/";
   };
-
+ 
   return (
     <header className="header-login-user">
       <div className="header-login-user__logo">

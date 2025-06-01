@@ -116,6 +116,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({
       isLoading: false,
       error: null,
     });
+    window.location.href = "/";
     toast.info("Đăng xuất thành công.");
   };
 

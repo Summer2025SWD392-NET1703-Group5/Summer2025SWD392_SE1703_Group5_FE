@@ -51,6 +51,7 @@
   align-items: center;
   z-index: 2;
 }
+
 .register-2col-logo.large {
   width: 54px;
   height: 54px;
@@ -60,6 +61,7 @@
   object-fit: cover;
   box-shadow: 0 2px 12px rgba(0,0,0,0.10);
 }
+
 .register-2col-brand-text {
   color: #fff;
   font-size: 1.5rem;
@@ -68,6 +70,7 @@
   letter-spacing: 1px;
   text-shadow: 0 2px 8px rgba(0,0,0,0.18);
 }
+
 .register-2col-brand-text span {
   color: #ffe082;
   font-size: 1.08rem;
@@ -115,10 +118,39 @@
   text-align: center;
   font-weight: 600;
 }
+
 .register-2col-sub a {
   color: #fff;
   text-decoration: underline;
   font-weight: 700;
+}
+
+/* Chỉ báo tiến trình */
+.register-step-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 22px;
+}
+
+.step-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #2d2f3a;
+  transition: background 0.3s ease, transform 0.3s ease;
+}
+
+.step-circle.active {
+  background: #ffe082;
+  transform: scale(1.2); /* Hiệu ứng phóng to khi active */
+}
+
+.step-line {
+  width: 30px;
+  height: 2px;
+  background: #2d2f3a;
+  margin: 0 8px;
 }
 
 .register-2col-form {
@@ -142,11 +174,13 @@
   outline: none;
   box-sizing: border-box;
 }
+
 .register-2col-input::placeholder {
   color: #888;
   opacity: 1;
   font-weight: 400;
 }
+
 .register-2col-input:focus {
   border: 1.5px solid #ffe082;
   box-shadow: 0 0 0 2px #ffe08233;
@@ -167,9 +201,35 @@
   transition: background 0.2s, color 0.2s, box-shadow 0.2s;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
 }
+
 .register-2col-btn:hover {
   background: #fff3b0;
   color: #10111a;
+}
+
+.register-2col-buttons {
+  display: flex;
+  gap: 12px;
+  width: 100%;
+  margin-top: 10px;
+}
+
+.register-2col-btn-secondary {
+  background: transparent;
+  border: 1.5px solid #ffe082;
+  color: #ffe082;
+  padding: 14px 0;
+  border-radius: 12px;
+  font-size: 1.12rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.2s, color 0.2s;
+  width: 100%;
+}
+
+.register-2col-btn-secondary:hover {
+  background: #ffe082;
+  color: #23253a;
 }
 
 @media (max-width: 900px) {
@@ -210,4 +270,8 @@
     border-radius: 0 0 22px 22px;
     padding: 18px 4px 10px 4px;
   }
-} 
+  .register-2col-buttons {
+    flex-direction: column;
+    gap: 8px;
+  }
+}
