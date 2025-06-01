@@ -60,9 +60,11 @@ const restoreUser = async (id: string) => {
   }
 };
 
-const updateUserStatus = async (id: string, status: any) => {
+const updateUserStatus = async (id: string, status: string) => {
   try {
-    const response = await api.put(`user/${id}/status`, status);
+    const response = await api.put(`user/${id}/status`, {
+      Status: status, // Based on the image, the backend expects "Status" field
+    });
     return response.data;
   } catch (error) {
     console.error(`Error updating user status with ID ${id}:`, error);

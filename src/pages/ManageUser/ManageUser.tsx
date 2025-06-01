@@ -21,8 +21,8 @@ interface User {
   Email: string;
   Phone_Number: string;
   Address: string;
-  Date_Of_Birth: string;
-  Sex: string;
+  Date_Of_Birth: string | null;
+  Sex: string | null;
   Role: string;
   Account_Status: string;
   Last_Login: string | null;
@@ -55,7 +55,7 @@ const ManageUser: React.FC = () => {
       setError(null);
       const data = await getAllUsers();
       setUsers(data);
-      showToast("Tải danh sách người dùng thành công", "success");
+      // Remove success toast on initial load
     } catch (error: any) {
       console.error("Lỗi khi tải danh sách người dùng:", error);
       setError(error.message || "Không thể tải danh sách người dùng. Vui lòng thử lại.");
@@ -73,12 +73,13 @@ const ManageUser: React.FC = () => {
 
     const searchLower = removeAccents(searchTerm.toLowerCase());
     const matchesSearch =
-      removeAccents(user.Full_Name.toLowerCase()).includes(searchLower) ||
-      removeAccents(user.Email.toLowerCase()).includes(searchLower) ||
-      user.Phone_Number.includes(searchTerm);
+      removeAccents(user.Full_Name?.toLowerCase() || "").includes(searchLower) ||
+      removeAccents(user.Email?.toLowerCase() || "").includes(searchLower) ||
+      (user.Phone_Number || "").includes(searchTerm);
 
-    const matchesRole = roleFilter === "all" || user.Role.toLowerCase() === roleFilter.toLowerCase();
-    const matchesStatus = statusFilter === "all" || user.Account_Status.toLowerCase() === statusFilter.toLowerCase();
+    const matchesRole = roleFilter === "all" || (user.Role?.toLowerCase() || "") === roleFilter.toLowerCase();
+    const matchesStatus =
+      statusFilter === "all" || (user.Account_Status?.toLowerCase() || "") === statusFilter.toLowerCase();
 
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -107,8 +108,8 @@ const ManageUser: React.FC = () => {
     try {
       setActionLoading(userId);
 
-      // Call the API to update user status
-      await updateUserStatus(userId.toString(), { status: newStatus });
+      // Call the API to update user status - send status directly
+      await updateUserStatus(userId.toString(), newStatus);
 
       // Update local state after successful API call
       setUsers((prev) => prev.map((user) => (user.User_ID === userId ? { ...user, Account_Status: newStatus } : user)));
@@ -320,10 +321,8 @@ const ManageUser: React.FC = () => {
 
       switch (action) {
         case "activate":
-          // Call API for each user
-          const activatePromises = selectedUsers.map((userId) =>
-            updateUserStatus(userId.toString(), { status: "Active" })
-          );
+          // Call API for each user - send status directly
+          const activatePromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Active"));
           await Promise.all(activatePromises);
 
           setUsers((prev) =>
@@ -333,9 +332,7 @@ const ManageUser: React.FC = () => {
           break;
 
         case "deactivate":
-          const deactivatePromises = selectedUsers.map((userId) =>
-            updateUserStatus(userId.toString(), { status: "Inactive" })
-          );
+          const deactivatePromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Inactive"));
           await Promise.all(deactivatePromises);
 
           setUsers((prev) =>
@@ -345,7 +342,7 @@ const ManageUser: React.FC = () => {
           break;
 
         case "ban":
-          const banPromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), { status: "Banned" }));
+          const banPromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Banned"));
           await Promise.all(banPromises);
 
           setUsers((prev) =>
@@ -400,16 +397,15 @@ const ManageUser: React.FC = () => {
     }
 
     try {
-      // Call API to create user
+      // Call API to create user with correct field names
       const newUser = await registerUserByAdmin({
-        fullName: userData.fullName,
-        email: userData.email,
-        phone: userData.phone,
-        address: userData.address,
-        dateOfBirth: userData.dateOfBirth,
-        sex: userData.sex,
-        role: userData.role,
-        // password: userData.password || "TempPassword123!",
+        Full_Name: userData.fullName,
+        Email: userData.email,
+        Phone_Number: userData.phone,
+        Address: userData.address,
+        Date_Of_Birth: userData.dateOfBirth,
+        Sex: userData.sex,
+        Role: userData.role,
       });
 
       // Add the new user to local state
@@ -451,11 +447,16 @@ const ManageUser: React.FC = () => {
     return formatDateTime(lastLogin);
   };
 
-  const formatDateOfBirth = (dateOfBirth: string) => {
+  const formatDateOfBirth = (dateOfBirth: string | null) => {
+    if (!dateOfBirth) {
+      return "Chưa có thông tin";
+    }
     return formatDate(dateOfBirth);
   };
 
-  const getGenderText = (sex: string) => {
+  const getGenderText = (sex: string | null) => {
+    if (!sex) return "Chưa xác định";
+
     switch (sex.toLowerCase()) {
       case "male":
         return "Nam";
@@ -600,10 +601,6 @@ const ManageUser: React.FC = () => {
               <button className="btn-primary" onClick={() => setSearchTerm("")}>
                 Xóa bộ lọc
               </button>
-            ) : !showDeleted ? (
-              <button className="btn-primary" onClick={() => setShowAddModal(true)}>
-                Thêm người dùng đầu tiên
-              </button>
             ) : null
           }
         />
@@ -651,18 +648,24 @@ const ManageUser: React.FC = () => {
                   <td>
                     <div className="user-info">
                       <div className={`user-avatar ${user.Is_Deleted ? "deleted" : ""}`}>
-                        {user.Full_Name.charAt(0)}
+                        {(user.Full_Name || "?").charAt(0)}
                       </div>
                       <div className="user-details">
-                        <span className={`user-name ${user.Is_Deleted ? "deleted" : ""}`}>{user.Full_Name}</span>
-                        <span className="user-birth">Sinh: {formatDateOfBirth(user.Date_Of_Birth)}</span>
+                        <span className={`user-name ${user.Is_Deleted ? "deleted" : ""}`}>
+                          {user.Full_Name || "Tên không xác định"}
+                        </span>
+                        <span className="user-birth">
+                          Sinh: {user.Date_Of_Birth ? formatDateOfBirth(user.Date_Of_Birth) : "Chưa có thông tin"}
+                        </span>
                       </div>
                     </div>
                   </td>
-                  <td>{user.Email}</td>
-                  <td>{user.Phone_Number}</td>
+                  <td>{user.Email || "Chưa có email"}</td>
+                  <td>{user.Phone_Number || "Chưa có SĐT"}</td>
                   <td>
-                    <span className={`gender-badge ${user.Sex.toLowerCase()}`}>{getGenderText(user.Sex)}</span>
+                    <span className={`gender-badge ${(user.Sex || "unknown").toLowerCase()}`}>
+                      {getGenderText(user.Sex)}
+                    </span>
                   </td>
                   <td>
                     {!user.Is_Deleted ? (
