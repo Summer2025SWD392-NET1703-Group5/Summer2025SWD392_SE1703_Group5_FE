@@ -1,7 +1,8 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom"; // Thêm useNavigate
 import "./AdminSidebar.css";
 import Logo from "../../assets/images/Logo.png";
+import { useAuth } from "../../pages/context/AuthContext"; // Import useAuth từ AuthContext
 
 interface SidebarItem {
   id: string;
@@ -13,114 +14,176 @@ interface SidebarItem {
 
 const AdminSidebar: React.FC = () => {
   const location = useLocation();
+  const navigate = useNavigate(); // Khởi tạo useNavigate
+  const { logout } = useAuth(); // Lấy hàm logout từ AuthContext
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
 
   const sidebarItems: SidebarItem[] = [
     {
       id: "dashboard",
-      label: "Dashboard",
+      label: "Bảng Điều Khiển",
       icon: "📊",
       path: "/admin/dashboard",
     },
     {
       id: "users",
-      label: "Manage Users",
+      label: "Quản Lý Người Dùng",
       icon: "👥",
       path: "/admin/users",
       subItems: [
-        { id: "all-users", label: "All Users", icon: "👤", path: "/admin/users/all" },
-        { id: "add-user", label: "Add User", icon: "➕", path: "/admin/users/add" },
-        { id: "user-roles", label: "User Roles", icon: "🔑", path: "/admin/users/roles" },
+        {
+          id: "all-users",
+          label: "Tất Cả Người Dùng",
+          icon: "👤",
+          path: "/admin/users/all",
+        },
+        {
+          id: "add-user",
+          label: "Thêm Người Dùng",
+          icon: "➕",
+          path: "/admin/users/add",
+        },
+        {
+          id: "user-roles",
+          label: "Vai Trò Người Dùng",
+          icon: "🔑",
+          path: "/admin/users/roles",
+        },
       ],
     },
-    {
-      id: "movies",
-      label: "Manage Movies",
-      icon: "🎬",
-      path: "/admin/movies",
-      subItems: [
-        { id: "all-movies", label: "All Movies", icon: "🎭", path: "/admin/movies/all" },
-        { id: "add-movie", label: "Add Movie", icon: "➕", path: "/admin/movies/add" },
-        { id: "genres", label: "Genres", icon: "🏷️", path: "/admin/movies/genres" },
-        { id: "ratings", label: "Ratings", icon: "⭐", path: "/admin/movies/ratings" },
-      ],
-    },
+   
     {
       id: "cinemas",
-      label: "Manage Cinemas",
+      label: "Quản Lý Chi Nhánh Rạp",
       icon: "🏢",
       path: "/admin/cinemas",
-      subItems: [
-        { id: "all-cinemas", label: "All Cinemas", icon: "🏬", path: "/admin/cinemas/all" },
-        { id: "add-cinema", label: "Add Cinema", icon: "➕", path: "/admin/cinemas/add" },
-        { id: "rooms", label: "Cinema Rooms", icon: "🎦", path: "/admin/cinemas/rooms" },
-      ],
     },
-    {
-      id: "showtimes",
-      label: "Manage Showtimes",
-      icon: "🕐",
-      path: "/admin/showtimes",
-      subItems: [
-        { id: "all-showtimes", label: "All Showtimes", icon: "📅", path: "/admin/showtimes/all" },
-        { id: "add-showtime", label: "Add Showtime", icon: "➕", path: "/admin/showtimes/add" },
-        { id: "schedule", label: "Schedule", icon: "📋", path: "/admin/showtimes/schedule" },
-      ],
-    },
+   
     {
       id: "bookings",
-      label: "Manage Bookings",
+      label: "Quản Lý Đặt Vé",
       icon: "🎫",
       path: "/admin/bookings",
       subItems: [
-        { id: "all-bookings", label: "All Bookings", icon: "📝", path: "/admin/bookings/all" },
-        { id: "pending-bookings", label: "Pending", icon: "⏳", path: "/admin/bookings/pending" },
-        { id: "cancelled-bookings", label: "Cancelled", icon: "❌", path: "/admin/bookings/cancelled" },
+        {
+          id: "all-bookings",
+          label: "Tất Cả Đặt Vé",
+          icon: "📝",
+          path: "/admin/bookings/all",
+        },
+        {
+          id: "pending-bookings",
+          label: "Chờ Xử Lý",
+          icon: "⏳",
+          path: "/admin/bookings/pending",
+        },
+        {
+          id: "cancelled-bookings",
+          label: "Đã Hủy",
+          icon: "❌",
+          path: "/admin/bookings/cancelled",
+        },
       ],
     },
     {
       id: "reports",
-      label: "Reports & Analytics",
+      label: "Báo Cáo & Phân Tích",
       icon: "📈",
       path: "/admin/reports",
       subItems: [
-        { id: "revenue-report", label: "Revenue Report", icon: "💰", path: "/admin/reports/revenue" },
-        { id: "booking-analytics", label: "Booking Analytics", icon: "📊", path: "/admin/reports/bookings" },
-        { id: "movie-performance", label: "Movie Performance", icon: "🎯", path: "/admin/reports/movies" },
-        { id: "user-analytics", label: "User Analytics", icon: "👥", path: "/admin/reports/users" },
+        {
+          id: "revenue-report",
+          label: "Báo Cáo Doanh Thu",
+          icon: "💰",
+          path: "/admin/reports/revenue",
+        },
+        {
+          id: "booking-analytics",
+          label: "Phân Tích Đặt Vé",
+          icon: "📊",
+          path: "/admin/reports/bookings",
+        },
+        {
+          id: "movie-performance",
+          label: "Hiệu Suất Phim",
+          icon: "🎯",
+          path: "/admin/reports/movies",
+        },
+        {
+          id: "user-analytics",
+          label: "Phân Tích Người Dùng",
+          icon: "👥",
+          path: "/admin/reports/users",
+        },
       ],
     },
     {
       id: "payments",
-      label: "Payment Management",
+      label: "Quản Lý Thanh Toán",
       icon: "💳",
       path: "/admin/payments",
       subItems: [
-        { id: "all-payments", label: "All Payments", icon: "💸", path: "/admin/payments/all" },
-        { id: "refunds", label: "Refunds", icon: "↩️", path: "/admin/payments/refunds" },
-        { id: "payment-methods", label: "Payment Methods", icon: "💳", path: "/admin/payments/methods" },
+        {
+          id: "all-payments",
+          label: "Tất Cả Thanh Toán",
+          icon: "💸",
+          path: "/admin/payments/all",
+        },
+        {
+          id: "refunds",
+          label: "Hoàn Tiền",
+          icon: "↩️",
+          path: "/admin/payments/refunds",
+        },
+        {
+          id: "payment-methods",
+          label: "Phương Thức Thanh Toán",
+          icon: "💳",
+          path: "/admin/payments/methods",
+        },
       ],
     },
     {
       id: "promotions",
-      label: "Promotions & Offers",
+      label: "Khuyến Mãi & Ưu Đãi",
       icon: "🎉",
       path: "/admin/promotions",
       subItems: [
-        { id: "all-promotions", label: "All Promotions", icon: "🏷️", path: "/admin/promotions/all" },
-        { id: "add-promotion", label: "Add Promotion", icon: "➕", path: "/admin/promotions/add" },
-        { id: "coupons", label: "Coupons", icon: "🎟️", path: "/admin/promotions/coupons" },
+        {
+          id: "all-promotions",
+          label: "Tất Cả Khuyến Mãi",
+          icon: "🏷️",
+          path: "/admin/promotions/all",
+        },
+        {
+          id: "add-promotion",
+          label: "Thêm Khuyến Mãi",
+          icon: "➕",
+          path: "/admin/promotions/add",
+        },
+        {
+          id: "coupons",
+          label: "Phiếu Giảm Giá",
+          icon: "🎟️",
+          path: "/admin/promotions/coupons",
+        },
       ],
     },
   ];
 
   const toggleExpanded = (itemId: string) => {
-    setExpandedItems((prev) => (prev.includes(itemId) ? prev.filter((id) => id !== itemId) : [...prev, itemId]));
+    setExpandedItems((prev) =>
+      prev.includes(itemId)
+        ? prev.filter((id) => id !== itemId)
+        : [...prev, itemId]
+    );
   };
 
   const isActiveItem = (path: string) => {
-    return location.pathname === path || location.pathname.startsWith(path + "/");
+    return (
+      location.pathname === path || location.pathname.startsWith(path + "/")
+    );
   };
 
   const renderSidebarItem = (item: SidebarItem, isSubItem = false) => {
@@ -129,78 +192,112 @@ const AdminSidebar: React.FC = () => {
     const hasSubItems = item.subItems && item.subItems.length > 0;
 
     return (
-      <li key={item.id} className={`sidebar-item ${isSubItem ? "sub-item" : ""}`}>
+      <li
+        key={item.id}
+        className={`sidebar-item ${isSubItem ? "sub-item" : ""}`}
+      >
         <div
-          className={`sidebar-link ${isActive ? "active" : ""} ${hasSubItems ? "has-submenu" : ""}`}
+          className={`sidebar-link ${isActive ? "active" : ""} ${
+            hasSubItems ? "has-submenu" : ""
+          }`}
           onClick={() => (hasSubItems ? toggleExpanded(item.id) : undefined)}
         >
           {hasSubItems ? (
             <div className="sidebar-link-content">
               <div className="sidebar-link-main">
                 <span className="sidebar-icon">{item.icon}</span>
-                {!isCollapsed && <span className="sidebar-label">{item.label}</span>}
+                {!isCollapsed && (
+                  <span className="sidebar-label">{item.label}</span>
+                )}
               </div>
-              {!isCollapsed && <span className={`expand-icon ${isExpanded ? "expanded" : ""}`}>▼</span>}
+              {!isCollapsed && (
+                <span className={`expand-icon ${isExpanded ? "expanded" : ""}`}>
+                  ▼
+                </span>
+              )}
             </div>
           ) : (
             <Link to={item.path} className="sidebar-link-content">
               <div className="sidebar-link-main">
                 <span className="sidebar-icon">{item.icon}</span>
-                {!isCollapsed && <span className="sidebar-label">{item.label}</span>}
+                {!isCollapsed && (
+                  <span className="sidebar-label">{item.label}</span>
+                )}
               </div>
             </Link>
           )}
         </div>
 
         {hasSubItems && isExpanded && !isCollapsed && (
-          <ul className="sub-menu">{item.subItems!.map((subItem) => renderSidebarItem(subItem, true))}</ul>
+          <ul className="sub-menu">
+            {item.subItems!.map((subItem) => renderSidebarItem(subItem, true))}
+          </ul>
         )}
       </li>
     );
   };
 
+  // Gắn hàm logout vào nút đăng xuất
+  const handleLogoutClick = () => {
+    logout(); // Gọi hàm logout từ AuthContext
+  };
+
   return (
     <div className={`admin-sidebar ${isCollapsed ? "collapsed" : ""}`}>
-      {/* Header with logo and collapse button - hidden when collapsed */}
+      {/* Tiêu đề với logo và nút thu gọn - ẩn khi thu gọn */}
       {!isCollapsed && (
         <div className="sidebar-header">
           <div className="logo">
-            <img src={Logo} alt="Galaxy Logo" className="logo-img" />
+            <img src={Logo} alt="Logo Galaxy" className="logo-img" />
             <span className="logo-text">Galaxy</span>
           </div>
-          <button className="collapse-btn" onClick={() => setIsCollapsed(!isCollapsed)} title="Collapse sidebar">
+          <button
+            className="collapse-btn"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title="Thu gọn thanh bên"
+          >
             ☰
           </button>
         </div>
       )}
 
-      {/* Collapse button when sidebar is collapsed */}
+      {/* Nút mở rộng khi thanh bên được thu gọn */}
       {isCollapsed && (
         <div className="collapsed-header">
-          <button className="expand-btn" onClick={() => setIsCollapsed(!isCollapsed)} title="Expand sidebar">
+          <button
+            className="expand-btn"
+            onClick={() => setIsCollapsed(!isCollapsed)}
+            title="Mở rộng thanh bên"
+          >
             ☰
           </button>
         </div>
       )}
 
       <nav className="sidebar-nav">
-        <ul className="sidebar-menu">{sidebarItems.map((item) => renderSidebarItem(item))}</ul>
+        <ul className="sidebar-menu">
+          {sidebarItems.map((item) => renderSidebarItem(item))}
+        </ul>
       </nav>
 
-      {/* Footer - only show profile avatar when collapsed */}
+      {/* Chân trang - chỉ hiển thị ảnh đại diện khi thu gọn */}
       <div className="sidebar-footer">
         {!isCollapsed ? (
           <>
             <div className="admin-profile">
               <div className="profile-avatar">👤</div>
               <div className="profile-info">
-                <span className="profile-name">Admin User</span>
-                <span className="profile-role">Administrator</span>
+                <span className="profile-name">Người Dùng Quản Trị</span>
+                <span className="profile-role">Quản Trị Viên</span>
               </div>
             </div>
-            <button className="logout-btn" title="Logout">
+            <button
+              className="logout-btn"
+              title="Đăng Xuất"
+              onClick={handleLogoutClick}
+            >
               <span className="logout-icon">🚪</span>
-              <span>Logout</span>
+              <span>Đăng Xuất</span>
             </button>
           </>
         ) : (
