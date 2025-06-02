@@ -72,15 +72,16 @@
 
 /*this is movie box*/
 .movie-list {
-  display: flex;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
   gap: 32px;
-  margin: 40px 0 0 0;
-  justify-content: center;
-  flex-wrap: wrap;
+  margin: 40px auto;
+  max-width: 1280px;
+  padding: 0 20px;
 }
 
 .movie-card {
-  width: 280px;
+  width: 300px;
   background: #fff;
   border-radius: 16px;
   box-shadow: 0 2px 8px rgba(0,0,0,0.08);
@@ -93,11 +94,23 @@
   transform: translateY(-8px) scale(1.03);
 }
 
+.movie-poster-wrapper {
+  position: relative;
+  width: 100%;
+  height: 450px;
+  overflow: hidden;
+}
+
 .movie-poster {
   width: 100%;
-  height: 400px;
+  height: 100%;
   object-fit: cover;
   border-radius: 16px 16px 0 0;
+  transition: transform 0.3s ease;
+}
+
+.movie-card:hover .movie-poster {
+  transform: scale(1.05);
 }
 
 .movie-info {
@@ -144,10 +157,6 @@
 }
 
 /*this is when we hover movie box*/
-
-.movie-poster-wrapper {
-position: relative;
-}
 
 .movie-overlay {
 position: absolute;
@@ -221,6 +230,39 @@ width: 150px; /* Tăng kích thước gif */
 height: 150px;
 background: none;
 mix-blend-mode: screen; /* Giúp loại bỏ background của gif */
+}
+
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 32px 0;
+  gap: 8px;
+}
+
+.pagination button {
+  background-color: transparent;
+  color: white;
+  border: 1px solid #0063d1;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.pagination button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.pagination button.active {
+  background-color: #0063d1;
+  color: white;
+}
+
+.pagination button:hover:not(:disabled) {
+  background-color: #0063d1;
+  color: white;
 }
 
 

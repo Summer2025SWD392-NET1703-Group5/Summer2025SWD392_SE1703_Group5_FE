@@ -358,6 +358,7 @@ interface Movie {
   End_Date: string;
   Director: string;
   Cast: string;
+  Duration: number;
   Genre: string;
   Rating: string;
   Language: string;
@@ -366,6 +367,7 @@ interface Movie {
   Poster_URL: string;
   Trailer_Link: string;
   Status: string;
+  Production_Company: string;
 }
 
 interface FilterState {
@@ -395,6 +397,9 @@ interface NewMovie {
 }
 
 const RATINGS = ['G', 'PG', 'PG-13', 'R', 'NC-17'];
+
+// Add placeholder image as base64
+const PLACEHOLDER_IMAGE = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjAwIiBoZWlnaHQ9IjMwMCIgdmlld0JveD0iMCAwIDIwMCAzMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjIwMCIgaGVpZ2h0PSIzMDAiIGZpbGw9IiNFRUVFRUUiLz48cGF0aCBkPSJNOTAgMTM1SDExMFYxNjVIOTBWMTM1Wk0xMDAgOTBDMTA0LjE4IDkwIDEwNy44MyA5MS41OCA5OS45MyA5NC43NUM5Mi4wMyA5Ny45MiA5MCAxMDEuNTcgOTAgMTA1Ljc1QzkwIDEwOS45MyA5Mi4wMyAxMTMuNTggOTkuOTMgMTE2Ljc1QzEwNy44MyAxMTkuOTIgMTExLjQ4IDEyMS41IDExNS42NiAxMjEuNUMxMTkuODQgMTIxLjUgMTIzLjQ5IDExOS45MiAxMjYuNjYgMTE2Ljc1QzEyOS44MyAxMTMuNTggMTMxLjQxIDEwOS45MyAxMzEuNDEgMTA1Ljc1QzEzMS40MSAxMDEuNTcgMTI5LjgzIDk3LjkyIDEyNi42NiA5NEgxMDBaIiBmaWxsPSIjOTk5OTk5Ii8+PC9zdmc+';
 
 // Add styled components
 const StyledGrid = styled(Grid)(({ theme }) => ({
@@ -438,6 +443,8 @@ const ManageMoviePage: React.FC = () => {
   const [activeStep, setActiveStep] = useState(0);
   const [previewUrl, setPreviewUrl] = useState('');
   const [showErrors, setShowErrors] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [editMovieId, setEditMovieId] = useState<number | null>(null);
   const [snackbar, setSnackbar] = useState<{
     open: boolean;
     message: string;
@@ -447,6 +454,8 @@ const ManageMoviePage: React.FC = () => {
     message: '',
     severity: 'info'
   });
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [movieToDelete, setMovieToDelete] = useState<Movie | null>(null);
 
   const steps = ['Thông tin cơ bản', 'Thông tin chi tiết', 'Hình ảnh & Trailer'];
 
@@ -524,6 +533,8 @@ const ManageMoviePage: React.FC = () => {
     setPreviewUrl('');
     setShowErrors(false);
     setActiveStep(0);
+    setIsEditMode(false);
+    setEditMovieId(null);
   };
 
   const handleCloseSnackbar = () => {
@@ -607,7 +618,11 @@ const ManageMoviePage: React.FC = () => {
       
       Object.entries(newMovie).forEach(([key, value]) => {
         if (key !== 'posterFile') {
-          formData.append(key, value.toString());
+          if (Array.isArray(value)) {
+            formData.append(key, value.join(','));
+          } else {
+            formData.append(key, value.toString());
+          }
         }
       });
 
@@ -615,29 +630,116 @@ const ManageMoviePage: React.FC = () => {
         formData.append('posterFile', selectedFile);
       }
 
-      const response = await api.post('/movies', formData, {
+      if (isEditMode && editMovieId) {
+        await handleEditMovie();
+      } else {
+        const response = await api.post('/movies', formData, {
+          headers: {
+            'Content-Type': 'multipart/form-data',
+          },
+        });
+
+        console.log('Movie added successfully:', response.data);
+        showSuccess('Thêm phim mới thành công!');
+        
+        resetForm();
+        setOpenAddModal(false);
+        fetchMovies();
+      }
+      
+    } catch (error: any) {
+      console.error('Error adding/updating movie:', error);
+      if (error.response?.data?.message) {
+        showError(error.response.data.message);
+      } else {
+        showError('Có lỗi xảy ra. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditMovie = async () => {
+    if (!validateForm()) {
+      return;
+    }
+
+    try {
+      setLoading(true);
+      
+      const formData = new FormData();
+      
+      Object.entries(newMovie).forEach(([key, value]) => {
+        if (key !== 'posterFile') {
+          if (Array.isArray(value)) {
+            formData.append(key, value.join(','));
+          } else {
+            formData.append(key, value.toString());
+          }
+        }
+      });
+
+      if (selectedFile) {
+        formData.append('posterFile', selectedFile);
+      }
+
+      const response = await api.put(`/movies/${editMovieId}`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      console.log('Movie added successfully:', response.data);
-      showSuccess('Thêm phim mới thành công!');
+      console.log('Movie updated successfully:', response.data);
+      showSuccess('Cập nhật phim thành công!');
       
       resetForm();
       setOpenAddModal(false);
+      setIsEditMode(false);
+      setEditMovieId(null);
       fetchMovies();
       
-    } catch (error) {
-      console.error('Error adding movie:', error);
+    } catch (error: any) {
+      console.error('Error updating movie:', error);
       if (error.response?.data?.message) {
         showError(error.response.data.message);
       } else {
-        showError('Có lỗi xảy ra khi thêm phim. Vui lòng thử lại sau.');
+        showError('Có lỗi xảy ra khi cập nhật phim. Vui lòng thử lại sau.');
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenEditModal = (movie: Movie) => {
+    setIsEditMode(true);
+    setEditMovieId(movie.Movie_ID);
+    
+    // Convert movie data to NewMovie format
+    const movieToEdit: NewMovie = {
+      Movie_Name: movie.Movie_Name,
+      Release_Date: movie.Release_Date,
+      End_Date: movie.End_Date,
+      Director: movie.Director,
+      Cast: movie.Cast || '',
+      Duration: movie.Duration || 0,
+      Genre: typeof movie.Genre === 'string' ? [movie.Genre] : movie.Genre,
+      Rating: movie.Rating,
+      Language: movie.Language || '',
+      Country: movie.Country || '',
+      Synopsis: movie.Synopsis || '',
+      Poster_URL: movie.Poster_URL || '',
+      Trailer_Link: movie.Trailer_Link || '',
+      Status: movie.Status,
+      Production_Company: movie.Production_Company || '',
+    };
+
+    setNewMovie(movieToEdit);
+    if (movie.Poster_URL) {
+      setPreviewUrl(movie.Poster_URL);
+    }
+    setOpenAddModal(true);
+    setActiveStep(0);
+    setShowErrors(false);
   };
 
   const handleNext = () => {
@@ -1050,6 +1152,37 @@ const ManageMoviePage: React.FC = () => {
     }
   };
 
+  const handleOpenDeleteDialog = (movie: Movie) => {
+    setMovieToDelete(movie);
+    setOpenDeleteDialog(true);
+  };
+
+  const handleCloseDeleteDialog = () => {
+    setMovieToDelete(null);
+    setOpenDeleteDialog(false);
+  };
+
+  const handleDeleteMovie = async () => {
+    if (!movieToDelete) return;
+
+    try {
+      setLoading(true);
+      await api.delete(`/movies/${movieToDelete.Movie_ID}`);
+      showSuccess('Xóa phim thành công!');
+      handleCloseDeleteDialog();
+      fetchMovies();
+    } catch (error: any) {
+      console.error('Error deleting movie:', error);
+      if (error.response?.data?.message) {
+        showError(error.response.data.message);
+      } else {
+        showError('Có lỗi xảy ra khi xóa phim. Vui lòng thử lại sau.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Box sx={styles.pageContainer}>
       <Paper elevation={3} sx={styles.mainPaper}>
@@ -1150,13 +1283,9 @@ const ManageMoviePage: React.FC = () => {
                   <TableCell sx={styles.tableCell}>
                     <Box sx={styles.posterContainer}>
                       <img
-                        src={movie.Poster_URL || '/placeholder-movie.jpg'}
+                        src={movie.Poster_URL || PLACEHOLDER_IMAGE}
                         alt={movie.Movie_Name}
                         style={styles.posterImage}
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.src = '/placeholder-movie.jpg';
-                        }}
                       />
                     </Box>
                   </TableCell>
@@ -1181,6 +1310,7 @@ const ManageMoviePage: React.FC = () => {
                         variant="outlined"
                         size="medium"
                         sx={styles.editButton}
+                        onClick={() => handleOpenEditModal(movie)}
                       >
                         Sửa
                       </Button>
@@ -1188,6 +1318,7 @@ const ManageMoviePage: React.FC = () => {
                         variant="outlined"
                         size="medium"
                         sx={styles.deleteButton}
+                        onClick={() => handleOpenDeleteDialog(movie)}
                       >
                         Xóa
                       </Button>
@@ -1218,7 +1349,7 @@ const ManageMoviePage: React.FC = () => {
       >
         <DialogTitle>
           <Typography variant="h5" sx={{ fontWeight: 600, color: '#1a237e' }}>
-            Thêm Phim Mới
+            {isEditMode ? 'Sửa Thông Tin Phim' : 'Thêm Phim Mới'}
           </Typography>
         </DialogTitle>
         <DialogContent>
@@ -1253,7 +1384,7 @@ const ManageMoviePage: React.FC = () => {
                     onClick={handleAddMovie}
                     disabled={loading}
                   >
-                    {loading ? <CircularProgress size={24} /> : 'Thêm phim'}
+                    {loading ? <CircularProgress size={24} /> : isEditMode ? 'Cập nhật phim' : 'Thêm phim'}
                   </Button>
                 ) : (
                   <Button
@@ -1268,6 +1399,37 @@ const ManageMoviePage: React.FC = () => {
             </Box>
           </Card>
         </DialogContent>
+      </Dialog>
+
+      {/* Add Delete Confirmation Dialog */}
+      <Dialog
+        open={openDeleteDialog}
+        onClose={handleCloseDeleteDialog}
+        aria-labelledby="delete-dialog-title"
+        aria-describedby="delete-dialog-description"
+      >
+        <DialogTitle id="delete-dialog-title">
+          {"Xác nhận xóa phim"}
+        </DialogTitle>
+        <DialogContent>
+          <Typography id="delete-dialog-description">
+            Bạn có chắc chắn muốn xóa phim "{movieToDelete?.Movie_Name}"? 
+            Hành động này không thể hoàn tác.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDeleteDialog} color="primary">
+            Hủy
+          </Button>
+          <Button
+            onClick={handleDeleteMovie}
+            color="error"
+            variant="contained"
+            disabled={loading}
+          >
+            {loading ? <CircularProgress size={24} /> : 'Xóa'}
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Add Snackbar at the end of the component */}

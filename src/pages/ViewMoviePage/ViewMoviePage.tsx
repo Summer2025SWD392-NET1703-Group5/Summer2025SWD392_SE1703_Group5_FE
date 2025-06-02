@@ -29,7 +29,6 @@ interface Movie {
 const filters = [
   { label: "Đang chiếu", value: "Now%20Showing" },
   { label: "Sắp chiếu", value: "Coming%20Soon" },
-  { label: "Phim IMAX", value: "IMAX" },
 ];
 
 const ViewMoviePage = () => {
@@ -84,10 +83,6 @@ const ViewMoviePage = () => {
           {filter.label}
         </span>
       ))}
-      <span className="movie-filter-location">
-        <span className="location-icon">📍</span>
-        <span className="location-text">Toàn quốc</span>
-      </span>
     </div>
 
     <div className="movie-list">
