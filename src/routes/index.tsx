@@ -13,8 +13,8 @@ import ManageUser from "../pages/ManageUser/ManageUser";
 import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
 
 import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
-
-
+import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
+import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -43,8 +43,13 @@ const AppRoutes = () => {
         <Route path="movies/add" element={<div>Add Movie</div>} />
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
-
         <Route path="cinemas" element={<ManageCinemaBranch />} />
+        <Route path="movies/all" element={<div>All Movies</div>} />
+        <Route path="promotions" element={<ManagePromotion />} />
+      {/* Manager routes with nested structure */}
+      </Route>
+      <Route path="/manager" element={<ManagerLayout />}>
+
       </Route>
     </Routes>
   );
