@@ -20,6 +20,9 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
     if (role === "Admin") {
       console.log("User role is Admin, navigating to /admin");
       navigate("/admin");
+    } else if (role === "Manager") {
+      console.log("User role is Manager, navigating to /manager");
+      navigate("/manager");
     }
   }, [role, navigate]); // Phụ thuộc vào role và navigate
 
