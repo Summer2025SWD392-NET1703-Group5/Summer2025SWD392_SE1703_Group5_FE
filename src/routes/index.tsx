@@ -9,7 +9,11 @@ import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import MovieDetail from "../pages/MovieDetail/MovieDetail";
 import ManageUser from "../pages/ManageUser/ManageUser";
+
 import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
+
+import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
+
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -34,7 +38,7 @@ const AppRoutes = () => {
         <Route path="users/add" element={<div>Add User</div>} />
         <Route path="users/roles" element={<div>User Roles</div>} />
 
-        <Route path="movies/*" element={<div>Manage Movies</div>} />
+        <Route path="movies/*" element={<ManageMoviePage />} />
         <Route path="movies/all" element={<div>All Movies</div>} />
         <Route path="movies/add" element={<div>Add Movie</div>} />
         <Route path="movies/genres" element={<div>Genres</div>} />

@@ -4,8 +4,191 @@
   flex-direction: column;
   background-color: #2F3346;
 }
+
 .homepage-content {
   flex: 1 0 auto;
   display: flex;
   flex-direction: column;
+  padding: 20px;
+}
+
+.movie-category {
+  margin: 30px 0;
+}
+
+.category-title {
+  color: #fff;
+  font-size: 24px;
+  margin-bottom: 20px;
+  padding-left: 20px;
+  position: relative;
+}
+
+.category-title::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 4px;
+  height: 24px;
+  background-color: #1890ff;
+}
+
+.movie-row {
+  display: flex;
+  overflow-x: auto;
+  gap: 20px;
+  padding: 10px 0;
+  scrollbar-width: thin;
+  scrollbar-color: #1890ff #2F3346;
+}
+
+.movie-row::-webkit-scrollbar {
+  height: 8px;
+}
+
+.movie-row::-webkit-scrollbar-track {
+  background: #2F3346;
+  border-radius: 4px;
+}
+
+.movie-row::-webkit-scrollbar-thumb {
+  background: #1890ff;
+  border-radius: 4px;
+}
+
+.movie-card {
+  flex: 0 0 200px;
+  margin-bottom: 20px;
+  transition: transform 0.3s ease;
+}
+
+.movie-card:hover {
+  transform: translateY(-5px);
+}
+
+.movie-poster-wrapper {
+  position: relative;
+  width: 100%;
+  height: 300px;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.movie-poster {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.movie-overlay {
+  position: absolute;
+  bottom: -100%;
+  left: 0;
+  width: 100%;
+  padding: 20px;
+  background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: bottom 0.3s ease;
+}
+
+.movie-poster-wrapper:hover .movie-overlay {
+  bottom: 0;
+}
+
+.btn-buy-ticket,
+.btn-trailer {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-weight: 500;
+  transition: background-color 0.3s ease;
+}
+
+.btn-buy-ticket {
+  background-color: #1890ff;
+  color: white;
+}
+
+.btn-buy-ticket:hover {
+  background-color: #40a9ff;
+}
+
+.btn-trailer {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.btn-trailer:hover {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+.ticket-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.movie-meta {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.movie-rating,
+.movie-age {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.movie-rating {
+  background-color: rgba(255, 215, 0, 0.2);
+  color: #ffd700;
+}
+
+.movie-age {
+  background-color: rgba(255, 255, 255, 0.2);
+  color: white;
+}
+
+.movie-info {
+  padding: 10px 0;
+}
+
+.movie-title {
+  color: white;
+  font-weight: 500;
+  margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.movie-release {
+  color: #8c8c8c;
+  font-size: 12px;
+}
+
+.loading-wrapper {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 100vh;
+  background-color: #2F3346;
+}
+
+.loading-gif {
+  width: 100px;
+  height: 100px;
 }
