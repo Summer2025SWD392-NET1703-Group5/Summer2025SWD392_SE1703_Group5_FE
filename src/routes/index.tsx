@@ -26,7 +26,7 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/movie" element={<ViewMoviePage />} />
-        <Route path="/movieDetail/:id" element={<MovieDetail />} />
+        <Route path="/movie/:id" element={<MovieDetail />} />
       </Route>
 
       {/* Admin routes with nested structure */}
