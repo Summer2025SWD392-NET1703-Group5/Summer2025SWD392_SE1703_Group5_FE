@@ -9,7 +9,10 @@ import {
   getRoleText,
   LoadingSpinner,
   EmptyState,
-  showToast,
+  showSuccessToast,
+  showErrorToast,
+  showWarningToast,
+  showInfoToast,
   validateEmail,
   validatePhone,
   removeAccents,
@@ -59,7 +62,7 @@ const ManageUser: React.FC = () => {
     } catch (error: any) {
       console.error("Lỗi khi tải danh sách người dùng:", error);
       setError(error.message || "Không thể tải danh sách người dùng. Vui lòng thử lại.");
-      showToast(error.message || "Lỗi khi tải danh sách người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi tải danh sách người dùng");
     } finally {
       setLoading(false);
     }
@@ -114,10 +117,10 @@ const ManageUser: React.FC = () => {
       // Update local state after successful API call
       setUsers((prev) => prev.map((user) => (user.User_ID === userId ? { ...user, Account_Status: newStatus } : user)));
 
-      showToast(`Đã cập nhật trạng thái thành ${getAccountStatusText(newStatus)}`, "success");
+      showSuccessToast(`Đã cập nhật trạng thái thành ${getAccountStatusText(newStatus)}`);
     } catch (error: any) {
       console.error("Error updating user status:", error);
-      showToast(error.message || "Lỗi khi cập nhật trạng thái người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi cập nhật trạng thái người dùng");
     } finally {
       setActionLoading(null);
     }
@@ -137,10 +140,10 @@ const ManageUser: React.FC = () => {
       // Update local state
       setUsers((prev) => prev.map((user) => (user.User_ID === userId ? { ...user, Role: newRole } : user)));
 
-      showToast(`Đã cập nhật vai trò thành ${getRoleText(newRole)}`, "success");
+      showSuccessToast(`Đã cập nhật vai trò thành ${getRoleText(newRole)}`);
     } catch (error: any) {
       console.error("Error updating user role:", error);
-      showToast(error.message || "Lỗi khi cập nhật vai trò người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi cập nhật vai trò người dùng");
     } finally {
       setActionLoading(null);
     }
@@ -174,10 +177,10 @@ const ManageUser: React.FC = () => {
       );
       setSelectedUsers((prev) => prev.filter((id) => id !== userId));
 
-      showToast(`Đã xóa người dùng "${user.Full_Name}" thành công`, "success");
+      showSuccessToast(`Đã xóa người dùng "${user.Full_Name}" thành công`);
     } catch (error: any) {
       console.error("Error deleting user:", error);
-      showToast(error.message || "Lỗi khi xóa người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi xóa người dùng");
     } finally {
       setActionLoading(null);
     }
@@ -212,10 +215,10 @@ const ManageUser: React.FC = () => {
         )
       );
 
-      showToast(`Đã khôi phục người dùng "${user.Full_Name}" thành công`, "success");
+      showSuccessToast(`Đã khôi phục người dùng "${user.Full_Name}" thành công`);
     } catch (error: any) {
       console.error("Error restoring user:", error);
-      showToast(error.message || "Lỗi khi khôi phục người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi khôi phục người dùng");
     } finally {
       setActionLoading(null);
     }
@@ -224,7 +227,7 @@ const ManageUser: React.FC = () => {
   // Bulk soft delete users
   const handleBulkDelete = async () => {
     if (selectedUsers.length === 0) {
-      showToast("Vui lòng chọn người dùng trước", "warning");
+      showWarningToast("Vui lòng chọn người dùng trước");
       return;
     }
 
@@ -255,10 +258,10 @@ const ManageUser: React.FC = () => {
       );
       setSelectedUsers([]);
 
-      showToast(`Đã xóa ${selectedUsers.length} người dùng thành công`, "success");
+      showSuccessToast(`Đã xóa ${selectedUsers.length} người dùng thành công`);
     } catch (error: any) {
       console.error("Error in bulk delete:", error);
-      showToast(error.message || "Lỗi khi xóa người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi xóa người dùng");
       // Refresh the list to see current state
       await fetchUsers();
     } finally {
@@ -269,7 +272,7 @@ const ManageUser: React.FC = () => {
   // Bulk restore users with API calls
   const handleBulkRestore = async () => {
     if (selectedUsers.length === 0) {
-      showToast("Vui lòng chọn người dùng trước", "warning");
+      showWarningToast("Vui lòng chọn người dùng trước");
       return;
     }
 
@@ -299,10 +302,10 @@ const ManageUser: React.FC = () => {
       );
       setSelectedUsers([]);
 
-      showToast(`Đã khôi phục ${selectedUsers.length} người dùng thành công`, "success");
+      showSuccessToast(`Đã khôi phục ${selectedUsers.length} người dùng thành công`);
     } catch (error: any) {
       console.error("Error in bulk restore:", error);
-      showToast(error.message || "Lỗi khi khôi phục người dùng", "error");
+      showErrorToast(error.message || "Lỗi khi khôi phục người dùng");
       // Refresh the list to see current state
       await fetchUsers();
     } finally {
@@ -312,7 +315,7 @@ const ManageUser: React.FC = () => {
 
   const handleBulkAction = async (action: string) => {
     if (selectedUsers.length === 0) {
-      showToast("Vui lòng chọn người dùng trước", "warning");
+      showWarningToast("Vui lòng chọn người dùng trước");
       return;
     }
 
@@ -328,7 +331,7 @@ const ManageUser: React.FC = () => {
           setUsers((prev) =>
             prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Active" } : user))
           );
-          showToast(`Đã kích hoạt ${selectedUsers.length} người dùng`, "success");
+          showSuccessToast(`Đã kích hoạt ${selectedUsers.length} người dùng`);
           break;
 
         case "deactivate":
@@ -338,7 +341,7 @@ const ManageUser: React.FC = () => {
           setUsers((prev) =>
             prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Inactive" } : user))
           );
-          showToast(`Đã vô hiệu hóa ${selectedUsers.length} người dùng`, "success");
+          showSuccessToast(`Đã vô hiệu hóa ${selectedUsers.length} người dùng`);
           break;
 
         case "ban":
@@ -348,7 +351,7 @@ const ManageUser: React.FC = () => {
           setUsers((prev) =>
             prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Banned" } : user))
           );
-          showToast(`Đã cấm ${selectedUsers.length} người dùng`, "success");
+          showSuccessToast(`Đã cấm ${selectedUsers.length} người dùng`);
           break;
 
         case "delete":
@@ -363,7 +366,7 @@ const ManageUser: React.FC = () => {
       setSelectedUsers([]);
     } catch (error: any) {
       console.error(`Error in bulk ${action}:`, error);
-      showToast(error.message || `Lỗi khi thực hiện hành động ${action}`, "error");
+      showErrorToast(error.message || `Lỗi khi thực hiện hành động ${action}`);
       // Refresh the list to see current state
       await fetchUsers();
     } finally {
@@ -375,24 +378,24 @@ const ManageUser: React.FC = () => {
   const handleAddUser = async (userData: any) => {
     // Client-side validation
     if (!validateEmail(userData.email)) {
-      showToast("Email không hợp lệ", "error");
+      showErrorToast("Email không hợp lệ");
       return;
     }
 
     if (!validatePhone(userData.phone)) {
-      showToast("Số điện thoại không hợp lệ", "error");
+      showErrorToast("Số điện thoại không hợp lệ");
       return;
     }
 
     // Check if email already exists locally (including deleted users)
     if (users.some((user) => user.Email.toLowerCase() === userData.email.toLowerCase())) {
-      showToast("Email đã tồn tại trong hệ thống", "error");
+      showErrorToast("Email đã tồn tại trong hệ thống");
       return;
     }
 
     // Check if phone already exists locally (including deleted users)
     if (users.some((user) => user.Phone_Number === userData.phone)) {
-      showToast("Số điện thoại đã tồn tại trong hệ thống", "error");
+      showErrorToast("Số điện thoại đã tồn tại trong hệ thống");
       return;
     }
 
@@ -411,13 +414,13 @@ const ManageUser: React.FC = () => {
       // Add the new user to local state
       setUsers((prev) => [{ ...newUser, Is_Deleted: false }, ...prev]);
       setShowAddModal(false);
-      showToast("Thêm người dùng mới thành công", "success");
+      showSuccessToast("Thêm người dùng mới thành công");
 
       // Reset pagination to first page to show new user
       setCurrentPage(1);
     } catch (error: any) {
       console.error("Error adding user:", error);
-      showToast(error.message || "Lỗi khi thêm người dùng mới", "error");
+      showErrorToast(error.message || "Lỗi khi thêm người dùng mới");
     }
   };
 

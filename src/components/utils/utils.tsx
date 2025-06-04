@@ -1,4 +1,5 @@
 import React from "react";
+import { toast } from "react-toastify";
 
 // Date formatting utilities
 export const formatDate = (date: string | Date | null | undefined, locale: string = "vi-VN"): string => {
@@ -316,9 +317,102 @@ export const EmptyState: React.FC<{
 };
 
 // Toast notification utility
-export const showToast = (message: string, type: "success" | "error" | "warning" | "info" = "info") => {
-  // This would integrate with your toast library (e.g., react-toastify)
-  console.log(`${type.toUpperCase()}: ${message}`);
+export const showToast = (
+  message: string,
+  type: "success" | "error" | "warning" | "info" = "info",
+  options?: {
+    position?: "top-right" | "top-center" | "top-left" | "bottom-right" | "bottom-center" | "bottom-left";
+    autoClose?: number | false;
+    hideProgressBar?: boolean;
+    closeOnClick?: boolean;
+    pauseOnHover?: boolean;
+    draggable?: boolean;
+  }
+) => {
+  const defaultOptions = {
+    position: "top-right" as const,
+    autoClose: 5000,
+    hideProgressBar: false,
+    closeOnClick: true,
+    pauseOnHover: true,
+    draggable: true,
+    containerId: "main-toast-container",
+    ...options,
+  };
+
+  try {
+    switch (type) {
+      case "success":
+        return toast.success(message, defaultOptions);
+      case "error":
+        return toast.error(message, defaultOptions);
+      case "warning":
+        return toast.warn(message, defaultOptions);
+      case "info":
+        return toast.info(message, defaultOptions);
+      default:
+        return toast(message, defaultOptions);
+    }
+  } catch (error) {
+    console.error("Toast error:", error);
+    // Fallback to console and alert
+    console.log(`${type.toUpperCase()}: ${message}`);
+    if (type === "error") {
+      alert(`Error: ${message}`);
+    }
+  }
+};
+
+// Dismiss all toasts utility
+export const dismissAllToasts = () => {
+  try {
+    toast.dismiss();
+  } catch (error) {
+    console.error("Error dismissing toasts:", error);
+  }
+};
+
+// Utility functions for specific toast types with better error handling
+export const showSuccessToast = (message: string, options?: any) => {
+  try {
+    console.log("Showing success toast:", message); // Debug log
+    return showToast(message, "success", options);
+  } catch (error) {
+    console.error("Success toast error:", error);
+    console.log(`SUCCESS: ${message}`);
+  }
+};
+
+export const showErrorToast = (message: string, options?: any) => {
+  try {
+    console.log("Showing error toast:", message); // Debug log
+    return showToast(message, "error", options);
+  } catch (error) {
+    console.error("Error toast error:", error);
+    console.error(`ERROR: ${message}`);
+    // Show alert for critical errors
+    alert(`Error: ${message}`);
+  }
+};
+
+export const showWarningToast = (message: string, options?: any) => {
+  try {
+    console.log("Showing warning toast:", message); // Debug log
+    return showToast(message, "warning", options);
+  } catch (error) {
+    console.error("Warning toast error:", error);
+    console.warn(`WARNING: ${message}`);
+  }
+};
+
+export const showInfoToast = (message: string, options?: any) => {
+  try {
+    console.log("Showing info toast:", message); // Debug log
+    return showToast(message, "info", options);
+  } catch (error) {
+    console.error("Info toast error:", error);
+    console.log(`INFO: ${message}`);
+  }
 };
 
 export default {
@@ -355,5 +449,12 @@ export default {
   // Components
   LoadingSpinner,
   EmptyState,
+
+  // Toast utilities
   showToast,
+  showSuccessToast,
+  showErrorToast,
+  showWarningToast,
+  showInfoToast,
+  dismissAllToasts,
 };

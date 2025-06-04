@@ -12,6 +12,7 @@ import ManageUser from "../pages/ManageUser/ManageUser";
 
 import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
 
+import ManageShowtime from "../pages/ManageShowtime/ManageShowtime";
 import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
@@ -33,10 +34,7 @@ const AppRoutes = () => {
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="users/*" element={<ManageUser />} />
-        <Route path="users/all" element={<ManageUser />} />
-        <Route path="users/add" element={<div>Add User</div>} />
-        <Route path="users/roles" element={<div>User Roles</div>} />
+        <Route path="users" element={<ManageUser />} />
 
         <Route path="movies/*" element={<ManageMoviePage />} />
         <Route path="movies/all" element={<div>All Movies</div>} />
@@ -49,6 +47,9 @@ const AppRoutes = () => {
       {/* Manager routes with nested structure */}
       </Route>
       <Route path="/manager" element={<ManagerLayout />}>
+        <Route index element={<div>Dashboard</div>} />
+        <Route path="showtimes" element={<ManageShowtime />} />
+
 
       </Route>
     </Routes>

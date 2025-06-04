@@ -31,7 +31,6 @@ const HomePage: React.FC = () => {
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [searchQuery, setSearchQuery] = useState("");
 
   const nowShowingRef = useRef<HTMLDivElement>(null);
   const comingSoonRef = useRef<HTMLDivElement>(null);
@@ -68,12 +67,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate(`/search?query=${encodeURIComponent(searchQuery.trim())}`);
-    }
-  };
 
   const handleMovieClick = (movieId: number) => {
     navigate(`/movie/${movieId}`);
@@ -137,8 +130,6 @@ const HomePage: React.FC = () => {
       </div>
     );
   }
-
-  const currentMovie = featuredMovies[currentSlide];
 
   return (
     <div className="homepage">

@@ -176,6 +176,7 @@ const createShowtimeAuto = async (showtimeData: any) => {
   }
 };
 
+
 export {
   getAllShowtimes,
   createShowtime,
@@ -193,4 +194,5 @@ export {
   getShowtimesByRoomAndDate,
   getAdminShowtimesByMovie,
   createShowtimeAuto,
+
 };
