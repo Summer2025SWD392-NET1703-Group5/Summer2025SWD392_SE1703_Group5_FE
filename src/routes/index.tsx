@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import HomePage from "../pages/HomePage/HomePage";
 import LoginPage from "../pages/LoginPage/LoginPage";
-import Profile from "../pages/ProfilePage/ProfilePage"; // Import trang Profile
+import Profile from "../pages/ProfilePage/ProfilePage";
 import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
 import ViewMoviePage from "../pages/ViewMoviePage/ViewMoviePage";
@@ -9,12 +9,12 @@ import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import MovieDetail from "../pages/MovieDetail/MovieDetail";
 import ManageUser from "../pages/ManageUser/ManageUser";
-
-import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
-
+import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
 import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
+import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
+
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -44,12 +44,14 @@ const AppRoutes = () => {
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
         <Route path="cinemas" element={<ManageCinemaBranch />} />
-        <Route path="movies/all" element={<div>All Movies</div>} />
         <Route path="promotions" element={<ManagePromotion />} />
-      {/* Manager routes with nested structure */}
       </Route>
-      <Route path="/manager" element={<ManagerLayout />}>
 
+      {/* Manager routes with nested structure */}
+      <Route path="/manager" element={<ManagerLayout />}>
+        <Route index element={<ManageCinemaRoom />} />
+        <Route path="cinemarooms" element={<ManageCinemaRoom />} />{" "}
+        {/* Added nested route */}
       </Route>
     </Routes>
   );
