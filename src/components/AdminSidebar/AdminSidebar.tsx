@@ -3,11 +3,15 @@ import { Link, useLocation, useNavigate } from "react-router-dom"; // Thêm useN
 import "./AdminSidebar.css";
 import Logo from "../../assets/images/Logo.png";
 import { useAuth } from "../../pages/context/AuthContext"; // Import useAuth từ AuthContext
+import movieicon from "../../assets/images/movieicon.png";
+import controlicon from "../../assets/images/controlicon.png";
+import promotionicon from "../../assets/images/promotionicon.png";
+import { Button } from "@mui/material";
 
 interface SidebarItem {
   id: string;
   label: string;
-  icon: string;
+  icon: JSX.Element;
   path: string;
   subItems?: SidebarItem[];
 }
@@ -23,7 +27,12 @@ const AdminSidebar: React.FC = () => {
     {
       id: "dashboard",
       label: "Bảng Điều Khiển",
-      icon: "📊",
+      icon: <img src={controlicon} alt="movie icon" style={{
+        width: "24px",
+        height: "24px",
+        objectFit: "contain",
+        marginRight: "8px"
+      }} />,
       path: "/admin/dashboard",
     },
     {
@@ -147,28 +156,24 @@ const AdminSidebar: React.FC = () => {
     {
       id: "promotions",
       label: "Khuyến Mãi & Ưu Đãi",
-      icon: "🎉",
+      icon: <img src={promotionicon} alt="movie icon" style={{
+        width: "24px",
+        height: "24px",
+        objectFit: "contain",
+        marginRight: "8px"
+      }} />,
       path: "/admin/promotions",
-      subItems: [
-        {
-          id: "all-promotions",
-          label: "Tất Cả Khuyến Mãi",
-          icon: "🏷️",
-          path: "/admin/promotions/all",
-        },
-        {
-          id: "add-promotion",
-          label: "Thêm Khuyến Mãi",
-          icon: "➕",
-          path: "/admin/promotions/add",
-        },
-        {
-          id: "coupons",
-          label: "Phiếu Giảm Giá",
-          icon: "🎟️",
-          path: "/admin/promotions/coupons",
-        },
-      ],
+    },
+    {
+      id: "movives",
+      label: "Quản Lý Phim",
+      icon: <img src={movieicon} alt="movie icon" style={{
+        width: "24px",
+        height: "24px",
+        objectFit: "contain",
+        marginRight: "8px"
+      }} />,
+      path: "/admin/movies"
     },
   ];
 
