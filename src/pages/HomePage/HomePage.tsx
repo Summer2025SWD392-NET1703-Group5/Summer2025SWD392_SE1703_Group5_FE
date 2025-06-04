@@ -67,7 +67,6 @@ const HomePage: React.FC = () => {
     }
   };
 
-
   const handleMovieClick = (movieId: number) => {
     navigate(`/movie/${movieId}`);
   };
@@ -88,8 +87,9 @@ const HomePage: React.FC = () => {
   const renderStars = (rating: number) => {
     const stars = [];
     const fullStars = Math.floor(rating);
-    const hasHalfStar = rating % 1 !== 0;
+    const hasHalfStar = rating % 1 >= 0.5;
 
+    // Show stars on 10-scale
     for (let i = 0; i < fullStars; i++) {
       stars.push(
         <span key={i} className="star filled">
@@ -118,7 +118,7 @@ const HomePage: React.FC = () => {
     return (
       <span className="stars-container">
         {stars}
-        <span className="rating-number">{rating}</span>
+        <span className="rating-number">{rating}/10</span>
       </span>
     );
   };
@@ -240,11 +240,11 @@ const HomePage: React.FC = () => {
                           Trailer
                         </button>
                       </div>
-                      <div className="movie-rating">⭐ {movie.Average_Rating}</div>
+                      <div className="movie-rating">⭐ {movie.Average_Rating}/10</div>
                     </div>
                     <div className="movie-info">
                       <h3 className="movie-title">{movie.Movie_Name}</h3>
-                      <p className="movie-genre">{movie.Genre.split(",")[0]}</p>
+                      <p className="movie-genre">{movie.Genre}</p>
                       <p className="movie-duration">{formatDuration(movie.Duration)}</p>
                     </div>
                   </div>
@@ -306,8 +306,10 @@ const HomePage: React.FC = () => {
                     </div>
                     <div className="movie-info">
                       <h3 className="movie-title">{movie.Movie_Name}</h3>
-                      <p className="movie-genre">{movie.Genre.split(",")[0]}</p>
-                      <p className="release-date">Khởi chiếu: {formatDate(movie.Release_Date)}</p>
+                      <p className="movie-genre">{movie.Genre}</p>
+                      <p className="release-date">
+                        Khởi chiếu: {new Date(movie.Release_Date).toLocaleDateString("vi-VN")}
+                      </p>
                     </div>
                   </div>
                 ))}

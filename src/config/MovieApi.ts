@@ -133,7 +133,7 @@ const getSimilarMovies = async (id: string) => {
 };
 
 // Rate movie
-const rateMovie = async (id: string, ratingData: any) => {
+const rateMovie = async (id: string, ratingData: { rating: number; comment: string }) => {
   try {
     const response = await api.post(`movies/${id}/rate`, ratingData);
     return response.data;
