@@ -33,7 +33,17 @@ interface Cinema {
   Updated_At: string | null;
 }
 
-// Component Modal được định nghĩa inline
+// Định nghĩa kiểu dữ liệu cho phòng chiếu
+interface Room {
+  Cinema_Room_ID: number;
+  Room_Name: string;
+  Seat_Quantity: number;
+  Room_Type: string;
+  Status: string;
+  Notes: string;
+  Cinema_ID: number;
+}
+
 interface ModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -48,18 +58,16 @@ const Modal: React.FC<ModalProps> = ({
   size = "md",
 }) => {
   if (!isOpen) return null;
-
   const sizeClasses = {
     sm: "modal-sm",
     md: "modal-md",
     lg: "modal-lg",
     xl: "modal-xl",
   };
-
   return (
     <div className="modal-overlay">
       <div className={`modal-content ${sizeClasses[size]}`}>
-        <button onClick={onClose} className="modal-close-button">
+        <button type="button" onClick={onClose} className="modal-close-button">
           <FiX className="modal-close-icon" />
         </button>
         {children}
@@ -70,6 +78,7 @@ const Modal: React.FC<ModalProps> = ({
 
 const ManageCinemaBranch: React.FC = () => {
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -77,6 +86,7 @@ const ManageCinemaBranch: React.FC = () => {
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
   const [isAddingCinema, setIsAddingCinema] = useState(false);
   const [isUpdatingCinema, setIsUpdatingCinema] = useState(false);
+  const [isManagingRooms, setIsManagingRooms] = useState(false);
   const [currentCinemaId, setCurrentCinemaId] = useState<number | null>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
   const [newCinema, setNewCinema] = useState<Partial<Cinema>>({
@@ -102,18 +112,17 @@ const ManageCinemaBranch: React.FC = () => {
     const role = getRole();
     if (role !== "Admin") {
       toast.error("Bạn không có quyền truy cập trang này.");
-      navigate("/"); // Điều hướng về trang chính nếu không phải Admin
+      navigate("/");
     }
   }, [navigate]);
 
-  // Lấy dữ liệu từ API
+  // Lấy dữ liệu rạp phim từ API
   const fetchCinemas = async () => {
     setLoading(true);
     setError(null);
     try {
       const response = await api.get("/cinemas");
       if (response.data.success) {
-        // Sắp xếp rạp phim theo ID từ lớn đến nhỏ
         const sortedCinemas = response.data.data.sort(
           (a: Cinema, b: Cinema) => b.Cinema_ID - a.Cinema_ID
         );
@@ -125,6 +134,24 @@ const ManageCinemaBranch: React.FC = () => {
     } catch (err: any) {
       setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu.");
       toast.error(err.message || "Đã xảy ra lỗi khi tải dữ liệu.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Lấy dữ liệu phòng chiếu từ API
+  const fetchRooms = async (cinemaId: number) => {
+    try {
+      setLoading(true);
+      const response = await api.get(`/cinemas/${cinemaId}/rooms`);
+      if (response.data.success) {
+        setRooms(response.data.data);
+      } else {
+        throw new Error("Không thể tải danh sách phòng chiếu.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu phòng chiếu.");
+      toast.error(err.message || "Đã xảy ra lỗi khi tải dữ liệu phòng chiếu.");
     } finally {
       setLoading(false);
     }
@@ -178,12 +205,20 @@ const ManageCinemaBranch: React.FC = () => {
     setIsUpdatingCinema(true);
   };
 
+  // Mở modal quản lý phòng chiếu
+  const handleManageRooms = (cinemaId: number) => {
+    setCurrentCinemaId(cinemaId);
+    setIsManagingRooms(true); // Chỉ mở modal, fetchRooms sẽ được gọi qua useEffect
+  };
+
   // Đóng modal
   const handleCloseModal = () => {
     setIsAddingCinema(false);
     setIsUpdatingCinema(false);
+    setIsManagingRooms(false);
     setConfirmDeleteId(null);
     setCurrentCinemaId(null);
+    setRooms([]); // Reset rooms khi đóng modal
     setNewCinema({
       Cinema_Name: "",
       Address: "",
@@ -205,7 +240,6 @@ const ManageCinemaBranch: React.FC = () => {
       return;
     }
 
-    // Validate input
     if (!newCinema.Cinema_Name?.trim()) {
       toast.error("Tên rạp là bắt buộc.");
       return;
@@ -237,11 +271,8 @@ const ManageCinemaBranch: React.FC = () => {
 
     try {
       const response = await api.post("/cinemas", newCinema, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.data) {
         await fetchCinemas();
         toast.success(
@@ -274,7 +305,6 @@ const ManageCinemaBranch: React.FC = () => {
       return;
     }
 
-    // Validate input
     if (!newCinema.Cinema_Name?.trim()) {
       toast.error("Tên rạp là bắt buộc.");
       return;
@@ -306,11 +336,8 @@ const ManageCinemaBranch: React.FC = () => {
 
     try {
       const response = await api.put(`/cinemas/${currentCinemaId}`, newCinema, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       if (response.data) {
         await fetchCinemas();
         toast.success(
@@ -330,7 +357,7 @@ const ManageCinemaBranch: React.FC = () => {
   };
 
   // Xóa rạp phim
-  const HandelDeleteCinema = async (id: number) => {
+  const handleDeleteCinema = async (id: number) => {
     const token = localStorage.getItem("token");
     if (!token) {
       toast.error("Xác thực thất bại. Vui lòng đăng nhập lại.");
@@ -339,11 +366,8 @@ const ManageCinemaBranch: React.FC = () => {
 
     try {
       await api.delete(`/cinemas/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: { Authorization: `Bearer ${token}` },
       });
-
       await fetchCinemas();
       toast.success("Rạp phim đã được xóa thành công!");
       setConfirmDeleteId(null);
@@ -357,6 +381,13 @@ const ManageCinemaBranch: React.FC = () => {
     }
   };
 
+  // Gọi fetchRooms khi modal Manage Rooms mở và có currentCinemaId
+  useEffect(() => {
+    if (isManagingRooms && currentCinemaId) {
+      fetchRooms(currentCinemaId);
+    }
+  }, [isManagingRooms, currentCinemaId]);
+
   return (
     <div className="manage-cinema-branch">
       <ToastContainer position="top-right" autoClose={5000} />
@@ -369,76 +400,82 @@ const ManageCinemaBranch: React.FC = () => {
             Quản lý các rạp phim và thông tin chi tiết của chúng
           </p>
         </div>
-        <button onClick={handleAddCinema} className="add-cinema-button">
-          <FiPlus className="add-cinema-icon" />
-          Thêm Rạp Phim Mới
+        <button
+          type="button"
+          onClick={handleAddCinema}
+          className="add-cinema-button"
+        >
+          <FiPlus className="add-cinema-icon" /> Thêm Rạp Phim Mới
         </button>
       </div>
 
       {/* Filters and Controls */}
       <div className="filters-container">
-  <div className="filters-left">
-    <div className="search-wrapper">
-      <div className="search-container">
-        <input
-          type="text"
-          placeholder="Tìm kiếm rạp phim..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="search-input"
-        />
-        <FiSearch className="search-icon" />
-        {searchTerm && (
-          <button
-            onClick={() => setSearchTerm("")}
-            className="clear-search-button"
-          >
-            <FiX className="clear-search-icon" />
-          </button>
-        )}
-      </div>
-    </div>
-  </div>
+        <div className="filters-left">
+          <div className="search-wrapper">
+            <div className="search-container">
+              <input
+                type="text"
+                placeholder="Tìm kiếm rạp phim..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="search-input"
+              />
+              <FiSearch className="search-icon" />
+              {searchTerm && (
+                <button
+                  type="button"
+                  onClick={() => setSearchTerm("")}
+                  className="clear-search-button"
+                >
+                  <FiX className="clear-search-icon" />
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
 
-  <div className="filters-center">
-    <div className="view-mode-toggle">
-      <button
-        onClick={() => setViewMode("table")}
-        className={`view-mode-button ${
-          viewMode === "table" ? "view-mode-button-active" : ""
-        }`}
-        title="Chế Độ Bảng"
-      >
-        <FiLayout className="view-mode-icon" />
-      </button>
-      <button
-        onClick={() => setViewMode("grid")}
-        className={`view-mode-button ${
-          viewMode === "grid" ? "view-mode-button-active" : ""
-        }`}
-        title="Chế Độ Lưới"
-      >
-        <FiGrid className="view-mode-icon" />
-      </button>
-    </div>
-  </div>
+        <div className="filters-center">
+          <div className="view-mode-toggle">
+            <button
+              type="button"
+              onClick={() => setViewMode("table")}
+              className={`view-mode-button ${
+                viewMode === "table" ? "view-mode-button-active" : ""
+              }`}
+              title="Chế Độ Bảng"
+            >
+              <FiLayout className="view-mode-icon" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode("grid")}
+              className={`view-mode-button ${
+                viewMode === "grid" ? "view-mode-button-active" : ""
+              }`}
+              title="Chế Độ Lưới"
+            >
+              <FiGrid className="view-mode-icon" />
+            </button>
+          </div>
+        </div>
 
-  <div className="filters-right">
-    <div className="status-filter-wrapper">
-      <div className="status-filter-container">
-        <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="status-filter-select"
-        >
-          <option value="all">Tất Cả Trạng Thái</option>
-          <option value="Active">Hoạt Động</option>
-          <option value="Inactive">Không Hoạt Động</option>
-        </select>
+        <div className="filters-right">
+          <div className="status-filter-wrapper">
+            <div className="status-filter-container">
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="status-filter-select"
+              >
+                <option value="all">Tất Cả Trạng Thái</option>
+                <option value="Active">Hoạt Động</option>
+                <option value="Inactive">Không Hoạt Động</option>
+              </select>
+            </div>
+          </div>
+        </div>
       </div>
-    </div>
-  </div>
-</div>
 
       {/* Error Display */}
       {error && (
@@ -447,7 +484,11 @@ const ManageCinemaBranch: React.FC = () => {
             <FiAlertCircle className="error-icon" />
             <p className="error-text">{error}</p>
           </div>
-          <button onClick={fetchCinemas} className="error-retry-button">
+          <button
+            type="button"
+            onClick={fetchCinemas}
+            className="error-retry-button"
+          >
             <FiRefreshCw className="error-retry-icon" /> Thử Lại
           </button>
         </div>
@@ -478,8 +519,6 @@ const ManageCinemaBranch: React.FC = () => {
                         <td className="table-header-cell">Email</td>
                         <td className="table-header-cell">Mô Tả</td>
                         <td className="table-header-cell">Trạng Thái</td>
-                        <td className="table-header-cell">Ngày Tạo</td>
-                        <td className="table-header-cell">Ngày Cập Nhật</td>
                         <td className="table-header-cell text-right">
                           Hành Động
                         </td>
@@ -488,39 +527,15 @@ const ManageCinemaBranch: React.FC = () => {
                     <tbody className="table-body">
                       {filteredCinemas.map((cinema) => (
                         <tr key={cinema.Cinema_ID} className="table-row">
+                          <td className="table-cell">{cinema.Cinema_ID}</td>
+                          <td className="table-cell">{cinema.Cinema_Name}</td>
+                          <td className="table-cell">{cinema.Address}</td>
+                          <td className="table-cell">{cinema.City}</td>
+                          <td className="table-cell">{cinema.Province}</td>
+                          <td className="table-cell">{cinema.Phone_Number}</td>
+                          <td className="table-cell">{cinema.Email}</td>
                           <td className="table-cell">
-                            <div className="cell-content-bold">
-                              {cinema.Cinema_ID}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content-bold">
-                              {cinema.Cinema_Name}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">{cinema.Address}</div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">{cinema.City}</div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {cinema.Province}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {cinema.Phone_Number}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">{cinema.Email}</div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content description">
-                              {cinema.Description || "-"}
-                            </div>
+                            {cinema.Description || "-"}
                           </td>
                           <td className="table-cell">
                             <span
@@ -533,21 +548,10 @@ const ManageCinemaBranch: React.FC = () => {
                               {cinema.Status}
                             </span>
                           </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {new Date(cinema.Created_At).toLocaleString()}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {cinema.Updated_At
-                                ? new Date(cinema.Updated_At).toLocaleString()
-                                : "Chưa cập nhật"}
-                            </div>
-                          </td>
                           <td className="table-cell text-right">
                             <div className="action-buttons">
                               <button
+                                type="button"
                                 onClick={() => handleEditCinema(cinema)}
                                 className="edit-button"
                                 title="Chỉnh Sửa Rạp Phim"
@@ -555,6 +559,7 @@ const ManageCinemaBranch: React.FC = () => {
                                 <FiEdit2 className="action-icon" />
                               </button>
                               <button
+                                type="button"
                                 onClick={() =>
                                   setConfirmDeleteId(cinema.Cinema_ID)
                                 }
@@ -562,6 +567,16 @@ const ManageCinemaBranch: React.FC = () => {
                                 title="Xóa Rạp Phim"
                               >
                                 <FiTrash2 className="action-icon" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  handleManageRooms(cinema.Cinema_ID)
+                                }
+                                className="manage-button"
+                                title="Quản Lý Phòng Chiếu"
+                              >
+                                <FiGrid className="action-icon" />
                               </button>
                             </div>
                           </td>
@@ -648,6 +663,7 @@ const ManageCinemaBranch: React.FC = () => {
 
                         <div className="grid-card-actions">
                           <button
+                            type="button"
                             onClick={() => handleEditCinema(cinema)}
                             className="edit-button"
                             title="Chỉnh Sửa Rạp Phim"
@@ -655,11 +671,20 @@ const ManageCinemaBranch: React.FC = () => {
                             <FiEdit2 className="action-icon" />
                           </button>
                           <button
+                            type="button"
                             onClick={() => setConfirmDeleteId(cinema.Cinema_ID)}
                             className="delete-button"
                             title="Xóa Rạp Phim"
                           >
                             <FiTrash2 className="action-icon" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleManageRooms(cinema.Cinema_ID)}
+                            className="manage-button"
+                            title="Quản Lý Phòng Chiếu"
+                          >
+                            <FiGrid className="action-icon" />
                           </button>
                         </div>
                       </div>
@@ -844,6 +869,72 @@ const ManageCinemaBranch: React.FC = () => {
         </div>
       </Modal>
 
+      {/* Manage Rooms Modal */}
+      <Modal isOpen={isManagingRooms} onClose={handleCloseModal} size="lg">
+        <div className="modal-body">
+          <h2 className="modal-title">
+            Quản Lý Phòng Chiếu - Rạp {currentCinemaId}
+          </h2>
+          <div className="room-table-container">
+            {loading ? (
+              <div className="loading-container">
+                <div className="loading-spinner"></div>
+                <p className="loading-text">
+                  Đang tải danh sách phòng chiếu...
+                </p>
+              </div>
+            ) : rooms.length > 0 ? (
+              <table className="room-table">
+                <thead>
+                  <tr>
+                    <th>ID Phòng</th>
+                    <th>Tên Phòng</th>
+                    <th>Số Ghế</th>
+                    <th>Loại Phòng</th>
+                    <th>Trạng Thái</th>
+                    <th>Ghi Chú</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rooms.map((room) => (
+                    <tr key={room["Cinema_Room_ID"]}>
+                      <td>{room["Cinema_Room_ID"]}</td>
+                      <td>{room.Room_Name}</td>
+                      <td>{room.Seat_Quantity}</td>
+                      <td>{room.Room_Type}</td>
+                      <td>
+                        <span
+                          className={`status-label ${
+                            room.Status === "Active"
+                              ? "status-active"
+                              : "status-inactive"
+                          }`}
+                        >
+                          {room.Status}
+                        </span>
+                      </td>
+                      <td>{room.Notes || "-"}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <div className="no-data-message">
+                <FiInfo className="no-data-icon" />
+                <p>Không có phòng chiếu nào.</p>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleCloseModal}
+            className="modal-cancel-button"
+          >
+            Đóng
+          </button>
+        </div>
+      </Modal>
+
       {/* Delete Confirmation Modal */}
       <Modal
         isOpen={confirmDeleteId !== null}
@@ -861,14 +952,16 @@ const ManageCinemaBranch: React.FC = () => {
           </p>
           <div className="modal-actions justify-center">
             <button
+              type="button"
               onClick={() => setConfirmDeleteId(null)}
               className="modal-cancel-button"
             >
               Hủy
             </button>
             <button
+              type="button"
               onClick={() =>
-                confirmDeleteId && HandelDeleteCinema(confirmDeleteId)
+                confirmDeleteId && handleDeleteCinema(confirmDeleteId)
               }
               className="modal-delete-button"
             >
