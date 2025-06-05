@@ -1,8 +1,8 @@
 import React, { useState } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./ManagerSidebar.css";
 import Logo from "../../assets/images/Logo.png";
-
+import { useAuth } from "../../pages/context/AuthContext";
 interface SidebarItem {
   id: string;
   label: string;
@@ -15,19 +15,21 @@ const ManagerSidebar: React.FC = () => {
   const location = useLocation();
   const [expandedItems, setExpandedItems] = useState<string[]>([]);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const sidebarItems: SidebarItem[] = [
-    {
-      id: "showtime",
-      label: "Quản Lý Lịch Chiếu",
-      icon: "🕒",
-      path: "/manager/showtimes",
-    },
     {
       id: "cinemaroom",
       label: "Quản Lý Phòng Chiếu",
       icon: "🏟️",
       path: "/manager/cinemarooms",
+    },
+    {
+      id: "showtime",
+      label: "Quản Lý Lịch Chiếu",
+      icon: "🕒",
+      path: "/manager/showtimes",
     },
   ];
 
@@ -41,14 +43,19 @@ const ManagerSidebar: React.FC = () => {
     const isActive = isActiveItem(item.path);
     return (
       <li key={item.id} className="sidebar-item">
-        <Link to={item.path} className={`sidebar-link ${isActive ? "active" : ""}`}> 
+        <Link
+          to={item.path}
+          className={`sidebar-link ${isActive ? "active" : ""}`}
+        >
           <span className="sidebar-icon">{item.icon}</span>
           {!isCollapsed && <span className="sidebar-label">{item.label}</span>}
         </Link>
       </li>
     );
   };
-
+  const handleLogout = () => {
+    logout();
+  };
   return (
     <div className={`manager-sidebar ${isCollapsed ? "collapsed" : ""}`}>
       {/* Header */}
@@ -85,13 +92,23 @@ const ManagerSidebar: React.FC = () => {
       </nav>
       <div className="sidebar-footer">
         {!isCollapsed ? (
-          <div className="manager-profile">
-            <div className="profile-avatar">👤</div>
-            <div className="profile-info">
-              <span className="profile-name">Quản Lý</span>
-              <span className="profile-role">Manager</span>
+          <>
+            <div className="manager-profile">
+              <div className="profile-avatar">👤</div>
+              <div className="profile-info">
+                <span className="profile-name">Quản Lý</span>
+                <span className="profile-role">Manager</span>
+              </div>
             </div>
-          </div>
+            <button
+              className="logout-btn"
+              title="Đăng Xuất"
+              onClick={handleLogout}
+            >
+              <span className="logout-icon">🚪</span>
+              <span>Đăng Xuất</span>
+            </button>
+          </>
         ) : (
           <div className="collapsed-footer">
             <div className="profile-avatar-collapsed">👤</div>
@@ -102,4 +119,4 @@ const ManagerSidebar: React.FC = () => {
   );
 };
 
-export default ManagerSidebar; 
+export default ManagerSidebar;

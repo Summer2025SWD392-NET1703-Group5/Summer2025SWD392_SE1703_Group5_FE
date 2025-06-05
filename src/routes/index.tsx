@@ -1,7 +1,7 @@
 import { Routes, Route } from "react-router-dom";
 import HomePage from "../pages/HomePage/HomePage";
 import LoginPage from "../pages/LoginPage/LoginPage";
-import Profile from "../pages/ProfilePage/ProfilePage"; // Import trang Profile
+import Profile from "../pages/ProfilePage/ProfilePage";
 import Layout from "../components/Layout/Layout";
 import { useLocation } from "react-router-dom";
 import ViewMoviePage from "../pages/ViewMoviePage/ViewMoviePage";
@@ -14,6 +14,7 @@ import ManageShowtime from "../pages/ManageShowtime/ManageShowtime";
 import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
+import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -42,12 +43,14 @@ const AppRoutes = () => {
         <Route path="cinemas" element={<ManageCinemaBranch />} />
         <Route path="promotions" element={<ManagePromotion />} />
       </Route>
-      
+
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
         <Route index element={<div>Dashboard</div>} />
         <Route path="showtimes" element={<ManageShowtime />} />
+        <Route path="cinemarooms" element={<ManageCinemaRoom />} />
       </Route>
+      
     </Routes>
   );
 };

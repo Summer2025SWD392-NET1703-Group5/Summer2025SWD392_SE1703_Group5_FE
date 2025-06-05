@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom"; // Thêm import useNavigate
+import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header/Header";
 import HeaderLoginUser from "../../components/Header-Login/Header-Login-User";
 import Footer from "../../components/Footer/Footer";
@@ -18,10 +18,8 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
   // Điều hướng nếu role là Admin
   useEffect(() => {
     if (role === "Admin") {
-      console.log("User role is Admin, navigating to /admin");
       navigate("/admin");
     } else if (role === "Manager") {
-      console.log("User role is Manager, navigating to /manager");
       navigate("/manager");
     }
   }, [role, navigate]); // Phụ thuộc vào role và navigate
