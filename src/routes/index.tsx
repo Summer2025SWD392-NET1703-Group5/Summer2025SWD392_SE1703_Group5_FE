@@ -9,11 +9,12 @@ import AdminLayout from "../components/Layout/AdminLayout/AdminLayout";
 import Dashboard from "../pages/Dashboard/Dashboard";
 import MovieDetail from "../pages/MovieDetail/MovieDetail";
 import ManageUser from "../pages/ManageUser/ManageUser";
-import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
+import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
+import ManageShowtime from "../pages/ManageShowtime/ManageShowtime";
 import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
-import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
+import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -26,19 +27,15 @@ const AppRoutes = () => {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/movie" element={<ViewMoviePage />} />
-        <Route path="/movieDetail/:id" element={<MovieDetail />} />
+        <Route path="/movie/:id" element={<MovieDetail />} />
       </Route>
 
       {/* Admin routes with nested structure */}
       <Route path="/admin" element={<AdminLayout />}>
         <Route index element={<Dashboard />} />
         <Route path="dashboard" element={<Dashboard />} />
-        <Route path="users/*" element={<ManageUser />} />
-        <Route path="users/all" element={<ManageUser />} />
-        <Route path="users/add" element={<div>Add User</div>} />
-        <Route path="users/roles" element={<div>User Roles</div>} />
-
-        <Route path="movies/*" element={<ManageMoviePage />} />
+        <Route path="users" element={<ManageUser />} />
+        <Route path="movies" element={<ManageMoviePage />} />
         <Route path="movies/all" element={<div>All Movies</div>} />
         <Route path="movies/add" element={<div>Add Movie</div>} />
         <Route path="movies/genres" element={<div>Genres</div>} />
@@ -49,10 +46,11 @@ const AppRoutes = () => {
 
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
-        <Route index element={<ManageCinemaRoom />} />
-        <Route path="cinemarooms" element={<ManageCinemaRoom />} />{" "}
-        {/* Added nested route */}
+        <Route index element={<div>Dashboard</div>} />
+        <Route path="showtimes" element={<ManageShowtime />} />
+        <Route path="cinemarooms" element={<ManageCinemaRoom />} />
       </Route>
+      
     </Routes>
   );
 };
