@@ -15,6 +15,7 @@ import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 import ManageCinemaBranch from "../pages/ManageCinemaBranch/ManageCinemaBranch";
 
+
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -50,7 +51,7 @@ const AppRoutes = () => {
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
         <Route index element={<ManageCinemaRoom />} />
-        <Route path="cinemarooms" element={<ManageCinemaRoom />} />{" "}
+        <Route path="cinemarooms" element={<ManageCinemaRoom />} />
         {/* Added nested route */}
       </Route>
     </Routes>
