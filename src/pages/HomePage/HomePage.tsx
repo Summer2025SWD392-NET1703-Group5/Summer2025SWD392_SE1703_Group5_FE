@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getNowShowingMovies, getComingSoonMovies } from "../../config/MovieApi";
-import { EmptyState, formatDate, formatDuration } from "../../components/utils/utils";
+import { EmptyState, formatDuration } from "../../components/utils/utils";
 import { PlaySquareOutlined } from "@ant-design/icons";
 import ticket from "../../assets/images/ticket-icon.png";
 import loadingGif from "../../assets/images/loading.gif";
@@ -201,7 +201,7 @@ const HomePage: React.FC = () => {
         <div className="container">
           <div className="section-header">
             <h2>Phim Đang Chiếu</h2>
-            <button className="view-all-btn" onClick={() => navigate("/movies?status=now-showing")}>
+            <button className="view-all-btn" onClick={() => navigate("/movie?status=Now%20Showing")}>
               Xem tất cả →
             </button>
           </div>
@@ -263,7 +263,7 @@ const HomePage: React.FC = () => {
         <div className="container">
           <div className="section-header">
             <h2>Phim Sắp Chiếu</h2>
-            <button className="view-all-btn" onClick={() => navigate("/movies?status=coming-soon")}>
+            <button className="view-all-btn" onClick={() => navigate("/movie?status=Coming%20Soon")}>
               Xem tất cả →
             </button>
           </div>

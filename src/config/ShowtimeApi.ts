@@ -80,7 +80,7 @@ const deleteShowtime = async (id: string) => {
 // Hide expired showtimes
 const hideExpiredShowtimes = async () => {
   try {
-    const response = await api.post("showtimes/hide-expired");
+    const response = await api.put("showtimes/expired");
     return response.data;
   } catch (error) {
     console.error("Error hiding expired showtimes:", error);
@@ -100,9 +100,10 @@ const getShowtimesByMovie = async (movieId: string) => {
 };
 
 // Get showtimes by room ID
-const getShowtimesByRoom = async (roomId: string) => {
+const getShowtimesByRoom = async (roomId: string, date?: string) => {
   try {
-    const response = await api.get(`showtimes/room/${roomId}`);
+    const url = date ? `showtimes/room/${roomId}?date=${date}` : `showtimes/room/${roomId}`;
+    const response = await api.get(url);
     return response.data;
   } catch (error) {
     console.error(`Error fetching showtimes for room ${roomId}:`, error);
@@ -113,7 +114,7 @@ const getShowtimesByRoom = async (roomId: string) => {
 // Get available dates for a movie
 const getMovieShowtimeDates = async (movieId: string) => {
   try {
-    const response = await api.get(`showtimes/movie/${movieId}/dates`);
+    const response = await api.get(`showtimes/dates/${movieId}`);
     return response.data;
   } catch (error) {
     console.error(`Error fetching showtime dates for movie ${movieId}:`, error);
@@ -133,9 +134,12 @@ const getShowtimesByMovieAndDate = async (movieId: string, date: string) => {
 };
 
 // Search showtimes
-const searchShowtimes = async (searchQuery: string) => {
+const searchShowtimes = async (movieId: number, date: string) => {
   try {
-    const response = await api.post("showtimes/search", { query: searchQuery });
+    const response = await api.post("showtimes/search", {
+      MovieId: movieId,
+      Date: date,
+    });
     return response.data;
   } catch (error) {
     console.error("Error searching showtimes:", error);
@@ -165,18 +169,6 @@ const getAdminShowtimesByMovie = async (movieId: string) => {
   }
 };
 
-// Create showtime automatically (Admin/Staff only)
-const createShowtimeAuto = async (showtimeData: any) => {
-  try {
-    const response = await api.post("showtimes/create", showtimeData);
-    return response.data;
-  } catch (error) {
-    console.error("Error creating showtime automatically:", error);
-    throw error;
-  }
-};
-
-
 export {
   getAllShowtimes,
   createShowtime,
@@ -193,6 +185,4 @@ export {
   searchShowtimes,
   getShowtimesByRoomAndDate,
   getAdminShowtimesByMovie,
-  createShowtimeAuto,
-
 };

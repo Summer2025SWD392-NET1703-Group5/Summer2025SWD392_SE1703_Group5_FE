@@ -144,11 +144,6 @@ const MovieDetail: React.FC = () => {
     }
   };
 
-  const getAvailableDates = () => {
-    if (!movieData?.Showtimes) return [];
-    return movieData.Showtimes.map((st) => new Date(st.Show_Date).toISOString().split("T")[0]);
-  };
-
   const getAvailableCinemas = () => {
     if (!movieData?.Showtimes || !selectedDate) return [];
 
