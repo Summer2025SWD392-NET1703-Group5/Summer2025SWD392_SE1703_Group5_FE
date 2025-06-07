@@ -1,19 +1,11 @@
 import React, { useState, useEffect } from "react";
 import AddShowtimeModal from "./components/AddShowtimeModal";
 import EditShowtimeModal from "./components/EditShowtimeModal";
-import {
-  getAllShowtimes,
-  createShowtime,
-  updateShowtime,
-  deleteShowtime,
-  getShowtimesByMovie,
-  getShowtimesByRoom,
-  searchShowtimes,
-  hideExpiredShowtimes,
-} from "../../config/ShowtimeApi";
+import ShowtimeFilters from "./components/ShowtimeFilters";
+import useShowtimeFilters, { type Showtime } from "../../hooks/useShowtimeFilters";
+import { getAllShowtimes, createShowtime, deleteShowtime } from "../../config/ShowtimeApi";
 import { getAllMovies } from "../../config/MovieApi";
 import {
-  formatDateTime,
   formatDate,
   formatTime,
   LoadingSpinner,
@@ -22,56 +14,57 @@ import {
   showErrorToast,
   showWarningToast,
   showInfoToast,
-  removeAccents,
 } from "../../components/utils/utils";
-
-interface Showtime {
-  Showtime_ID: number;
-  Movie_ID: number;
-  Cinema_Room_ID: number;
-  Room_Name: string;
-  Show_Date: string;
-  Start_Time: string;
-  End_Time: string;
-  Status: string;
-  Rooms: {
-    Cinema_Room_ID: number;
-    Room_Name: string;
-    Room_Type: string;
-  };
-  Movies?: {
-    Movie_ID: number;
-    Movie_Name: string;
-    Duration: number;
-  };
-}
 
 const ManageShowtime: React.FC = () => {
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [dateFilter, setDateFilter] = useState<string>("all");
-  const [showHidden, setShowHidden] = useState(false); // Toggle to show hidden showtimes
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedShowtimes, setSelectedShowtimes] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingShowtime, setEditingShowtime] = useState<Showtime | null>(null);
-  const [moviesMap, setMoviesMap] = useState<Map<number, any>>(new Map());
-  const [hideExpiredLoading, setHideExpiredLoading] = useState(false);
+
+  // Use the custom filter hook
+  const {
+    filters,
+    filteredShowtimes,
+    filterStats,
+    updateSearch,
+    updateDateFilter,
+    updateStatusFilter,
+    clearDateFilter,
+  } = useShowtimeFilters(showtimes);
 
   const showtimesPerPage = 10;
+  const totalPages = Math.ceil(filteredShowtimes.length / showtimesPerPage);
+  const startIndex = (currentPage - 1) * showtimesPerPage;
+  const currentShowtimes = filteredShowtimes.slice(startIndex, startIndex + showtimesPerPage);
 
   useEffect(() => {
     fetchShowtimes();
   }, []);
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters]);
+
   const fetchShowtimes = async () => {
     try {
       setLoading(true);
       setError(null);
+
+      // Check if user has token before making API calls
+      const token = localStorage.getItem("token");
+      if (!token) {
+        const errorMessage = "Bạn cần đăng nhập để truy cập trang này";
+        setError(errorMessage);
+        showErrorToast(errorMessage);
+        return;
+      }
 
       // Fetch showtimes and movies simultaneously
       const [showtimesData, moviesData] = await Promise.all([getAllShowtimes(), getAllMovies()]);
@@ -81,7 +74,6 @@ const ManageShowtime: React.FC = () => {
       moviesData.forEach((movie: any) => {
         movieMap.set(movie.Movie_ID, movie);
       });
-      setMoviesMap(movieMap);
 
       // Populate movie information in showtimes
       const enrichedShowtimes = showtimesData.map((showtime: any) => ({
@@ -92,8 +84,25 @@ const ManageShowtime: React.FC = () => {
       setShowtimes(enrichedShowtimes);
     } catch (error: any) {
       console.error("Lỗi khi tải danh sách suất chiếu:", error);
-      const errorMessage =
-        error?.response?.data?.message || error.message || "Không thể tải danh sách suất chiếu. Vui lòng thử lại.";
+
+      // Use API error message if available, otherwise fallback to generic message
+      let errorMessage = "Không thể tải danh sách suất chiếu. Vui lòng thử lại.";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Handle specific error cases
+      if (error?.response?.status === 401) {
+        errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
+        // Could redirect to login page here
+        localStorage.removeItem("token");
+      } else if (error?.response?.status === 403) {
+        errorMessage = "Bạn không có quyền truy cập chức năng này.";
+      }
+
       setError(errorMessage);
       showErrorToast(errorMessage);
     } finally {
@@ -103,24 +112,42 @@ const ManageShowtime: React.FC = () => {
 
   const handleAddShowtime = async (showtimeData: any) => {
     try {
+      console.log("Creating showtime with data:", showtimeData);
+
       // Call API to create showtime
       const newShowtime = await createShowtime(showtimeData);
+      console.log("API response for new showtime:", newShowtime);
 
-      // Enrich with movie data
-      const movieInfo = moviesMap.get(newShowtime.Movie_ID);
-      const enrichedShowtime = {
-        ...newShowtime,
-        Movies: movieInfo || null,
-      };
+      // Fetch fresh data to ensure we have complete information
+      await fetchShowtimes();
 
-      // Add the new showtime to local state
-      setShowtimes((prev) => [enrichedShowtime, ...prev]);
       setShowAddModal(false);
       showSuccessToast("Thêm suất chiếu mới thành công");
       setCurrentPage(1);
     } catch (error: any) {
       console.error("Error adding showtime:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi thêm suất chiếu mới";
+      console.error("Error response:", error?.response?.data);
+
+      // Use API error message if available
+      let errorMessage = "Lỗi khi thêm suất chiếu mới";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.response?.data?.error) {
+        errorMessage = error.response.data.error;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Handle specific validation errors
+      if (error?.response?.status === 400) {
+        errorMessage = "Dữ liệu không hợp lệ: " + errorMessage;
+      } else if (error?.response?.status === 401) {
+        errorMessage = "Bạn không có quyền thêm suất chiếu";
+      } else if (error?.response?.status === 409) {
+        errorMessage = "Xung đột lịch chiếu: " + errorMessage;
+      }
+
       showErrorToast(errorMessage);
       throw error;
     }
@@ -133,23 +160,28 @@ const ManageShowtime: React.FC = () => {
 
   const handleUpdateShowtime = async (updatedShowtimeData: any) => {
     try {
-      // Enrich with movie data for local state update
-      const movieInfo = moviesMap.get(updatedShowtimeData.Movie_ID);
-      const enrichedShowtime = {
-        ...updatedShowtimeData,
-        Movies: movieInfo || null,
-      };
+      console.log("Updated showtime data:", updatedShowtimeData);
 
-      // Update the showtime in local state
-      setShowtimes((prev) =>
-        prev.map((showtime) => (showtime.Showtime_ID === updatedShowtimeData.Showtime_ID ? enrichedShowtime : showtime))
-      );
+      // Fetch fresh data to ensure we have complete information
+      await fetchShowtimes();
 
       setShowEditModal(false);
       setEditingShowtime(null);
+
+      // Show success toast here instead of in modal
+      showSuccessToast("Cập nhật suất chiếu thành công");
     } catch (error: any) {
       console.error("Error updating showtime:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi cập nhật suất chiếu";
+
+      // Use API error message if available
+      let errorMessage = "Lỗi khi cập nhật suất chiếu";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
       showErrorToast(errorMessage);
     }
   };
@@ -158,40 +190,6 @@ const ManageShowtime: React.FC = () => {
     setShowEditModal(false);
     setEditingShowtime(null);
   };
-
-  const filteredShowtimes = showtimes.filter((showtime) => {
-    // Filter by showHidden toggle - show only Scheduled by default, or only Hidden when toggled
-    if (!showHidden && showtime.Status !== "Scheduled") return false;
-    if (showHidden && showtime.Status !== "Hidden") return false;
-
-    const searchLower = removeAccents(searchTerm.toLowerCase());
-    const matchesSearch =
-      removeAccents(showtime.Room_Name?.toLowerCase() || "").includes(searchLower) ||
-      removeAccents(showtime.Rooms?.Room_Name?.toLowerCase() || "").includes(searchLower) ||
-      removeAccents(showtime.Movies?.Movie_Name?.toLowerCase() || "").includes(searchLower);
-
-    const showtimeDate = new Date(showtime.Show_Date);
-    const today = new Date();
-    const tomorrow = new Date(today);
-    tomorrow.setDate(today.getDate() + 1);
-
-    let matchesDate = true;
-    if (dateFilter === "today") {
-      matchesDate = showtimeDate.toDateString() === today.toDateString();
-    } else if (dateFilter === "tomorrow") {
-      matchesDate = showtimeDate.toDateString() === tomorrow.toDateString();
-    } else if (dateFilter === "upcoming") {
-      matchesDate = showtimeDate > today;
-    } else if (dateFilter === "past") {
-      matchesDate = showtimeDate < today;
-    }
-
-    return matchesSearch && matchesDate;
-  });
-
-  const totalPages = Math.ceil(filteredShowtimes.length / showtimesPerPage);
-  const startIndex = (currentPage - 1) * showtimesPerPage;
-  const currentShowtimes = filteredShowtimes.slice(startIndex, startIndex + showtimesPerPage);
 
   const handleSelectShowtime = (showtimeId: number) => {
     setSelectedShowtimes((prev) =>
@@ -222,12 +220,22 @@ const ManageShowtime: React.FC = () => {
       // Call the deleteShowtime API
       await deleteShowtime(showtimeId.toString());
 
-      // Remove the showtime from local state
-      setShowtimes((prev) => prev.filter((showtime) => showtime.Showtime_ID !== showtimeId));
+      // Fetch fresh data to ensure we have complete information
+      await fetchShowtimes();
+
+      // Clear selected showtimes that might have been deleted
       setSelectedShowtimes((prev) => prev.filter((id) => id !== showtimeId));
-      showSuccessToast("Đã xóa suất chiếu thành công");
+      showSuccessToast("Đã ẩn suất chiếu thành công");
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi xóa suất chiếu";
+      // Use API error message if available
+      let errorMessage = "Lỗi khi xóa suất chiếu";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
       showErrorToast(errorMessage);
     } finally {
       setActionLoading(null);
@@ -253,70 +261,27 @@ const ManageShowtime: React.FC = () => {
       const deletePromises = selectedShowtimes.map((showtimeId) => deleteShowtime(showtimeId.toString()));
       await Promise.all(deletePromises);
 
-      // Remove deleted showtimes from local state
-      setShowtimes((prev) => prev.filter((showtime) => !selectedShowtimes.includes(showtime.Showtime_ID)));
+      // Fetch fresh data to ensure we have complete information
+      await fetchShowtimes();
+
+      // Clear all selected showtimes since they've been processed
       setSelectedShowtimes([]);
       showSuccessToast(`Đã xóa ${selectedShowtimes.length} suất chiếu thành công`);
     } catch (error: any) {
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi xóa suất chiếu";
+      // Use API error message if available
+      let errorMessage = "Lỗi khi xóa suất chiếu";
+
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
       showErrorToast(errorMessage);
+      // Still fetch fresh data even if there was an error to ensure state consistency
       await fetchShowtimes();
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleHideExpiredShowtimes = async () => {
-    const confirmMessage =
-      "Bạn có chắc chắn muốn ẩn tất cả suất chiếu đã hết hạn?\nCác suất chiếu đã qua thời gian chiếu sẽ được chuyển sang trạng thái ẩn.";
-
-    if (!window.confirm(confirmMessage)) return;
-
-    try {
-      setHideExpiredLoading(true);
-      const response = await hideExpiredShowtimes();
-
-      // Update local state to mark expired showtimes as "Hidden"
-      const now = new Date();
-      setShowtimes((prev) =>
-        prev.map((showtime) => {
-          const showtimeDateTime = new Date(`${showtime.Show_Date} ${showtime.Start_Time}`);
-
-          // If showtime has passed and is currently "Scheduled", change to "Hidden"
-          if (showtimeDateTime < now && showtime.Status === "Scheduled") {
-            return { ...showtime, Status: "Hidden" };
-          }
-          return showtime;
-        })
-      );
-
-      // Clear any selected expired showtimes that are now hidden
-      setSelectedShowtimes((prev) =>
-        prev.filter((showtimeId) => {
-          const showtime = showtimes.find((s) => s.Showtime_ID === showtimeId);
-          if (!showtime) return false;
-
-          const showtimeDateTime = new Date(`${showtime.Show_Date} ${showtime.Start_Time}`);
-          return !(showtimeDateTime < now && showtime.Status === "Scheduled");
-        })
-      );
-
-      showSuccessToast("Đã ẩn tất cả suất chiếu hết hạn thành công");
-
-      // Show additional info about the action
-      const hiddenCount = response?.hiddenCount || 0;
-      if (hiddenCount > 0) {
-        showInfoToast(`Đã ẩn ${hiddenCount} suất chiếu hết hạn`);
-      } else {
-        showInfoToast("Không có suất chiếu hết hạn nào cần ẩn");
-      }
-    } catch (error: any) {
-      console.error("Error hiding expired showtimes:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi ẩn suất chiếu hết hạn";
-      showErrorToast(errorMessage);
-      await fetchShowtimes();
-    } finally {
-      setHideExpiredLoading(false);
     }
   };
 
@@ -372,34 +337,6 @@ const ManageShowtime: React.FC = () => {
           <p>Quản lý lịch chiếu phim, thời gian và trạng thái suất chiếu</p>
         </div>
         <div className="header-actions">
-          <button
-            className={`btn-toggle ${showHidden ? "active" : ""}`}
-            onClick={() => {
-              setShowHidden(!showHidden);
-              setSelectedShowtimes([]);
-              setCurrentPage(1);
-            }}
-          >
-            {showHidden ? "📋 Hiển thị đã lên lịch" : "👁️ Hiển thị đã ẩn"}
-          </button>
-          <button
-            className="btn-secondary"
-            onClick={handleHideExpiredShowtimes}
-            disabled={hideExpiredLoading}
-            title="Ẩn tất cả suất chiếu đã qua thời gian chiếu"
-          >
-            {hideExpiredLoading ? (
-              <>
-                <LoadingSpinner size="small" />
-                Đang ẩn...
-              </>
-            ) : (
-              <>
-                <span>🕐</span>
-                Ẩn suất chiếu hết hạn
-              </>
-            )}
-          </button>
           <button className="btn-primary" onClick={() => setShowAddModal(true)}>
             <span>➕</span>
             Thêm suất chiếu mới
@@ -407,27 +344,17 @@ const ManageShowtime: React.FC = () => {
         </div>
       </div>
 
+      {/* Use the new filter component */}
+      <ShowtimeFilters
+        filters={filters}
+        filteredCount={filteredShowtimes.length}
+        onSearchChange={updateSearch}
+        onDateFilterChange={updateDateFilter}
+        onStatusFilterChange={updateStatusFilter}
+        onClearDateFilter={clearDateFilter}
+      />
+
       <div className="manage-showtime-controls">
-        <div className="search-bar">
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên phim hoặc phòng chiếu..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-
-        <div className="filters">
-          <select value={dateFilter} onChange={(e) => setDateFilter(e.target.value)} className="filter-select">
-            <option value="all">Tất cả thời gian</option>
-            <option value="today">Hôm nay</option>
-            <option value="tomorrow">Ngày mai</option>
-            <option value="upcoming">Sắp tới</option>
-            <option value="past">Đã qua</option>
-          </select>
-        </div>
-
         {selectedShowtimes.length > 0 && (
           <div className="bulk-actions">
             <span className="selected-count">Đã chọn {selectedShowtimes.length}</span>
@@ -440,18 +367,18 @@ const ManageShowtime: React.FC = () => {
 
       {filteredShowtimes.length === 0 && !loading && (
         <EmptyState
-          title={showHidden ? "Không có suất chiếu đã ẩn" : "Không tìm thấy suất chiếu"}
+          title={filters.statusFilter === "hidden" ? "Không có suất chiếu đã ẩn" : "Không tìm thấy suất chiếu"}
           description={
-            searchTerm
+            filters.search
               ? "Thử tìm kiếm với từ khóa khác"
-              : showHidden
+              : filters.statusFilter === "hidden"
               ? "Chưa có suất chiếu nào bị ẩn"
               : "Chưa có suất chiếu nào đã lên lịch"
           }
-          icon={showHidden ? "👁️" : "🎬"}
+          icon={filters.statusFilter === "hidden" ? "👁️" : "🎬"}
           action={
-            searchTerm ? (
-              <button className="btn-primary" onClick={() => setSearchTerm("")}>
+            filters.search ? (
+              <button className="btn-primary" onClick={() => updateSearch("")}>
                 Xóa bộ lọc
               </button>
             ) : null
@@ -575,15 +502,19 @@ const ManageShowtime: React.FC = () => {
       <div className="showtimes-summary">
         <div className="summary-item">
           <span className="summary-label">Tổng suất chiếu:</span>
-          <span className="summary-value">{showtimes.length}</span>
+          <span className="summary-value">{filterStats.total}</span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Đã lên lịch:</span>
-          <span className="summary-value">{showtimes.filter((s) => s.Status === "Scheduled").length}</span>
+          <span className="summary-value">{filterStats.scheduled}</span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Ẩn:</span>
-          <span className="summary-value">{showtimes.filter((s) => s.Status === "Hidden").length}</span>
+          <span className="summary-value">{filterStats.hidden}</span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Hiển thị:</span>
+          <span className="summary-value">{filterStats.filtered}</span>
         </div>
       </div>
 
@@ -671,59 +602,6 @@ const ManageShowtime: React.FC = () => {
           background-color: #2980b9;
         }
 
-        .btn-secondary {
-          background-color: #95a5a6;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          transition: background-color 0.2s ease;
-        }
-
-        .btn-secondary:hover:not(:disabled) {
-          background-color: #7f8c8d;
-        }
-
-        .btn-secondary:disabled {
-          opacity: 0.6;
-          cursor: not-allowed;
-          background-color: #bdc3c7;
-        }
-
-        .btn-toggle {
-          background-color: #95a5a6;
-          color: white;
-          border: none;
-          padding: 0.75rem 1.5rem;
-          border-radius: 8px;
-          font-size: 1rem;
-          font-weight: 500;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          gap: 0.5rem;
-          transition: background-color 0.2s ease;
-        }
-
-        .btn-toggle:hover {
-          background-color: #7f8c8d;
-        }
-
-        .btn-toggle.active {
-          background-color: #f39c12;
-          color: white;
-        }
-
-        .btn-toggle.active:hover {
-          background-color: #e67e22;
-        }
-
         .manage-showtime-controls {
           background: white;
           padding: 1.5rem;
@@ -759,6 +637,14 @@ const ManageShowtime: React.FC = () => {
         .filters {
           display: flex;
           gap: 1rem;
+          align-items: flex-start;
+          flex-wrap: wrap;
+        }
+
+        .filter-group {
+          display: flex;
+          flex-direction: column;
+          gap: 0.5rem;
         }
 
         .filter-select {
@@ -769,6 +655,78 @@ const ManageShowtime: React.FC = () => {
           background-color: white;
           cursor: pointer;
           color: #2c3e50;
+          min-width: 200px;
+        }
+
+        .filter-select optgroup {
+          font-weight: 600;
+          color: #2c3e50;
+          background-color: #f8f9fa;
+        }
+
+        .filter-select option {
+          padding: 0.5rem;
+          color: #2c3e50;
+        }
+
+        .custom-date-picker {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .custom-date-input {
+          padding: 0.5rem 0.75rem;
+          border: 1px solid #ddd;
+          border-radius: 6px;
+          font-size: 0.9rem;
+          background-color: white;
+          color: #2c3e50;
+          min-width: 150px;
+          transition: border-color 0.2s ease;
+        }
+
+        .custom-date-input:focus {
+          outline: none;
+          border-color: #3498db;
+          box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.1);
+        }
+
+        .filter-info {
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+          margin-left: auto;
+          margin-top: 0.25rem;
+        }
+
+        .filter-count {
+          font-size: 0.9rem;
+          color: #7f8c8d;
+          font-weight: 500;
+          padding: 0.5rem 0.75rem;
+          background-color: #f8f9fa;
+          border-radius: 4px;
+          border: 1px solid #e9ecef;
+        }
+
+        .clear-filter-btn {
+          background-color: #e74c3c;
+          color: white;
+          border: none;
+          border-radius: 50%;
+          width: 24px;
+          height: 24px;
+          cursor: pointer;
+          font-size: 0.8rem;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          transition: background-color 0.2s ease;
+        }
+
+        .clear-filter-btn:hover {
+          background-color: #c0392b;
         }
 
         .bulk-actions {
@@ -1077,8 +1035,39 @@ const ManageShowtime: React.FC = () => {
             gap: 1rem;
           }
 
+          .header-actions {
+            width: 100%;
+            justify-content: flex-start;
+          }
+
+          .btn-primary {
+            justify-content: center;
+            width: 100%;
+          }
+
           .filters {
             flex-direction: column;
+            align-items: stretch;
+          }
+
+          .filter-group {
+            width: 100%;
+          }
+
+          .filter-select {
+            min-width: auto;
+            width: 100%;
+          }
+
+          .custom-date-input {
+            min-width: auto;
+            width: 100%;
+          }
+
+          .filter-info {
+            margin-left: 0;
+            justify-content: space-between;
+            margin-top: 0.5rem;
           }
 
           .showtimes-summary {

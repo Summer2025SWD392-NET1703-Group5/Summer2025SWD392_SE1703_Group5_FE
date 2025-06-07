@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { LoadingSpinner, showErrorToast } from "../../../components/utils/utils";
+import { LoadingSpinner, convertToDateInputFormat } from "../../../components/utils/utils";
 import { getAllMovies } from "../../../config/MovieApi";
-import { getAllCinemaRooms } from "../../../config/CinemaRoomApi";
+import { getShowtimeRooms } from "../../../config/ShowtimeApi";
 
 interface AddShowtimeModalProps {
   isOpen: boolean;
@@ -34,8 +34,6 @@ interface CinemaRoom {
   Cinema_Room_ID: number;
   Room_Name: string;
   Room_Type: string;
-  Capacity: number;
-  Status: string;
 }
 
 const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, onAddShowtime }) => {
@@ -77,8 +75,6 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
       setMovies(activeMovies);
     } catch (error: any) {
       console.error("Error fetching movies:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi tải danh sách phim";
-      showErrorToast(errorMessage);
       setMovies([]);
     } finally {
       setLoadingMovies(false);
@@ -88,14 +84,11 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
   const fetchCinemaRooms = async () => {
     try {
       setLoadingRooms(true);
-      const data = await getAllCinemaRooms();
-      // Filter only active cinema rooms
-      const activeRooms = data.filter((room: CinemaRoom) => room.Status === "Active" || !room.Status);
-      setCinemaRooms(activeRooms);
+      const data = await getShowtimeRooms();
+      // The getShowtimeRooms API should return rooms that are available for showtime scheduling
+      setCinemaRooms(data);
     } catch (error: any) {
       console.error("Error fetching cinema rooms:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi tải danh sách phòng chiếu";
-      showErrorToast(errorMessage);
       setCinemaRooms([]);
     } finally {
       setLoadingRooms(false);
@@ -166,7 +159,7 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
     setIsSubmitting(true);
 
     try {
-      // Convert string IDs to numbers for API
+      // Convert string IDs to numbers for API - use exact field names from API
       const showtimeData = {
         Movie_ID: parseInt(formData.Movie_ID),
         Cinema_Room_ID: parseInt(formData.Cinema_Room_ID),
@@ -174,12 +167,24 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
         Start_Time: formData.Start_Time,
       };
 
+      console.log("Sending showtime data to API:", showtimeData);
+
+      // Call the parent callback and let it handle the API call and state updates
       await onAddShowtime(showtimeData);
-      onClose();
+
+      // Reset form after successful submission
+      setFormData({
+        Movie_ID: "",
+        Cinema_Room_ID: "",
+        Show_Date: "",
+        Start_Time: "",
+      });
+
+      // Don't call onClose here - let parent handle it after successful API call
     } catch (error: any) {
       console.error("Error adding showtime:", error);
-      const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi thêm suất chiếu";
-      showErrorToast(errorMessage);
+      // Error handling is done in parent component
+      // The error will be re-thrown by the parent component
     } finally {
       setIsSubmitting(false);
     }
@@ -250,7 +255,7 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
                 <option value="">{loadingRooms ? "Đang tải..." : "Chọn phòng chiếu"}</option>
                 {cinemaRooms.map((room) => (
                   <option key={room.Cinema_Room_ID} value={room.Cinema_Room_ID}>
-                    {room.Room_Name} - {room.Room_Type} ({room.Capacity} ghế)
+                    {room.Room_Name} - {room.Room_Type}
                   </option>
                 ))}
               </select>
@@ -267,34 +272,42 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
           <div className="form-row">
             <div className="form-group">
               <label htmlFor="Show_Date">
+                <span className="label-icon">📅</span>
                 Ngày chiếu <span className="required">*</span>
               </label>
-              <input
-                type="date"
-                id="Show_Date"
-                name="Show_Date"
-                value={formData.Show_Date}
-                onChange={handleInputChange}
-                className={`form-input ${errors.Show_Date ? "error" : ""}`}
-                disabled={isSubmitting}
-                min={new Date().toISOString().split("T")[0]}
-              />
+              <div className="date-input-wrapper">
+                <input
+                  type="date"
+                  id="Show_Date"
+                  name="Show_Date"
+                  value={formData.Show_Date}
+                  onChange={handleInputChange}
+                  className={`form-input date-input ${errors.Show_Date ? "error" : ""}`}
+                  disabled={isSubmitting}
+                  min={convertToDateInputFormat(new Date())}
+                />
+                <span className="input-icon">📅</span>
+              </div>
               {errors.Show_Date && <span className="error-message">{errors.Show_Date}</span>}
             </div>
 
             <div className="form-group">
               <label htmlFor="Start_Time">
+                <span className="label-icon">🕐</span>
                 Giờ chiếu <span className="required">*</span>
               </label>
-              <input
-                type="time"
-                id="Start_Time"
-                name="Start_Time"
-                value={formData.Start_Time}
-                onChange={handleInputChange}
-                className={`form-input ${errors.Start_Time ? "error" : ""}`}
-                disabled={isSubmitting}
-              />
+              <div className="time-input-wrapper">
+                <input
+                  type="time"
+                  id="Start_Time"
+                  name="Start_Time"
+                  value={formData.Start_Time}
+                  onChange={handleInputChange}
+                  className={`form-input time-input ${errors.Start_Time ? "error" : ""}`}
+                  disabled={isSubmitting}
+                />
+                <span className="input-icon">🕐</span>
+              </div>
               {errors.Start_Time && <span className="error-message">{errors.Start_Time}</span>}
             </div>
           </div>
@@ -307,7 +320,7 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
               <li>Chọn phim từ danh sách các phim đang chiếu</li>
               <li>Chọn phòng chiếu từ danh sách phòng có sẵn</li>
               <li>Ngày chiếu không thể là ngày trong quá khứ</li>
-              <li>Giờ chiếu sử dụng định dạng 24 giờ (VD: 14:30)</li>
+              <li>Chọn giờ chiếu phù hợp (VD: 2:30 PM, 7:00 AM)</li>
               <li>Hệ thống sẽ tự động tính toán giờ kết thúc dựa trên thời lượng phim</li>
             </ul>
           </div>
@@ -427,6 +440,13 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
           color: #374151;
           margin-bottom: 0.5rem;
           font-size: 0.9rem;
+          display: flex;
+          align-items: center;
+          gap: 0.5rem;
+        }
+
+        .label-icon {
+          font-size: 1rem;
         }
 
         .required {
@@ -445,34 +465,124 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
           font-family: inherit;
         }
 
-        .form-input:focus,
-        .form-select:focus {
+        .date-input-wrapper,
+        .time-input-wrapper {
+          position: relative;
+          display: flex;
+          align-items: center;
+        }
+
+        .date-input,
+        .time-input {
+          width: 100%;
+          padding-right: 3rem;
+          background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+          border: 2px solid #e5e7eb;
+          position: relative;
+        }
+
+        .date-input::-webkit-calendar-picker-indicator,
+        .time-input::-webkit-calendar-picker-indicator {
+          opacity: 0;
+          position: absolute;
+          right: 0;
+          width: 100%;
+          height: 100%;
+          cursor: pointer;
+        }
+
+        .input-icon {
+          position: absolute;
+          right: 0.75rem;
+          top: 50%;
+          transform: translateY(-50%);
+          font-size: 1.2rem;
+          color: #667eea;
+          pointer-events: none;
+          z-index: 1;
+        }
+
+        .date-input:focus,
+        .time-input:focus {
           outline: none;
           border-color: #667eea;
           box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
           transform: translateY(-1px);
+          background: white;
         }
 
-        .form-input.error,
-        .form-select.error {
+        .date-input:focus + .input-icon,
+        .time-input:focus + .input-icon {
+          color: #5a67d8;
+          transform: translateY(-50%) scale(1.1);
+        }
+
+        .date-input.error,
+        .time-input.error {
           border-color: #ef4444;
           box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+          background: #fef2f2;
         }
 
-        .form-input:disabled,
-        .form-select:disabled {
+        .date-input:disabled,
+        .time-input:disabled {
           background-color: #f9fafb;
           opacity: 0.7;
           cursor: not-allowed;
         }
 
-        .form-select {
-          cursor: pointer;
+        /* Custom styling for webkit browsers */
+        .date-input::-webkit-datetime-edit {
+          padding: 0;
+          color: #2c3e50;
         }
 
-        .form-select option {
-          padding: 0.5rem;
+        .date-input::-webkit-datetime-edit-fields-wrapper {
+          padding: 0;
+        }
+
+        .date-input::-webkit-datetime-edit-text {
+          color: #667eea;
+          font-weight: 500;
+        }
+
+        .date-input::-webkit-datetime-edit-month-field,
+        .date-input::-webkit-datetime-edit-day-field,
+        .date-input::-webkit-datetime-edit-year-field {
           color: #2c3e50;
+          font-weight: 600;
+        }
+
+        .time-input::-webkit-datetime-edit {
+          padding: 0;
+          color: #2c3e50;
+        }
+
+        .time-input::-webkit-datetime-edit-fields-wrapper {
+          padding: 0;
+        }
+
+        .time-input::-webkit-datetime-edit-text {
+          color: #667eea;
+          font-weight: 500;
+        }
+
+        .time-input::-webkit-datetime-edit-hour-field,
+        .time-input::-webkit-datetime-edit-minute-field {
+          color: #2c3e50;
+          font-weight: 600;
+        }
+
+        /* Firefox styling */
+        @-moz-document url-prefix() {
+          .date-input,
+          .time-input {
+            padding-right: 0.75rem;
+          }
+          
+          .input-icon {
+            display: none;
+          }
         }
 
         .error-message {
