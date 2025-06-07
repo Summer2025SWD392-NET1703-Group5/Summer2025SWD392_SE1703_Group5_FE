@@ -237,7 +237,11 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
 
         setConflictInfo({
           premiereDate: movieData.premiereDate || conflictData.premiereDate || "",
-          requestedDate: movieData.requestedDate || conflictData.requestedDate || formData.Show_Date,
+          requestedDate: movieData.requestedDate
+            ? typeof movieData.requestedDate === "string"
+              ? movieData.requestedDate
+              : new Date(movieData.requestedDate).toISOString().split("T")[0]
+            : formData.Show_Date,
           movieName:
             movieData.movieName ||
             conflictData.movieName ||
