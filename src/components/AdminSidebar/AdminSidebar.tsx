@@ -31,26 +31,6 @@ const AdminSidebar: React.FC = () => {
       label: "Quản Lý Người Dùng",
       icon: "👥",
       path: "/admin/users",
-      subItems: [
-        {
-          id: "all-users",
-          label: "Tất Cả Người Dùng",
-          icon: "👤",
-          path: "/admin/users/all",
-        },
-        {
-          id: "add-user",
-          label: "Thêm Người Dùng",
-          icon: "➕",
-          path: "/admin/users/add",
-        },
-        {
-          id: "user-roles",
-          label: "Vai Trò Người Dùng",
-          icon: "🔑",
-          path: "/admin/users/roles",
-        },
-      ],
     },
    
     {
