@@ -16,6 +16,7 @@ import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
 
+
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -49,6 +50,7 @@ const AppRoutes = () => {
         <Route index element={<div>Dashboard</div>} />
         <Route path="showtimes" element={<ManageShowtime />} />
         <Route path="cinemarooms" element={<ManageCinemaRoom />} />
+
       </Route>
       
     </Routes>
