@@ -230,14 +230,14 @@ const BookingHistory: React.FC = () => {
                 const displaySeats = formatSeats(booking.Seats);
 
                 return (
-                  <div key={booking.Booking_ID} className="booking-card">
+                  <div key={booking.Booking_ID} className="booking-carda">
                     {/* Poster Section */}
-                    <div className="poster-section">
+                    <div className="poster-sectiona">
                       {booking.PosterURL ? (
                         <img 
                           src={booking.PosterURL} 
                           alt={booking.MovieName}
-                          className="movie-poster"
+                          className="movie-postera"
                           onError={(e) => {
                             // Hide the broken image
                             e.currentTarget.style.display = 'none';
@@ -245,17 +245,17 @@ const BookingHistory: React.FC = () => {
                           }}
                         />
                       ) : (
-                        <div className="movie-poster-placeholder">
+                        <div className="movie-poster-placeholdera">
                           <Film size={24} />
                         </div>
                       )}
                     </div>
                     
                     {/* Content Section */}
-                    <div className="card-content">
-                      <div className="card-header">
-                        <div className="movie-title-container">
-                          <h3 className="movie-titlee" title={booking.MovieName}>
+                    <div className="card-contenta">
+                      <div className="card-headera">
+                        <div className="movie-title-containera">
+                          <h3 className="movie-titleea" title={booking.MovieName}>
                             {booking.MovieName}
                           </h3>
                         </div>
@@ -265,44 +265,44 @@ const BookingHistory: React.FC = () => {
                         </div>
                       </div>
 
-                      <div className="card-bodyy">
+                      <div className="card-bodya">
                         {/* Show Info */}
-                        <div className="info-group show-info-group">
-                          <div className="info-item">
-                            <Building size={16} className="info-icon" />
+                        <div className="info-groupa show-info-group">
+                          <div className="info-itema">
+                            <Building size={16} className="info-icona" />
                             <span>{booking.RoomName}</span>
                           </div>
-                          <div className="info-item">
-                            <Calendar size={16} className="info-icon" />
+                          <div className="info-itema">
+                            <Calendar size={16} className="info-icona" />
                             <span>{formatDate(booking.Show_Date)}</span>
                           </div>
-                          <div className="info-item">
-                            <Clock size={16} className="info-icon" />
+                          <div className="info-itema">
+                            <Clock size={16} className="info-icona" />
                             <span>{formatTime(booking.Start_Time)}</span>
                           </div>
                         </div>
 
                         {/* Booking & Seat Info */}
-                        <div className="info-group booking-seat-group">
-                          <div className="info-item">
-                            <Armchair size={16} className="info-icon" />
+                        <div className="info-groupa booking-seat-group">
+                          <div className="info-itema">
+                            <Armchair size={16} className="info-icona" />
                             <span>
                               Ghế:{" "}
-                              <span className="seat-info">{displaySeats}</span>
+                              <span className="seat-infoa">{displaySeats}</span>
                             </span>
                           </div>
-                          <div className="info-item">
-                            <Calendar size={16} className="info-icon" />
+                          <div className="info-itema">
+                            <Calendar size={16} className="info-icona" />
                             <span>
                               Đặt lúc: {formatDateTime(booking.Booking_Date)}
                             </span>
                           </div>
                           {booking.Status?.toLowerCase() === "pending" &&
                             booking.Payment_Deadline && (
-                              <div className="info-item payment-deadline">
+                              <div className="info-itema payment-deadlinea">
                                 <Clock4
                                   size={16}
-                                  className="info-icon deadline-icon"
+                                  className="info-icona deadline-icona"
                                 />
                                 <span>
                                   Hạn TT:{" "}
@@ -314,16 +314,16 @@ const BookingHistory: React.FC = () => {
                       </div>
 
                       {/* Footer: Payment Info */}
-                      <div className="card-footer">
-                        <div className="info-item payment-method-item">
-                          <CreditCard size={16} className="info-icon" />
+                      <div className="card-footera">
+                        <div className="info-itema payment-method-itema">
+                          <CreditCard size={16} className="info-icona" />
                           <span>
                             {booking.PaymentMethod || "Chưa thanh toán"}
                           </span>
                         </div>
-                        <div className="info-item total-amount-item">
-                          <Receipt size={16} className="info-icon amount-icon" />
-                          <span className="total-amount">
+                        <div className="info-itema total-amount-itema">
+                          <Receipt size={16} className="info-icona amount-icona" />
+                          <span className="total-amounta">
                             {booking.Total_Amount.toLocaleString("vi-VN")} VNĐ
                           </span>
                         </div>

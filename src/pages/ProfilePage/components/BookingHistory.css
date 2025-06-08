@@ -1,3 +1,6 @@
+/* ================================== */
+/* == General Layout & Containers == */
+/* ================================== */
 
 .profile-box.booking-history-section {
   display: flex;
@@ -12,29 +15,33 @@
 }
 
 .profile-info-title {
-    font-size: 1.5rem; 
+    font-size: 1.5rem; /* Slightly smaller */
     font-weight: 600;
     color: #ffffff;
     margin-bottom: 4px;
 }
 
 .profile-info-subtitle {
+    font-size: 0.9rem; /* Slightly smaller */
     color: #ffffff;
-    margin-bottom: 20px; 
+    margin-bottom: 20px; /* Reduced margin */
     text-align: center;
-    max-width: 480px; 
+    max-width: 480px; /* Reduced max-width */
 }
 
 .booking-content-wrapper {
   width: 100%;
-  max-width: 580px;
+  max-width: 580px; /* Reduced max-width for overall smaller feel */
   display: flex;
   flex-direction: column;
   align-items: center;
   margin-top: 10px;
 }
 
-
+/* ================================== */
+/* == Status Messages (Loading, Error, Empty) == */
+/* ================================== */
+/* (Keep styles from v2 - no changes needed here) */
 .loading-container,
 .error-message,
 .empty-message {
@@ -42,12 +49,13 @@
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  min-height: 180px; 
+  min-height: 180px; /* Reduced height */
   text-align: center;
   padding: 25px;
   border-radius: 10px;
   margin-top: 20px;
-  width: 100%;/* Reduced max-width */
+  width: 100%;
+  max-width: 540px; /* Reduced max-width */
   box-sizing: border-box;
 }
 .loading-container { color: #ffffff; }
@@ -60,6 +68,9 @@
 .empty-message p { font-size: 0.95rem; }
 
 
+/* ================================== */
+/* == Booking Card List == */
+/* ================================== */
 
 .booking-list {
   display: flex;
@@ -68,9 +79,11 @@
   width: 100%;
 }
 
+/* ================================== */
+/* == Individual Booking Card == */
+/* ================================== */
 
-
-.booking-card {
+.booking-carda {
   background-color: #2a3f4f;
   border-radius: 8px;
   border: 1px solid #374151;
@@ -78,16 +91,16 @@
   transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out, border-color 0.2s ease-in-out;
   overflow: hidden;
   width: 100%;
-  display: flex; 
+  display: flex; /* Changed to flex layout */
 }
 
-.booking-card:hover {
+.booking-carda:hover {
   border-color: #4b5563;
   box-shadow: 0 6px 10px -3px rgba(0, 0, 0, 0.1), 0 3px 5px -2px rgba(0, 0, 0, 0.05);
 }
 
-
-.poster-section {
+/* New poster section */
+.poster-sectiona {
   padding: 15px;
   border-right: 1px solid #374151;
   display: flex;
@@ -99,9 +112,9 @@
   background-color: rgba(26, 44, 56, 0.3);
 }
 
-
-.movie-poster,
-.booking-card .poster-section img.movie-poster {
+/* Fix for poster size */
+.movie-postera,
+.booking-carda .poster-sectiona img.movie-postera {
   width: 80px !important;
   height: 120px !important;
   object-fit: cover !important;
@@ -110,7 +123,7 @@
   box-shadow: 0 3px 6px rgba(0, 0, 0, 0.3) !important;
 }
 
-.movie-poster-placeholder {
+.movie-poster-placeholdera {
   width: 80px !important;
   height: 120px !important;
   display: flex;
@@ -121,22 +134,22 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-.movie-poster-placeholder svg {
+.movie-poster-placeholdera svg {
   color: #f5c518;
   opacity: 0.8;
   transform: scale(1.2);
 }
 
-
-.card-content {
+/* Content section */
+.card-contenta {
   flex: 1;
   padding: 15px;
   display: flex;
   flex-direction: column;
 }
 
-
-.card-header {
+/* --- Card Header --- */
+.card-headera {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
@@ -146,14 +159,14 @@
   gap: 10px;
 }
 
-.movie-title-container {
+.movie-title-containera {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
-.movie-titlee {
+.movie-titleea {
   font-size: 1.1rem;
   font-weight: 600;
   color: #ffffff;
@@ -164,34 +177,34 @@
   margin: 0;
 }
 
-
-.card-bodyy {
+/* --- Card Body (Grid Layout - **CHANGED**) --- */
+.card-bodya {
   display: grid;
-  grid-template-columns: 1fr 1fr; 
+  grid-template-columns: 1fr 1fr; /* **ALWAYS 2 COLUMNS** */
   gap: 12px 15px;
   font-size: 0.85rem;
   color: #d1d5db;
   margin-bottom: 12px;
-  flex: 1; 
+  flex: 1; /* Take up available space */
 }
 
-
-.info-group {
+/* --- Info Group (Grid Item) --- */
+.info-groupa {
   display: flex;
   flex-direction: column;
   gap: 8px;
   min-width: 0;
 }
 
-
-.info-item {
+/* --- Info Item (Icon + Text) --- */
+.info-itema {
   display: flex;
   align-items: flex-start;
   gap: 8px;
   line-height: 1.4;
 }
 
-.info-icon {
+.info-icona {
   color: #9ca3af;
   flex-shrink: 0;
   width: 14px;
@@ -199,7 +212,7 @@
   margin-top: 2px;
 }
 
-.info-item span:not(.seat-info):not(.total-amount) {
+.info-itema span:not(.seat-infoa):not(.total-amounta) {
    white-space: normal;
    word-break: break-word;
    overflow-wrap: break-word;
@@ -207,7 +220,7 @@
    min-width: 0;
 }
 
-.seat-info {
+.seat-infoa {
   font-weight: 500;
   color: #ffffff;
   background-color: #374151;
@@ -221,21 +234,21 @@
   border: 1px solid #4b5563;
 }
 
-
-.payment-deadline {
+/* --- Payment Deadline --- */
+.payment-deadlinea {
     font-size: 0.75rem;
     color: #fcd34d;
     margin-top: 4px;
     display: flex;
     align-items: center;
 }
-.deadline-icon {
+.deadline-icona {
     color: #facc15;
     margin-top: 0;
 }
 
-
-.card-footer {
+/* --- Card Footer --- */
+.card-footera {
   border-top: 1px solid #374151;
   padding-top: 12px;
   margin-top: 0;
@@ -246,29 +259,29 @@
   gap: 8px 12px;
 }
 
-.payment-method-item {
+.payment-method-itema {
     font-size: 0.8rem;
     color: #9ca3af;
     display: flex;
     align-items: center;
     gap: 6px;
 }
-.payment-method-item .info-icon {
+.payment-method-itema .info-icona {
     margin-top: 0;
     color: #9ca3af;
 }
 
-.total-amount-item {
+.total-amount-itema {
    display: flex;
    align-items: center;
    gap: 6px;
-   margin-left: auto; 
+   margin-left: auto; /* Push to right */
 }
-.amount-icon {
+.amount-icona {
     color: #34d399;
     margin-top: 0;
 }
-.total-amount {
+.total-amounta {
   font-weight: 600;
   font-size: 1rem;
   color: #ffffff;
@@ -276,13 +289,17 @@
 }
 
 
+/* ================================== */
+/* == Status Badges == */
+/* ================================== */
+/* (Keep styles from v2 - adjusted padding/font slightly) */
 .status-badge {
   display: inline-flex;
   align-items: center;
-  gap: 4px; 
-  padding: 3px 8px; 
+  gap: 4px; /* Reduced gap */
+  padding: 3px 8px; /* Reduced padding */
   border-radius: 14px;
-  font-size: 0.65rem; 
+  font-size: 0.65rem; /* Smaller font */
   font-weight: 500;
   text-transform: capitalize;
   white-space: nowrap;
@@ -290,8 +307,8 @@
   flex-shrink: 0;
   line-height: 1.2;
 }
-.status-icon { width: 10px; height: 10px; } 
-
+.status-icon { width: 10px; height: 10px; } /* Smaller icon */
+/* Specific Status Colors (Keep from v2) */
 .status-confirmed { background-color: rgba(52, 211, 153, 0.15); color: #34d399; border-color: rgba(52, 211, 153, 0.3); }
 .status-pending { background-color: rgba(251, 191, 36, 0.15); color: #fbbf24; border-color: rgba(251, 191, 36, 0.3); }
 .status-cancelled { background-color: rgba(248, 113, 113, 0.15); color: #f87171; border-color: rgba(248, 113, 113, 0.3); }
@@ -299,27 +316,30 @@
 .status-other { background-color: rgba(156, 163, 175, 0.15); color: #9ca3af; border-color: rgba(156, 163, 175, 0.3); }
 
 
-
+/* ================================== */
+/* == Pagination Controls == */
+/* ================================== */
+/* (Keep styles from v2 - maybe slightly smaller font/padding) */
 .pagination-controls {
   display: flex;
-  justify-content: space-between; 
+  justify-content: space-between; /* Keep space-between */
   align-items: center;
-  margin-top: 20px; 
-  padding: 8px 0; 
+  margin-top: 20px; /* Reduced margin */
+  padding: 8px 0; /* Reduced padding */
   width: 100%;
-  max-width: 360px;
+  max-width: 360px; /* Reduced max-width */
   border-top: 1px solid #374151;
 }
 .page-button {
   display: inline-flex;
   align-items: center;
-  gap: 4px; 
-  background-color: #374151; 
+  gap: 4px; /* Reduced gap */
+  background-color: #374151; /* Darker button */
   color: #e2e8f0;
-  border: 1px solid #4b5563; 
-  padding: 6px 12px; 
+  border: 1px solid #4b5563; /* Matching border */
+  padding: 6px 12px; /* Reduced padding */
   border-radius: 5px;
-  font-size: 0.8rem; 
+  font-size: 0.8rem; /* Smaller font */
   cursor: pointer;
   transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
 }
@@ -328,14 +348,16 @@
 .page-indicator { font-size: 0.85rem; color: #cbd5e1; font-weight: 500; padding: 0 8px; }
 
 
-
+/* ================================== */
+/* == Responsive Design == */
+/* ================================== */
 
 @media (max-width: 640px) {
-    .booking-card {
-        flex-direction: column; 
+    .booking-carda {
+        flex-direction: column; /* Stack on mobile */
     }
     
-    .poster-section {
+    .poster-sectiona {
         width: 100%;
         padding: 12px;
         border-right: none;
@@ -345,25 +367,25 @@
         gap: 12px;
     }
     
-    .movie-poster,
-    .booking-card .poster-section img.movie-poster,
-    .movie-poster-placeholder {
+    .movie-postera,
+    .booking-carda .poster-sectiona img.movie-postera,
+    .movie-poster-placeholdera {
         width: 56px !important;
         height: 84px !important;
     }
     
-    .movie-poster-placeholder svg {
+    .movie-poster-placeholdera svg {
         transform: scale(0.9);
     }
     
-    .card-content {
+    .card-contenta {
         padding: 12px;
     }
 }
 
 @media (max-width: 480px) {
-     .card-bodyy {
-         grid-template-columns: 1fr; 
-         gap: 12px; 
+     .card-bodya {
+         grid-template-columns: 1fr; /* Stack to 1 column */
+         gap: 12px; /* Adjust gap for single column */
      }
 }
