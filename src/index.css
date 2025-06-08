@@ -26,7 +26,31 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background-color: #2F3346;
+  background-color: #1a2c38;
+  background-image: url('./assets/images/hero.png');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-blend-mode: overlay;
+  background-attachment: fixed;
+  position: relative;
+}
+
+body::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(26, 44, 56, 0.92); /* Dark overlay to ensure readability */
+  z-index: 0;
+  pointer-events: none; /* Allow clicks to pass through to elements below */
+}
+
+body > * {
+  position: relative;
+  z-index: 1; /* Ensure all direct children of body are above the overlay */
 }
 
 h1 {

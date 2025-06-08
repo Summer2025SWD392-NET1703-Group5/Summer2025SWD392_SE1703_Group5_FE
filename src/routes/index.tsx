@@ -47,7 +47,7 @@ const AppRoutes = () => {
 
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
-        <Route index element={<div>Dashboard</div>} />
+        <Route index element={<ManageCinemaRoom/>} />
         <Route path="showtimes" element={<ManageShowtime />} />
         <Route path="cinemarooms" element={<ManageCinemaRoom />} />
 

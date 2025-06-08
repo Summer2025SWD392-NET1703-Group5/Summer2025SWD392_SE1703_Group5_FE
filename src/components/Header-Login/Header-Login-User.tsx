@@ -94,15 +94,6 @@ const HeaderLoginUser: React.FC = () => {
                 <b>{user}</b>
               </div>
               <ul>
-                <li>
-                  <span>❤️</span> Yêu thích
-                </li>
-                <li>
-                  <span>➕</span> Danh sách
-                </li>
-                <li>
-                  <span>⏩</span> Xem tiếp
-                </li>
                 <li
                   onClick={handleProfileNavigation}
                   style={{ cursor: 'pointer' }}>

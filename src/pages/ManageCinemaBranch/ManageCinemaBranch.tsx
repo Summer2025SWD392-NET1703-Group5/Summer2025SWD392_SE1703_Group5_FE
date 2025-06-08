@@ -397,7 +397,7 @@ const ManageCinemaBranch: React.FC = () => {
         <div>
           <h1 className="page-title">Quản Lý Rạp Phim</h1>
           <p className="page-subtitle">
-            Quản lý các rạp phim và thông tin chi tiết của chúng
+            Quản lý {cinemas.length} rạp phim và thông tin chi tiết của chúng
           </p>
         </div>
         <button
@@ -873,7 +873,8 @@ const ManageCinemaBranch: React.FC = () => {
       <Modal isOpen={isManagingRooms} onClose={handleCloseModal} size="lg">
         <div className="modal-body">
           <h2 className="modal-title">
-            Quản Lý Phòng Chiếu - Rạp {currentCinemaId}
+            Quản Lý Phòng Chiếu - Rạp {currentCinemaId} (Tổng {rooms.length}{" "}
+            phòng)
           </h2>
           <div className="room-table-container">
             {loading ? (
