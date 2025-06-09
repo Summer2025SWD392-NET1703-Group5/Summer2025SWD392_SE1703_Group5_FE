@@ -27,7 +27,6 @@ import {
   LoadingSpinner,
   EmptyState,
 } from "../../components/utils/utils";
-import "./Dashboard.css";
 
 interface DashboardStats {
   totalUsers: number;
