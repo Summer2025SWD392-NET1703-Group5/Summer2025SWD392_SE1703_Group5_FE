@@ -162,12 +162,12 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
     setIsSubmitting(true);
 
     try {
-      // Convert string IDs to numbers for API - use exact field names from API
+      // Convert string IDs to numbers for API and ensure proper formatting
       const showtimeData = {
         Movie_ID: parseInt(formData.Movie_ID),
         Cinema_Room_ID: parseInt(formData.Cinema_Room_ID),
         Show_Date: formData.Show_Date,
-        Start_Time: formData.Start_Time,
+        Start_Time: formData.Start_Time, // Should be in HH:MM format from HTML time input
       };
 
       console.log("Sending showtime data to API:", showtimeData);
@@ -197,8 +197,10 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
 
         setConflictInfo({
           premiereDate: movieData.premiereDate || conflictData.premiereDate || "",
-          requestedDate: movieData.requestedDate ? 
-            (typeof movieData.requestedDate === 'string' ? movieData.requestedDate : new Date(movieData.requestedDate).toISOString().split('T')[0]) 
+          requestedDate: movieData.requestedDate
+            ? typeof movieData.requestedDate === "string"
+              ? movieData.requestedDate
+              : new Date(movieData.requestedDate).toISOString().split("T")[0]
             : formData.Show_Date,
           movieName:
             movieData.movieName ||

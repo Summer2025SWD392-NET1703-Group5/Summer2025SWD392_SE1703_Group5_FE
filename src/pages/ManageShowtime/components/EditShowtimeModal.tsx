@@ -204,12 +204,12 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
     setIsSubmitting(true);
 
     try {
-      // Convert string IDs to numbers for API
+      // Convert string IDs to numbers for API and ensure time format is correct
       const updateData = {
         Movie_ID: parseInt(formData.Movie_ID),
         Cinema_Room_ID: parseInt(formData.Cinema_Room_ID),
         Show_Date: formData.Show_Date,
-        Start_Time: formData.Start_Time,
+        Start_Time: formData.Start_Time, // Time should already be in HH:MM format
         Status: formData.Status,
       };
 

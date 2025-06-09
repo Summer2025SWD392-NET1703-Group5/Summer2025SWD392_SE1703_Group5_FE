@@ -14,8 +14,16 @@ const getAllShowtimes = async () => {
 // Create new showtime (Admin/Staff only)
 const createShowtime = async (showtimeData: any, allowEarlyShowtime?: boolean) => {
   try {
+    // Include parameter in both URL and request body to ensure it's received
     const url = allowEarlyShowtime ? "showtimes?allowEarlyShowtime=true" : "showtimes";
-    const response = await api.post(url, showtimeData);
+
+    // Clone the showtime data and add the allowEarlyShowtime flag to the body as well
+    const requestData = { ...showtimeData };
+    if (allowEarlyShowtime) {
+      requestData.allowEarlyShowtime = true;
+    }
+
+    const response = await api.post(url, requestData);
     return response.data;
   } catch (error) {
     console.error("Error creating showtime:", error);
