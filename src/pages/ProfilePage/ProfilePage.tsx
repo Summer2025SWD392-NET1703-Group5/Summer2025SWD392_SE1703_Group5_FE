@@ -9,16 +9,16 @@ import {
   Ticket,
   QrCode,
   Bell,
-  Settings,
   Home,
   LogOut,
   Calendar,
-  Clock,
   Mail,
   Phone,
   MapPin,
   Lock,
   ChevronRight,
+  AlertTriangle,
+  X,
 } from "lucide-react";
 import BookingHistory from "./components/BookingHistory";
 import Notification from "./components/Notification";
@@ -36,6 +36,29 @@ interface UserProfile {
   accountStatus: string;
 }
 
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      errors?: Array<{
+        field: string;
+        message: string;
+        value: string;
+      }>;
+    };
+  };
+  message?: string;
+}
+
+interface ApiErrorData {
+  message?: string;
+  errors?: Array<{
+    field: string;
+    message: string;
+    value: string;
+  }>;
+}
+
 const Profile: React.FC = () => {
   const { logout } = useAuth();
   const navigate = useNavigate();
@@ -43,6 +66,8 @@ const Profile: React.FC = () => {
   const [formData, setFormData] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [apiErrorData, setApiErrorData] = useState<ApiErrorData | null>(null);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [oldPassword, setOldPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -61,10 +86,11 @@ const Profile: React.FC = () => {
         setUserProfile(response.data);
         setFormData(response.data);
         setIsLoading(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         setIsLoading(false);
+        const apiError = err as ApiError;
         const errorMessage =
-          err.response?.data?.message || "Không thể tải thông tin người dùng.";
+          apiError.response?.data?.message || "Không thể tải thông tin người dùng.";
         setError(errorMessage);
         toast.error(errorMessage);
       }
@@ -76,8 +102,9 @@ const Profile: React.FC = () => {
         if (response.data.Success) {
           setNotificationCount(response.data.UnreadCount);
         }
-      } catch (err: any) {
-        console.error("Error fetching notification count:", err);
+      } catch (err: unknown) {
+        const apiError = err as ApiError;
+        console.error("Error fetching notification count:", apiError);
       }
     };
 
@@ -96,6 +123,8 @@ const Profile: React.FC = () => {
 
     setIsLoading(true);
     setError(null);
+    setFieldErrors({});
+    setApiErrorData(null);
 
     try {
       const updateData = {
@@ -110,11 +139,33 @@ const Profile: React.FC = () => {
       setUserProfile(formData);
       setIsLoading(false);
       toast.success("Cập nhật hồ sơ thành công!");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsLoading(false);
+      const apiError = err as ApiError;
+      
+      // Set main error message
       const errorMessage =
-        err.response?.data?.message || "Không thể cập nhật hồ sơ.";
+        apiError.response?.data?.message || "Không thể cập nhật hồ sơ.";
       setError(errorMessage);
+      
+      // Save API error data for displaying
+      if (apiError.response?.data) {
+        setApiErrorData(apiError.response.data);
+      }
+      
+      // Process field-specific errors
+      if (apiError.response?.data?.errors && apiError.response.data.errors.length > 0) {
+        const newFieldErrors: Record<string, string> = {};
+        
+        apiError.response.data.errors.forEach(error => {
+          // Convert API field names (PascalCase) to component field names (camelCase)
+          const fieldName = error.field.charAt(0).toLowerCase() + error.field.slice(1);
+          newFieldErrors[fieldName] = error.message;
+        });
+        
+        setFieldErrors(newFieldErrors);
+      }
+      
       toast.error(errorMessage);
     }
   };
@@ -123,6 +174,7 @@ const Profile: React.FC = () => {
     e.preventDefault();
     setPasswordError(null);
     setIsPasswordLoading(true);
+    setApiErrorData(null);
 
     if (newPassword !== confirmPassword) {
       setPasswordError("Mật khẩu mới và xác nhận mật khẩu không khớp.");
@@ -148,11 +200,20 @@ const Profile: React.FC = () => {
       setOldPassword("");
       setNewPassword("");
       setConfirmPassword("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       setIsPasswordLoading(false);
+      const apiError = err as ApiError;
+      
+      // Set main error message
       const errorMessage =
-        err.response?.data?.message || "Không thể đổi mật khẩu.";
+        apiError.response?.data?.message || "Không thể đổi mật khẩu.";
       setPasswordError(errorMessage);
+      
+      // Save API error data for displaying
+      if (apiError.response?.data) {
+        setApiErrorData(apiError.response.data);
+      }
+      
       toast.error(errorMessage);
     }
   };
@@ -169,15 +230,31 @@ const Profile: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="profile-loading">
-        <div className="profile-loading-spinner"></div>
-        <p>Đang tải thông tin tài khoản...</p>
+      <div className="profile-wrapper">
+        <div className="profile-loading">
+          <div className="profile-loading-spinner"></div>
+          <p>Đang tải thông tin tài khoản...</p>
+        </div>
       </div>
     );
   }
 
-  if (error) {
-    return <div className="profile-error">Lỗi: {error}</div>;
+  if (error && !userProfile) {
+    return (
+      <div className="profile-wrapper">
+        <div className="profile-error">
+          <AlertTriangle size={24} />
+          <p>Lỗi: {error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="profile-update-btn"
+            style={{ marginTop: '15px' }}
+          >
+            Thử lại
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -242,10 +319,7 @@ const Profile: React.FC = () => {
               >
                 <Bell className="menu-icon" />
                 <span>Thông báo</span>
-                {notificationCount > 0 && (
-                  <span className="notification-badge">{notificationCount}</span>
-                )}
-                {activeTab === "notifications" && <ChevronRight size={16} className="menu-active-icon" />}
+                
               </button>
             </li>
             <li>
@@ -286,6 +360,46 @@ const Profile: React.FC = () => {
             <h2 className="profile-info-title">Thông tin cá nhân</h2>
             <p className="profile-info-subtitle">Cập nhật thông tin tài khoản của bạn</p>
 
+            {error && (
+              <div className="api-error-banner">
+                <AlertTriangle size={18} className="error-icon" />
+                <span>{error}</span>
+                {apiErrorData?.errors && apiErrorData.errors.length > 0 && (
+                  <ul style={{ 
+                    marginTop: '8px', 
+                    paddingLeft: '24px', 
+                    listStyleType: 'disc',
+                    fontSize: '14px'
+                  }}>
+                    {apiErrorData.errors.map((err: { field: string; message: string; value: string }, index: number) => (
+                      <li key={index}>
+                        <strong>{err.field}:</strong> {err.message}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                <button 
+                  onClick={() => {
+                    setError(null);
+                    setApiErrorData(null);
+                  }} 
+                  className="modal-close-btn"
+                  style={{ 
+                    position: 'absolute', 
+                    right: '10px', 
+                    top: '10px', 
+                    background: 'transparent',
+                    border: 'none',
+                    color: '#ef4444',
+                    fontSize: '18px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleUpdateProfile} className="profile-form">
               <div className="profile-info-grid">
                 <div className="profile-info-column">
@@ -325,9 +439,12 @@ const Profile: React.FC = () => {
                       name="phoneNumber"
                       value={formData?.phoneNumber || ""}
                       onChange={handleInputChange}
-                      className="profile-info-input"
+                      className={`profile-info-input ${fieldErrors.phoneNumber ? 'error' : ''}`}
                       placeholder="Nhập số điện thoại của bạn"
                     />
+                    {fieldErrors.phoneNumber && (
+                      <div className="form-error">{fieldErrors.phoneNumber}</div>
+                    )}
                   </div>
                 </div>
                 <div className="profile-info-column">
@@ -375,9 +492,12 @@ const Profile: React.FC = () => {
                       name="address"
                       value={formData?.address || ""}
                       onChange={handleInputChange}
-                      className="profile-info-input"
+                      className={`profile-info-input ${fieldErrors.address ? 'error' : ''}`}
                       placeholder="Nhập địa chỉ của bạn"
                     />
+                    {fieldErrors.address && (
+                      <div className="form-error">{fieldErrors.address}</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -481,7 +601,24 @@ const Profile: React.FC = () => {
                 />
               </div>
               {passwordError && (
-                <div className="password-modal-error">{passwordError}</div>
+                <div className="password-modal-error">
+                  {passwordError}
+                  {apiErrorData?.errors && apiErrorData.errors.length > 0 && (
+                    <ul style={{ 
+                      marginTop: '8px', 
+                      paddingLeft: '16px', 
+                      listStyleType: 'disc',
+                      fontSize: '13px',
+                      textAlign: 'left'
+                    }}>
+                      {apiErrorData.errors.map((err: { field: string; message: string; value: string }, index: number) => (
+                        <li key={index}>
+                          <strong>{err.field}:</strong> {err.message}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               )}
               <div className="password-modal-buttons">
                 <button

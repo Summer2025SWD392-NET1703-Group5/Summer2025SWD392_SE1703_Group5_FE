@@ -629,3 +629,118 @@
     font-size: 14px;
   }
 }
+
+/* Form validation error messages */
+.form-error {
+  color: #ef4444;
+  font-size: 14px;
+  margin-top: 5px;
+  padding: 8px 12px;
+  background-color: rgba(239, 68, 68, 0.1);
+  border-radius: 6px;
+  border-left: 3px solid #ef4444;
+  margin-bottom: 10px;
+  display: block;
+  width: 100%;
+}
+
+.api-error-banner {
+  background-color: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  border-left: 4px solid #ef4444;
+  font-size: 15px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  position: relative;
+}
+
+.api-error-banner .error-icon {
+  flex-shrink: 0;
+}
+
+.api-error-banner .modal-close-btn {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: transparent;
+  border: none;
+  color: #ef4444;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.api-error-banner .modal-close-btn:hover {
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Focus error handling */
+.profile-info-input.error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.profile-info-input.error:focus {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.3);
+}
+
+/* Date input styling */
+input[type="date"] {
+  appearance: none;
+  -webkit-appearance: none;
+  position: relative;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator {
+  background-color: #2a3f4f;
+  color: #ffffff;
+  cursor: pointer;
+  position: absolute;
+  right: 12px;
+  padding: 6px;
+  border-radius: 4px;
+}
+
+input[type="date"]::-webkit-calendar-picker-indicator:hover {
+  background-color: #3a5060;
+}
+
+/* Override browser date picker */
+::-webkit-datetime-edit { 
+  color: #e0e0e0;
+  padding: 0;
+}
+
+::-webkit-datetime-edit-fields-wrapper { 
+  padding: 0;
+}
+
+::-webkit-datetime-edit-text { 
+  color: #e0e0e0;
+}
+
+::-webkit-datetime-edit-month-field,
+::-webkit-datetime-edit-day-field,
+::-webkit-datetime-edit-year-field { 
+  color: #e0e0e0;
+}
+
+::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  opacity: 0.7;
+}
+
+::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}

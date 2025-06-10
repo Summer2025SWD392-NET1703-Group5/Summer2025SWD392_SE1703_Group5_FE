@@ -17,6 +17,11 @@ import {
   Receipt,
   ChevronLeft,
   ChevronRight,
+  Search,
+  Filter,
+  SortAsc,
+  SortDesc,
+  X
 } from "lucide-react";
 import "./BookingHistory.css"; // Import the updated CSS
 
@@ -43,6 +48,14 @@ interface ApiError {
     };
   };
   message?: string;
+}
+
+// Interface cho bộ lọc
+interface FilterOptions {
+  status: string;
+  timeRange: string;
+  sortBy: string;
+  searchTerm: string;
 }
 
 // --- Helper functions ---
@@ -134,7 +147,16 @@ const BookingHistory: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 4; 
+  const ITEMS_PER_PAGE = 4;
+  
+  // State cho bộ lọc
+  const [filterOptions, setFilterOptions] = useState<FilterOptions>({
+    status: "all",
+    timeRange: "all",
+    sortBy: "newest",
+    searchTerm: ""
+  });
+  const [isFilterVisible, setIsFilterVisible] = useState<boolean>(false);
 
   useEffect(() => {
     const fetchBookings = async () => {
@@ -172,19 +194,112 @@ const BookingHistory: React.FC = () => {
     fetchBookings();
   }, []);
 
+  // Reset trang khi thay đổi filter
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterOptions]);
+  
+  // Hàm scroll lên đầu trang
+  const scrollToTop = () => {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth"
+    });
+  };
+
+  const handleFilterChange = (field: keyof FilterOptions, value: string) => {
+    setFilterOptions(prev => ({
+      ...prev,
+      [field]: value
+    }));
+  };
+  
+  const toggleFilterVisibility = () => {
+    setIsFilterVisible(prev => !prev);
+  };
+  
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFilterOptions(prev => ({
+      ...prev,
+      searchTerm: e.target.value
+    }));
+  };
+  
+  const handleResetFilter = () => {
+    setFilterOptions({
+      status: "all",
+      timeRange: "all",
+      sortBy: "newest",
+      searchTerm: ""
+    });
+  };
+
+  // Áp dụng filter
+  const filteredBookings = bookings.filter(booking => {
+    // Filter theo status
+    if (filterOptions.status !== "all" && 
+        booking.Status.toLowerCase() !== filterOptions.status.toLowerCase()) {
+      return false;
+    }
+    
+    // Filter theo thời gian
+    if (filterOptions.timeRange !== "all") {
+      const showDate = new Date(booking.Show_Date);
+      const today = new Date();
+      
+      if (filterOptions.timeRange === "upcoming" && showDate < today) {
+        return false;
+      }
+      
+      if (filterOptions.timeRange === "past" && showDate >= today) {
+        return false;
+      }
+    }
+    
+    // Filter theo từ khóa tìm kiếm
+    if (filterOptions.searchTerm && 
+        !booking.MovieName.toLowerCase().includes(filterOptions.searchTerm.toLowerCase())) {
+      return false;
+    }
+    
+    return true;
+  });
+  
+  // Sắp xếp kết quả
+  const sortedBookings = [...filteredBookings].sort((a, b) => {
+    switch (filterOptions.sortBy) {
+      case "newest":
+        return new Date(b.Booking_Date).getTime() - new Date(a.Booking_Date).getTime();
+      case "oldest":
+        return new Date(a.Booking_Date).getTime() - new Date(b.Booking_Date).getTime();
+      case "showtime-asc":
+        return new Date(a.Show_Date).getTime() - new Date(b.Show_Date).getTime();
+      case "showtime-desc":
+        return new Date(b.Show_Date).getTime() - new Date(a.Show_Date).getTime();
+      case "price-high":
+        return b.Total_Amount - a.Total_Amount;
+      case "price-low":
+        return a.Total_Amount - b.Total_Amount;
+      default:
+        return new Date(b.Booking_Date).getTime() - new Date(a.Booking_Date).getTime();
+    }
+  });
+
   // --- Logic Phân trang ---
-  const totalPages = Math.ceil(bookings.length / ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(sortedBookings.length / ITEMS_PER_PAGE);
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
   const currentBookings =
-    bookings.length > 0 ? bookings.slice(startIndex, endIndex) : [];
+    sortedBookings.length > 0 ? sortedBookings.slice(startIndex, endIndex) : [];
 
   const handlePrevPage = () => {
     setCurrentPage((prev) => Math.max(prev - 1, 1));
+    scrollToTop();
   };
 
   const handleNextPage = () => {
     setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+    scrollToTop();
   };
 
   // --- Render Logic ---
@@ -211,16 +326,138 @@ const BookingHistory: React.FC = () => {
 
   return (
     <div className="profile-box profile-info-box booking-history-section">
-      <h2 className="profile-info-title">Lịch sử đặt vé</h2>
-      <p className="profile-info-subtitle">
-        Xem lại các giao dịch và thông tin vé đã đặt của bạn.
-      </p>
-
       <div className="booking-content-wrapper">
+        {/* Search and Filter Bar */}
+        <div className="bsearch-filter-container">
+          <div className="bsearch-bar">
+            <Search size={18} className="bsearch-icon" />
+            <input
+              type="text"
+              placeholder="Tìm kiếm theo tên phim..."
+              value={filterOptions.searchTerm}
+              onChange={handleSearchChange}
+              className="bsearch-input"
+            />
+          </div>
+          <button 
+            className={`bfilter-toggle-btn ${isFilterVisible ? 'bactive' : ''}`} 
+            onClick={toggleFilterVisibility}
+          >
+            <Filter size={16} />
+            <span>Bộ lọc</span>
+          </button>
+        </div>
+
+        {/* Expanded Filter Options */}
+        {isFilterVisible && (
+          <div className="bfilter-expanded">
+            <div className="bfilter-expanded-row">
+              <div className="bfilter-group">
+                <label className="bfilter-label">
+                  <span>Trạng thái</span>
+                </label>
+                <select
+                  value={filterOptions.status}
+                  onChange={(e) => handleFilterChange('status', e.target.value)}
+                  className="bfilter-select"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="confirmed">Đã xác nhận</option>
+                  <option value="pending">Chờ thanh toán</option>
+                  <option value="cancelled">Đã hủy</option>
+                  <option value="expired">Đã hết hạn</option>
+                </select>
+              </div>
+              
+              <div className="bfilter-group">
+                <label className="bfilter-label">
+                  <Calendar size={14} />
+                  <span>Thời gian</span>
+                </label>
+                <select
+                  value={filterOptions.timeRange}
+                  onChange={(e) => handleFilterChange('timeRange', e.target.value)}
+                  className="bfilter-select"
+                >
+                  <option value="all">Tất cả</option>
+                  <option value="upcoming">Sắp chiếu</option>
+                  <option value="past">Đã chiếu</option>
+                </select>
+              </div>
+              
+              <div className="bfilter-group">
+                <label className="bfilter-label">
+                  {filterOptions.sortBy.includes('desc') ? <SortDesc size={14} /> : <SortAsc size={14} />}
+                  <span>Sắp xếp</span>
+                </label>
+                <select
+                  value={filterOptions.sortBy}
+                  onChange={(e) => handleFilterChange('sortBy', e.target.value)}
+                  className="bfilter-select"
+                >
+                  <option value="newest">Ngày đặt (mới nhất)</option>
+                  <option value="oldest">Ngày đặt (cũ nhất)</option>
+                  <option value="showtime-asc">Ngày chiếu (tăng dần)</option>
+                  <option value="showtime-desc">Ngày chiếu (giảm dần)</option>
+                  <option value="price-high">Giá vé (cao → thấp)</option>
+                  <option value="price-low">Giá vé (thấp → cao)</option>
+                </select>
+              </div>
+              
+              <button className="bfilter-reset-btn" onClick={handleResetFilter}>
+                Đặt lại
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Filtered Results Info */}
+        <div className="bfilter-results-info">
+          <span className="bresults-count">Có {sortedBookings.length} lịch sử đặt vé</span>
+          {(filterOptions.status !== 'all' || 
+            filterOptions.timeRange !== 'all' || 
+            filterOptions.sortBy !== 'newest' ||
+            filterOptions.searchTerm) && (
+            <div className="bactive-filters">
+              <span>Đang lọc:</span>
+              {filterOptions.status !== 'all' && (
+                <span className="bactive-filter-tag">
+                  {filterOptions.status === 'confirmed' ? 'Đã xác nhận' : 
+                    filterOptions.status === 'pending' ? 'Chờ thanh toán' : 
+                    filterOptions.status === 'cancelled' ? 'Đã hủy' : 'Đã hết hạn'}
+                  <X size={12} onClick={() => handleFilterChange('status', 'all')} />
+                </span>
+              )}
+              {filterOptions.timeRange !== 'all' && (
+                <span className="bactive-filter-tag">
+                  {filterOptions.timeRange === 'upcoming' ? 'Sắp chiếu' : 'Đã chiếu'}
+                  <X size={12} onClick={() => handleFilterChange('timeRange', 'all')} />
+                </span>
+              )}
+              {filterOptions.searchTerm && (
+                <span className="bactive-filter-tag">
+                  "{filterOptions.searchTerm}"
+                  <X size={12} onClick={() => handleFilterChange('searchTerm', '')} />
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Display Booking History */}
         {bookings.length === 0 && !isLoading ? (
           <div className="empty-message">
             <Receipt size={32} className="empty-icon" />
             <p>Bạn chưa có lịch sử đặt vé nào.</p>
+          </div>
+        ) : sortedBookings.length === 0 ? (
+          <div className="bno-results">
+            <AlertCircle size={36} />
+            <h3>Không tìm thấy kết quả</h3>
+            <p>Không có đặt vé nào phù hợp với bộ lọc hiện tại</p>
+            <button className="breset-filter-btn" onClick={handleResetFilter}>
+              Đặt lại bộ lọc
+            </button>
           </div>
         ) : (
           <>
@@ -318,7 +555,7 @@ const BookingHistory: React.FC = () => {
                         <div className="info-itema payment-method-itema">
                           <CreditCard size={16} className="info-icona" />
                           <span>
-                            {booking.PaymentMethod || "Chưa thanh toán"}
+                            {booking.PaymentMethod }
                           </span>
                         </div>
                         <div className="info-itema total-amount-itema">

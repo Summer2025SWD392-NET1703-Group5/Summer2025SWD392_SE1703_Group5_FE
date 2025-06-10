@@ -7,7 +7,6 @@ import {
   Info,
   XCircle,
   Clock,
-  Link,
 } from "lucide-react";
 import api from "../../../config/axios";
 import { toast } from "react-toastify";
@@ -92,9 +91,9 @@ const Notification: React.FC<NotificationProps> = ({
         } else {
           throw new Error(data.Message || "Failed to fetch notifications.");
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         const errorMessage =
-          err.response?.data?.message || "Không thể tải thông báo.";
+          (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Không thể tải thông báo.";
         setError(errorMessage);
         toast.error(errorMessage);
       } finally {
@@ -134,9 +133,9 @@ const Notification: React.FC<NotificationProps> = ({
         return newCount;
       });
       toast.success("Đã đánh dấu thông báo là đã đọc.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage =
-        err.response?.data?.message || "Không thể đánh dấu thông báo.";
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Không thể đánh dấu thông báo.";
       toast.error(errorMessage);
     }
   };
@@ -156,9 +155,9 @@ const Notification: React.FC<NotificationProps> = ({
       setUnreadCount(0);
       updateNotificationCount(0);
       toast.success("Đã đánh dấu tất cả thông báo là đã đọc.");
-    } catch (err: any) {
+    } catch (err: unknown) {
       const errorMessage =
-        err.response?.data?.message || "Không thể đánh dấu tất cả thông báo.";
+        (err as { response?: { data?: { message?: string } } }).response?.data?.message || "Không thể đánh dấu tất cả thông báo.";
       toast.error(errorMessage);
     } finally {
       setIsMarkingAllRead(false);
@@ -169,28 +168,25 @@ const Notification: React.FC<NotificationProps> = ({
   const getStatusInfo = (isRead: boolean, type: string) => {
     const baseClass = isRead ? "status-read" : "status-unread";
     let Icon: React.ElementType;
-    let textColor: string;
+    
+    // Màu sắc chỉ phụ thuộc vào trạng thái đọc, không phụ thuộc loại thông báo
+    const textColor = isRead ? "#34d399" : "#ef4444";  // xanh cho đã đọc, đỏ cho chưa đọc
 
     switch (type.toLowerCase()) {
       case "success":
         Icon = CheckCircle;
-        textColor = isRead ? "#34d399" : "#22c55e";
         break;
       case "info":
         Icon = Info;
-        textColor = isRead ? "#3b82f6" : "#2563eb";
         break;
       case "warning":
         Icon = AlertTriangle;
-        textColor = isRead ? "#facc15" : "#eab308";
         break;
       case "error":
         Icon = XCircle;
-        textColor = isRead ? "#f87171" : "#ef4444";
         break;
       default:
         Icon = Bell;
-        textColor = isRead ? "#9ca3af" : "#6b7280";
     }
 
     return {
@@ -204,14 +200,10 @@ const Notification: React.FC<NotificationProps> = ({
   // Rendering
   return (
     <div className="profile-box notification-section">
-      <h2 className="profile-info-title">Thông báo</h2>
-      <p className="profile-info-subtitle">Xem các thông báo mới nhất</p>
+      
       <div className="notification-content-wrapper">
         <div className="notification-header">
-          <p className="notification-stats">
-            Tổng cộng: {totalCount} |{" "}
-            <span className="unread-count">Chưa đọc: {unreadCount}</span>
-          </p>
+          
           {notifications.some((n) => !n.Is_Read) && (
             <button
               onClick={markAllNotificationsAsRead}
@@ -300,12 +292,7 @@ const Notification: React.FC<NotificationProps> = ({
                             {formatDateTime(notification.Creation_Date)}
                           </span>
                         </div>
-                        {notification.Related_ID && (
-                          <div className="info-item">
-                            <Link size={14} className="info-icon" />
-                            <span>Mã đơn vé: {notification.Related_ID}</span>
-                          </div>
-                        )}
+                       
                       </div>
                     </div>
                   </div>
