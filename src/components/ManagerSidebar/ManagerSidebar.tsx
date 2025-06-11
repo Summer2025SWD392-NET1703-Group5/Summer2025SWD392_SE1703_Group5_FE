@@ -20,6 +20,12 @@ const ManagerSidebar: React.FC = () => {
 
   const sidebarItems: SidebarItem[] = [
     {
+      id: "manager-dashboard",
+      label: "Bảng Điều Khiển",
+      icon: "📊",
+      path: "/manager/manager-dashboard",
+    },
+    {
       id: "cinemaroom",
       label: "Quản Lý Phòng Chiếu",
       icon: "🏟️",
