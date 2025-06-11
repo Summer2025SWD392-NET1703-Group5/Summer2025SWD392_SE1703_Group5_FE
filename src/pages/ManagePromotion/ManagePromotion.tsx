@@ -27,114 +27,223 @@ import {
   FormControlLabel,
   Radio,
 } from '@mui/material';
+import type { Theme } from '@mui/material/styles';
+import type { SxProps } from '@mui/system';
 import api from '../../config/axios';
 import type { SelectChangeEvent } from '@mui/material/Select';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiAlertCircle, FiRefreshCw, FiAlertTriangle, FiGrid, FiLayout, FiInfo } from 'react-icons/fi';
 
 const styles = {
   pageContainer: {
-    padding: 4,
-    backgroundColor: '#f5f5f5',
+    padding: '24px',
+    backgroundColor: '#f9fafb',
     minHeight: '100vh',
   },
-  mainPaper: {
-    padding: 3,
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
+  pageHeader: {
+    display: 'flex',
+    flexDirection: { xs: 'column', md: 'row' },
+    justifyContent: 'space-between',
+    alignItems: { xs: 'flex-start', md: 'center' },
+    marginBottom: '32px',
   },
   pageTitle: {
+    marginBottom: '8px',
+    fontSize: '28px',
     fontWeight: 700,
-    color: '#1a237e',
-    marginBottom: 3,
-    borderBottom: '2px solid #1a237e',
-    paddingBottom: 1,
-    fontSize: '2.2rem',
+    color: '#111827',
+  },
+  pageSubtitle: {
+    color: '#6b7280',
+    fontSize: '16px',
   },
   addButton: {
-    backgroundColor: '#1a237e',
+    marginTop: { xs: '16px', md: 0 },
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+    padding: '10px 20px',
+    backgroundColor: '#3b82f6',
+    color: '#ffffff',
+    fontWeight: 500,
+    fontSize: '16px',
+    border: 'none',
+    borderRadius: '8px',
+    transition: 'background-color 0.3s, box-shadow 0.3s',
+    boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
     '&:hover': {
-      backgroundColor: '#000051',
+      backgroundColor: '#2563eb',
+      boxShadow: '0 4px 6px rgba(0, 0, 0, 0.15)',
     },
-    padding: '12px 28px',
-    fontWeight: 600,
-    fontSize: '1.1rem',
   },
-  tableContainer: {
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    borderRadius: 1,
-    overflow: 'hidden',
-    minHeight: '400px',
+  filtersContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: '10px',
+    boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+    padding: '16px',
+    marginBottom: '24px',
+    border: '1px solid #e5e7eb',
+    display: 'flex',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: '16px',
+    flexWrap: 'wrap',
+  },
+  searchContainer: {
+    flex: '1',
+    minWidth: '250px',
+    maxWidth: '350px',
     position: 'relative',
   },
-  loadingOverlay: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
+  searchInput: {
+    width: '100%',
+    padding: '10px 40px',
+    border: '1px solid #d1d5db',
+    borderRadius: '8px',
+    fontSize: '15px',
+    backgroundColor: '#f9fafb',
+    transition: 'border-color 0.3s, box-shadow 0.3s',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+    '&:focus': {
+      borderColor: '#3b82f6',
+      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+      outline: 'none',
+      backgroundColor: '#ffffff',
+    },
+  },
+  searchIcon: {
     position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    zIndex: 1,
+    left: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    color: '#9ca3af',
+  },
+  clearSearchButton: {
+    position: 'absolute',
+    right: '12px',
+    top: '50%',
+    transform: 'translateY(-50%)',
+    background: 'none',
+    border: 'none',
+    color: '#9ca3af',
+    cursor: 'pointer',
+    transition: 'color 0.3s',
+    '&:hover': {
+      color: '#4b5563',
+    },
+  },
+  tableContainer: {
+    backgroundColor: '#ffffff',
+    borderRadius: '8px',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+    overflow: 'hidden',
   },
   tableHeader: {
-    backgroundColor: '#e8eaf6',
+    backgroundColor: '#f3f4f6',
   },
-  headerCell: {
-    fontWeight: 700,
-    color: '#1a237e',
-    fontSize: '1.15rem',
-    padding: '16px 8px',
+  tableHeaderCell: {
+    padding: '12px 24px',
+    textAlign: 'left',
+    fontSize: '12px',
+    fontWeight: 500,
+    color: '#6b7280',
+    textTransform: 'uppercase',
+    letterSpacing: '0.05em',
+    borderBottom: '1px solid #e5e7eb',
   },
   tableRow: {
     '&:hover': {
-      backgroundColor: '#f5f5f5',
-      transition: 'background-color 0.3s',
+      backgroundColor: '#f9fafb',
     },
   },
   tableCell: {
-    fontSize: '1.1rem',
-    padding: '20px 8px',
+    padding: '16px 24px',
+    borderBottom: '1px solid #e5e7eb',
+    fontSize: '14px',
   },
-  statusTag: {
-    padding: '6px 12px',
-    borderRadius: 2,
-    display: 'inline-block',
-    fontSize: '1.05rem',
+  cellContent: {
+    color: '#6b7280',
+  },
+  cellContentBold: {
     fontWeight: 500,
+    color: '#1f2937',
+  },
+  statusLabel: {
+    padding: '4px 8px',
+    fontSize: '12px',
+    fontWeight: 500,
+    borderRadius: '9999px',
+  },
+  statusActive: {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+  },
+  statusInactive: {
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+  },
+  actionButtons: {
+    display: 'flex',
+    justifyContent: 'flex-end',
+    gap: '8px',
   },
   editButton: {
-    borderColor: '#1a237e',
-    color: '#1a237e',
+    padding: '4px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#2563eb',
     '&:hover': {
-      borderColor: '#000051',
-      backgroundColor: '#e8eaf6',
+      color: '#1d4ed8',
     },
-    fontSize: '1rem',
-    padding: '6px 16px',
   },
   deleteButton: {
-    borderColor: '#d32f2f',
-    color: '#d32f2f',
+    padding: '4px',
+    background: 'none',
+    border: 'none',
+    cursor: 'pointer',
+    color: '#ef4444',
     '&:hover': {
-      borderColor: '#b71c1c',
-      backgroundColor: '#ffebee',
+      color: '#dc2626',
     },
-    fontSize: '1rem',
-    padding: '6px 16px',
+  },
+  actionIcon: {
+    width: '20px',
+    height: '20px',
+  },
+  loadingContainer: {
+    textAlign: 'center',
+    padding: '48px 0',
+  },
+  loadingSpinner: {
+    color: '#3b82f6',
+  },
+  loadingText: {
+    color: '#6b7280',
+    marginTop: '16px',
+  },
+  noDataMessage: {
+    textAlign: 'center',
+    padding: '48px 0',
+  },
+  noDataIcon: {
+    width: '48px',
+    height: '48px',
+    color: '#9ca3af',
+    margin: '0 auto 16px',
+  },
+  noDataTitle: {
+    fontSize: '18px',
+    fontWeight: 500,
+    color: '#1f2937',
+    marginBottom: '4px',
+  },
+  noDataText: {
+    color: '#6b7280',
   },
   pagination: {
-    mt: 4,
     display: 'flex',
     justifyContent: 'center',
-    '& .MuiPaginationItem-root': {
-      color: '#1a237e',
-      fontSize: '1.1rem',
-    },
-    '& .Mui-selected': {
-      backgroundColor: '#1a237e !important',
-      color: '#ffffff',
-    },
+    padding: '24px',
   },
 };
 
@@ -178,6 +287,7 @@ const ManagePromotion = () => {
   const [editPromotion, setEditPromotion] = useState<Promotion | null>(null);
   const [openEditDialog, setOpenEditDialog] = useState(false);
   const [editForm, setEditForm] = useState<any>(null);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const fetchPromotions = async () => {
     setLoading(true);
@@ -352,70 +462,151 @@ const ManagePromotion = () => {
 
   return (
     <Box sx={styles.pageContainer}>
-      <Paper elevation={3} sx={styles.mainPaper}>
-        <Typography variant="h4" gutterBottom sx={styles.pageTitle}>
-          QUẢN LÝ MÃ KHUYẾN MÃI
-        </Typography>
-        <Box sx={{ mt: 3, mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button variant="contained" sx={styles.addButton} onClick={handleOpenAddDialog}>
-            Thêm Mã Khuyến Mãi
-          </Button>
+      {/* Page Header */}
+      <Box sx={styles.pageHeader}>
+        <Box>
+          <Typography variant="h4" sx={styles.pageTitle}>
+            QUẢN LÝ MÃ KHUYẾN MÃI
+          </Typography>
+          <Typography sx={styles.pageSubtitle}>
+            Quản lý các mã khuyến mãi và thông tin chi tiết của chúng
+          </Typography>
         </Box>
-        <TableContainer component={Paper} sx={styles.tableContainer}>
-          {loading && (
-            <Box sx={styles.loadingOverlay}>
-              <CircularProgress />
-            </Box>
-          )}
-          <Table>
-            <TableHead>
-              <TableRow sx={styles.tableHeader}>
-                <TableCell sx={styles.headerCell}>ID</TableCell>
-                <TableCell sx={styles.headerCell}>Tiêu Đề</TableCell>
-                <TableCell sx={styles.headerCell}>Mã Code</TableCell>
-                <TableCell sx={styles.headerCell}>Ngày Bắt Đầu</TableCell>
-                <TableCell sx={styles.headerCell}>Ngày Kết Thúc</TableCell>
-                <TableCell sx={styles.headerCell}>Loại Giảm Giá</TableCell>
-                <TableCell sx={styles.headerCell}>Giá Trị</TableCell>
-                <TableCell sx={styles.headerCell}>Trạng Thái</TableCell>
-                <TableCell sx={styles.headerCell}>Thao Tác</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {paginatedPromotions.map((promotion) => (
-                <TableRow key={promotion.Promotion_ID} sx={styles.tableRow}>
-                  <TableCell sx={styles.tableCell}>{promotion.Promotion_ID}</TableCell>
-                  <TableCell sx={styles.tableCell}>{promotion.Title}</TableCell>
-                  <TableCell sx={styles.tableCell}>{promotion.Promotion_Code}</TableCell>
-                  <TableCell sx={styles.tableCell}>{new Date(promotion.Start_Date).toLocaleDateString('vi-VN')}</TableCell>
-                  <TableCell sx={styles.tableCell}>{new Date(promotion.End_Date).toLocaleDateString('vi-VN')}</TableCell>
-                  <TableCell sx={styles.tableCell}>{promotion.Discount_Type}</TableCell>
-                  <TableCell sx={styles.tableCell}>{promotion.Discount_Value}</TableCell>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={{ ...styles.statusTag, backgroundColor: promotion.Status === 'Active' ? '#e8f5e9' : '#ffebee', color: promotion.Status === 'Active' ? '#1b5e20' : '#d32f2f' }}>
-                      {promotion.Status === 'Active' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
-                    </Box>
-                  </TableCell>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button variant="outlined" size="medium" sx={styles.editButton} onClick={() => handleOpenEditDialog(promotion)}>
-                        Sửa
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="medium"
-                        sx={styles.deleteButton}
-                        onClick={() => handleOpenDeleteDialog(promotion)}
-                      >
-                        Xóa
-                      </Button>
-                    </Box>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+        <Button
+          variant="contained"
+          onClick={handleOpenAddDialog}
+          sx={styles.addButton}
+          startIcon={<FiPlus />}
+        >
+          Thêm Mã Khuyến Mãi
+        </Button>
+      </Box>
+
+      {/* Filters and Controls */}
+      <Box sx={styles.filtersContainer}>
+        <Box sx={styles.searchContainer}>
+          <TextField
+            fullWidth
+            placeholder="Tìm kiếm mã khuyến mãi..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={styles.searchInput}
+            InputProps={{
+              startAdornment: <FiSearch style={styles.actionIcon} />,
+              endAdornment: searchTerm && (
+                <FiX
+                  style={styles.actionIcon}
+                  onClick={() => setSearchTerm('')}
+                />
+              ),
+            }}
+          />
+        </Box>
+      </Box>
+
+      {/* Table Container */}
+      <TableContainer component={Paper} sx={styles.tableContainer}>
+        {loading ? (
+          <Box sx={styles.loadingContainer}>
+            <CircularProgress sx={styles.loadingSpinner} />
+            <Typography sx={styles.loadingText}>Đang tải danh sách mã khuyến mãi...</Typography>
+          </Box>
+        ) : (
+          <>
+            {paginatedPromotions.length > 0 ? (
+              <Table>
+                <TableHead sx={styles.tableHeader}>
+                  <TableRow>
+                    <TableCell sx={styles.tableHeaderCell}>ID</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Tiêu Đề</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Mã Code</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Ngày Bắt Đầu</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Ngày Kết Thúc</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Loại Giảm Giá</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Giá Trị</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Trạng Thái</TableCell>
+                    <TableCell sx={styles.tableHeaderCell}>Thao Tác</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {paginatedPromotions.map((promotion) => (
+                    <TableRow key={promotion.Promotion_ID} sx={styles.tableRow}>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContentBold}>{promotion.Promotion_ID}</Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContentBold}>{promotion.Title}</Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContent}>{promotion.Promotion_Code}</Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContent}>
+                          {new Date(promotion.Start_Date).toLocaleDateString('vi-VN')}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContent}>
+                          {new Date(promotion.End_Date).toLocaleDateString('vi-VN')}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContent}>{promotion.Discount_Type}</Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.cellContent}>{promotion.Discount_Value}</Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box
+                          sx={{
+                            ...styles.statusLabel,
+                            ...(promotion.Status === 'Active'
+                              ? styles.statusActive
+                              : styles.statusInactive),
+                          }}
+                        >
+                          {promotion.Status === 'Active' ? 'Đang hoạt động' : 'Ngừng hoạt động'}
+                        </Box>
+                      </TableCell>
+                      <TableCell sx={styles.tableCell}>
+                        <Box sx={styles.actionButtons}>
+                          <Button
+                            onClick={() => handleOpenEditDialog(promotion)}
+                            sx={styles.editButton}
+                            title="Chỉnh Sửa"
+                          >
+                            <FiEdit2 style={styles.actionIcon} />
+                          </Button>
+                          <Button
+                            onClick={() => handleOpenDeleteDialog(promotion)}
+                            sx={styles.deleteButton}
+                            title="Xóa"
+                          >
+                            <FiTrash2 style={styles.actionIcon} />
+                          </Button>
+                        </Box>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <Box sx={styles.noDataMessage}>
+                <FiInfo style={styles.actionIcon} />
+                <Typography sx={styles.noDataTitle}>Không tìm thấy mã khuyến mãi</Typography>
+                <Typography sx={styles.noDataText}>
+                  {searchTerm
+                    ? 'Thử điều chỉnh tiêu chí tìm kiếm của bạn'
+                    : 'Thêm một mã khuyến mãi mới để bắt đầu'}
+                </Typography>
+              </Box>
+            )}
+          </>
+        )}
+      </TableContainer>
+
+      {/* Pagination */}
+      {paginatedPromotions.length > 0 && (
         <Box sx={styles.pagination}>
           <Pagination
             count={totalPages}
@@ -424,7 +615,8 @@ const ManagePromotion = () => {
             color="primary"
           />
         </Box>
-      </Paper>
+      )}
+
       {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
@@ -452,6 +644,7 @@ const ManagePromotion = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* Add Promotion Dialog */}
       <Dialog open={openAddDialog} onClose={handleCloseAddDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Thêm Mã Khuyến Mãi</DialogTitle>
@@ -551,6 +744,7 @@ const ManagePromotion = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* Edit Promotion Dialog */}
       <Dialog open={openEditDialog} onClose={handleCloseEditDialog} maxWidth="sm" fullWidth>
         <DialogTitle>Cập nhật Mã Khuyến Mãi</DialogTitle>
@@ -652,6 +846,7 @@ const ManagePromotion = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
       {/* Snackbar */}
       <Snackbar
         open={snackbar.open}

@@ -13,7 +13,6 @@ import {
   showSuccessToast,
   showErrorToast,
   showWarningToast,
-  showInfoToast,
 } from "../../components/utils/utils";
 
 const ManageShowtime: React.FC = () => {
@@ -110,12 +109,12 @@ const ManageShowtime: React.FC = () => {
     }
   };
 
-  const handleAddShowtime = async (showtimeData: any) => {
+  const handleAddShowtime = async (showtimeData: any, allowEarlyShowtime?: boolean) => {
     try {
       console.log("Creating showtime with data:", showtimeData);
 
-      // Call API to create showtime
-      const newShowtime = await createShowtime(showtimeData);
+      // Call API to create showtime with optional allowEarlyShowtime flag
+      const newShowtime = await createShowtime(showtimeData, allowEarlyShowtime);
       console.log("API response for new showtime:", newShowtime);
 
       // Fetch fresh data to ensure we have complete information

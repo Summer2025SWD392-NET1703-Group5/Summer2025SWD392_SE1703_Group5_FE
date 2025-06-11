@@ -48,11 +48,84 @@ export const formatDateTime = (date: string | Date | null | undefined, locale: s
   }
 };
 
+// Time conversion utility for HTML time inputs
+export const convertToTimeInputFormat = (timeString: string | Date | null | undefined): string => {
+  if (!timeString) return "";
+
+  try {
+    let dateObj: Date;
+
+    if (timeString instanceof Date) {
+      dateObj = timeString;
+    } else if (typeof timeString === "string") {
+      // Handle HH:MM or HH:MM:SS format
+      if (timeString.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+        const [hours, minutes] = timeString.split(":");
+        const paddedHours = hours.padStart(2, "0");
+        const paddedMinutes = minutes.padStart(2, "0");
+        return `${paddedHours}:${paddedMinutes}`;
+      }
+
+      // Handle ISO datetime strings
+      if (timeString.includes("T")) {
+        const timePart = timeString.split("T")[1];
+        if (timePart) {
+          const timeOnly = timePart.split(".")[0]; // Remove milliseconds
+          const [hours, minutes] = timeOnly.split(":");
+          const paddedHours = hours.padStart(2, "0");
+          const paddedMinutes = minutes.padStart(2, "0");
+          return `${paddedHours}:${paddedMinutes}`;
+        }
+      }
+
+      // Try to create a date object from the string
+      dateObj = new Date(`1970-01-01T${timeString}`);
+
+      // If that fails, try parsing as full datetime
+      if (isNaN(dateObj.getTime())) {
+        dateObj = new Date(timeString);
+      }
+    } else {
+      return "";
+    }
+
+    // Check if the date is valid
+    if (isNaN(dateObj.getTime())) {
+      console.warn("Could not parse time string:", timeString);
+      return typeof timeString === "string" && timeString.match(/^\d{1,2}:\d{2}$/) ? timeString : "";
+    }
+
+    const hours = dateObj.getHours().toString().padStart(2, "0");
+    const minutes = dateObj.getMinutes().toString().padStart(2, "0");
+    return `${hours}:${minutes}`;
+  } catch (error) {
+    console.error("Error converting time to input format:", error);
+    return typeof timeString === "string" && timeString.match(/^\d{1,2}:\d{2}$/) ? timeString : "";
+  }
+};
+
+// Enhanced time formatting for display
 export const formatTime = (date: string | Date | null | undefined): string => {
   if (!date) return "Không có dữ liệu";
 
   try {
-    const dateObj = typeof date === "string" ? new Date(date) : date;
+    let dateObj: Date;
+
+    if (date instanceof Date) {
+      dateObj = date;
+    } else if (typeof date === "string") {
+      // Handle HH:MM format
+      if (date.match(/^\d{1,2}:\d{2}(:\d{2})?$/)) {
+        const [hours, minutes] = date.split(":");
+        dateObj = new Date();
+        dateObj.setHours(parseInt(hours), parseInt(minutes), 0, 0);
+      } else {
+        // Handle full datetime strings
+        dateObj = new Date(date);
+      }
+    } else {
+      return "Giờ không hợp lệ";
+    }
 
     // Check if the date is valid
     if (isNaN(dateObj.getTime())) {
@@ -62,6 +135,7 @@ export const formatTime = (date: string | Date | null | undefined): string => {
     return dateObj.toLocaleTimeString("vi-VN", {
       hour: "2-digit",
       minute: "2-digit",
+      hour12: false, // Use 24-hour format
     });
   } catch (error) {
     console.error("Error formatting time:", error);
@@ -414,53 +488,6 @@ export const showInfoToast = (message: string, options?: any) => {
   }
 };
 
-// Time conversion utility for HTML time inputs
-export const convertToTimeInputFormat = (timeString: string | Date | null | undefined): string => {
-  if (!timeString) return "";
-
-  try {
-    let dateObj: Date;
-
-    if (timeString instanceof Date) {
-      dateObj = timeString;
-    } else if (typeof timeString === "string") {
-      // If already in HH:MM format, ensure it's properly padded
-      if (timeString.match(/^\d{1,2}:\d{2}$/)) {
-        const [hours, minutes] = timeString.split(":");
-        return `${hours.padStart(2, "0")}:${minutes}`;
-      }
-
-      // If it's a full datetime string, extract the time part
-      if (timeString.includes("T")) {
-        const timePart = timeString.split("T")[1];
-        if (timePart) {
-          const timeOnly = timePart.split(".")[0]; // Remove milliseconds if present
-          const [hours, minutes] = timeOnly.split(":");
-          return `${hours.padStart(2, "0")}:${minutes}`;
-        }
-      }
-
-      // Try to parse as a time string and create a Date object
-      dateObj = new Date(`1970-01-01T${timeString}`);
-    } else {
-      return "";
-    }
-
-    // Check if the date is valid
-    if (isNaN(dateObj.getTime())) {
-      console.warn("Could not parse time string:", timeString);
-      return typeof timeString === "string" ? timeString : "";
-    }
-
-    const hours = dateObj.getHours().toString().padStart(2, "0");
-    const minutes = dateObj.getMinutes().toString().padStart(2, "0");
-    return `${hours}:${minutes}`;
-  } catch (error) {
-    console.error("Error converting time to input format:", error);
-    return typeof timeString === "string" ? timeString : "";
-  }
-};
-
 // Date conversion utility for HTML date inputs
 export const convertToDateInputFormat = (dateString: string | Date | null | undefined): string => {
   if (!dateString) return "";
@@ -504,8 +531,6 @@ export default {
   // Date utilities
   formatDate,
   formatDateTime,
-  formatTime,
-  getTimeFromNow,
   convertToTimeInputFormat,
   convertToDateInputFormat,
 

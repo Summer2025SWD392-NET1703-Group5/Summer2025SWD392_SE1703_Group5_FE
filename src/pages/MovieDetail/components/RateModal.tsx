@@ -57,7 +57,7 @@ const RateModal: React.FC<RateModalProps> = ({ isOpen, onClose, movieId, movieNa
   const renderRatingStars = (currentRating: number, interactive: boolean = false) => {
     const stars = [];
 
-    for (let i = 1; i <= 10; i++) {
+    for (let i = 1; i <= 5; i++) {
       stars.push(
         <span
           key={i}
@@ -86,9 +86,9 @@ const RateModal: React.FC<RateModalProps> = ({ isOpen, onClose, movieId, movieNa
 
         <form onSubmit={handleRatingSubmit} className="rating-form">
           <div className="rating-section">
-            <label>Chọn số sao (1-10):</label>
+            <label>Chọn số sao (1-5):</label>
             <div className="star-rating">{renderRatingStars(userRating.rating, true)}</div>
-            <div className="rating-text">{userRating.rating > 0 ? `${userRating.rating}/10 sao` : "Chưa chọn"}</div>
+            <div className="rating-text">{userRating.rating > 0 ? `${userRating.rating}/5 sao` : "Chưa chọn"}</div>
           </div>
 
           <div className="comment-section">
