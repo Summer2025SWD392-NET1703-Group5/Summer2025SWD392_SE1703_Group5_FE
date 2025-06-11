@@ -11,7 +11,6 @@ import {
   TextField,
   Box,
   Typography,
-  Pagination,
   CircularProgress,
   Select,
   MenuItem,
@@ -32,267 +31,189 @@ import {
   FormHelperText,
   Snackbar,
   Alert,
+  IconButton,
 } from '@mui/material';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { vi } from 'date-fns/locale';
 import api from '../../config/axios';
 import { styled } from '@mui/material/styles';
+import type { SxProps, Theme } from '@mui/material/styles';
+import { FiPlus, FiEdit2, FiTrash2, FiSearch, FiX, FiAlertCircle, FiRefreshCw, FiAlertTriangle, FiGrid, FiLayout, FiInfo, FiUpload } from 'react-icons/fi';
 
-// Styles
-const styles = {
-  pageContainer: {
-    padding: 4,
-    backgroundColor: '#f5f5f5',
-    minHeight: '100vh',
-  },
-  mainPaper: {
-    padding: 3,
-    borderRadius: 2,
-    backgroundColor: '#ffffff',
-  },
-  pageTitle: {
-    fontWeight: 700,
-    color: '#1a237e',
-    marginBottom: 3,
-    borderBottom: '2px solid #1a237e',
-    paddingBottom: 1,
-    fontSize: '2.2rem',  // Increased from default h4 size
-  },
-  searchContainer: {
-    mb: 4, 
-    display: 'flex', 
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 2,
-  },
-  searchField: {
-    width: 300,
-    '& .MuiOutlinedInput-root': {
-      fontSize: '1.1rem',
-      '&:hover fieldset': {
-        borderColor: '#1a237e',
-      },
-    },
-    '& .MuiInputLabel-root': {
-      fontSize: '1.1rem',
-    },
-  },
-  addButton: {
-    backgroundColor: '#1a237e',
-    '&:hover': {
-      backgroundColor: '#000051',
-    },
-    padding: '12px 28px',
-    fontWeight: 600,
-    fontSize: '1.1rem',
-  },
-  tableContainer: {
-    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
-    borderRadius: 1,
-    overflow: 'hidden',
-    minHeight: '400px',
-    position: 'relative',
-  },
-  loadingOverlay: {
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.7)',
-    zIndex: 1,
-  },
-  tableHeader: {
-    backgroundColor: '#e8eaf6',
-  },
-  headerCell: {
-    fontWeight: 700,
-    color: '#1a237e',
-    fontSize: '1.15rem',
-    padding: '16px 8px',
-  },
-  tableRow: {
-    '&:hover': { 
-      backgroundColor: '#f5f5f5',
-      transition: 'background-color 0.3s',
-    },
-  },
-  tableCell: {
-    fontSize: '1.1rem',
-    padding: '20px 8px',
-  },
-  posterContainer: {
-    width: 120,  // Increased from 100
-    height: 180, // Increased from 150
-    overflow: 'hidden',
-    borderRadius: 2,
-    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
-  },
-  posterImage: {
-    width: '100%',
-    height: '100%',
-    objectFit: 'cover' as const,
-  },
-  movieName: {
-    fontWeight: 600,
-    fontSize: '1.15rem',
-    color: '#1a237e',
-  },
-  genreTag: {
-    backgroundColor: '#e8eaf6',
-    padding: '6px 12px',
-    borderRadius: 2,
-    display: 'inline-block',
-    fontSize: '1.05rem',
-    fontWeight: 500,
-  },
-  statusTag: {
-    padding: '6px 12px',
-    borderRadius: 2,
-    display: 'inline-block',
-    fontSize: '1.05rem',
-    fontWeight: 500,
-  },
-  editButton: {
-    borderColor: '#1a237e',
-    color: '#1a237e',
-    '&:hover': {
-      borderColor: '#000051',
-      backgroundColor: '#e8eaf6',
-    },
-    fontSize: '1rem',
-    padding: '6px 16px',
-  },
-  deleteButton: {
-    borderColor: '#d32f2f',
-    color: '#d32f2f',
-    '&:hover': {
-      borderColor: '#b71c1c',
-      backgroundColor: '#ffebee',
-    },
-    fontSize: '1rem',
-    padding: '6px 16px',
-  },
-  pagination: {
-    mt: 4, 
-    display: 'flex', 
-    justifyContent: 'center',
-    '& .MuiPaginationItem-root': {
-      color: '#1a237e',
-      fontSize: '1.1rem',
-    },
-    '& .Mui-selected': {
-      backgroundColor: '#1a237e !important',
-      color: '#ffffff',
-    },
-  },
-  filterContainer: {
-    mb: 4,
-    p: 2,
-    backgroundColor: '#f8f9fa',
-    borderRadius: 2,
-    boxShadow: '0 2px 4px rgba(0,0,0,0.05)',
-  },
-  filterItem: {
-    minWidth: 200,
-    '& .MuiInputLabel-root': {
-      fontSize: '1.1rem',
-    },
-    '& .MuiSelect-select, & .MuiInputBase-input': {
-      fontSize: '1.1rem',
-    },
-  },
-  modalContent: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    transform: 'translate(-50%, -50%)',
-    width: '80%',
-    maxWidth: 800,
-    bgcolor: 'background.paper',
-    boxShadow: 24,
-    p: 4,
-    maxHeight: '90vh',
-    overflow: 'auto',
-  },
-  formControl: {
-    width: '100%',
-    marginBottom: 2,
-  },
-  fileInput: {
-    display: 'none',
-  },
-  uploadButton: {
-    marginTop: 1,
-  },
-  stepper: {
-    mb: 4,
-    '& .MuiStepLabel-root .Mui-completed': {
-      color: '#1a237e', 
-    },
-    '& .MuiStepLabel-root .Mui-active': {
-      color: '#1a237e',
-    },
-  },
-  formCard: {
-    minHeight: 400,
-    display: 'flex',
+const StyledBox = styled(Box)(({ theme }) => ({
+  padding: '24px',
+  backgroundColor: '#f9fafb',
+  minHeight: '100vh',
+}));
+
+const StyledHeader = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: '32px',
+  [theme.breakpoints.down('md')]: {
     flexDirection: 'column',
-    p: 3,
-    '& .MuiTextField-root': {
-      mb: 3,
-    },
+    alignItems: 'flex-start',
   },
-  stepButtons: {
-    display: 'flex',
-    justifyContent: 'space-between',
-    mt: 'auto',
-    pt: 3,
+}));
+
+const StyledTitle = styled(Typography)(({ theme }) => ({
+  marginBottom: '8px',
+  fontSize: '28px',
+  fontWeight: 700,
+  color: '#111827',
+}));
+
+const StyledSubtitle = styled(Typography)(({ theme }) => ({
+  color: '#6b7280',
+  fontSize: '16px',
+}));
+
+const StyledAddButton = styled(Button)(({ theme }) => ({
+  marginTop: theme.breakpoints.down('md') ? '16px' : 0,
+  display: 'flex',
+  alignItems: 'center',
+  gap: '8px',
+  padding: '10px 20px',
+  backgroundColor: '#3b82f6',
+  color: '#ffffff',
+  fontWeight: 500,
+  fontSize: '16px',
+  border: 'none',
+  borderRadius: '8px',
+  transition: 'background-color 0.3s, box-shadow 0.3s',
+  boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+  '&:hover': {
+    backgroundColor: '#2563eb',
+    boxShadow: '0 4px 6px rgba(0, 0, 0, 0.15)',
   },
-  uploadPreview: {
-    width: '100%',
-    height: 200,
-    backgroundColor: '#f5f5f5',
-    display: 'flex',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: 1,
-    mb: 2,
-    backgroundSize: 'cover',
-    backgroundPosition: 'center',
-  },
-  requiredLabel: {
-    '& .MuiFormLabel-asterisk': {
-      color: '#1a237e', // Default blue color
-    },
-    '&.error .MuiFormLabel-asterisk': {
-      color: 'red',
-    }
-  },
-  formField: {
-    '& .MuiOutlinedInput-root': {
-      '&.Mui-focused fieldset': {
-        borderColor: '#1a237e',
-      },
-    },
-    '& .MuiInputLabel-root.Mui-focused': {
-      color: '#1a237e',
-    }
-  },
-  selectedMenuItem: {
-    backgroundColor: '#e3f2fd !important',
-    '&.Mui-selected': {
-      backgroundColor: '#bbdefb !important',
-    },
+}));
+
+const StyledFiltersContainer = styled(Box)(({ theme }) => ({
+  backgroundColor: '#ffffff',
+  borderRadius: '10px',
+  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+  padding: '16px',
+  marginBottom: '24px',
+  border: '1px solid #e5e7eb',
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  gap: '16px',
+  flexWrap: 'wrap',
+}));
+
+const StyledSearchContainer = styled(Box)(({ theme }) => ({
+  flex: '1',
+  minWidth: '250px',
+  maxWidth: '350px',
+  position: 'relative',
+}));
+
+const StyledSearchInput = styled(TextField)(({ theme }) => ({
+  width: '100%',
+  '& .MuiOutlinedInput-root': {
+    padding: '10px 40px',
+    backgroundColor: '#f9fafb',
+    transition: 'border-color 0.3s, box-shadow 0.3s',
+    boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
     '&:hover': {
-      backgroundColor: '#90caf9 !important',
-    }
+      borderColor: '#3b82f6',
+    },
+    '&.Mui-focused': {
+      borderColor: '#3b82f6',
+      boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+      backgroundColor: '#ffffff',
+    },
   },
-};
+}));
+
+const StyledTableContainer = styled(TableContainer)(({ theme }) => ({
+  backgroundColor: '#ffffff',
+  borderRadius: '8px',
+  boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+  overflow: 'hidden',
+}));
+
+const StyledTableHeader = styled(TableHead)(({ theme }) => ({
+  backgroundColor: '#f3f4f6',
+}));
+
+const StyledHeaderCell = styled(TableCell)(({ theme }) => ({
+  padding: '12px 24px',
+  textAlign: 'left',
+  fontSize: '12px',
+  fontWeight: 500,
+  color: '#6b7280',
+  textTransform: 'uppercase',
+  letterSpacing: '0.05em',
+  borderBottom: '1px solid #e5e7eb',
+}));
+
+const StyledTableRow = styled(TableRow)(({ theme }) => ({
+  '&:hover': {
+    backgroundColor: '#f9fafb',
+  },
+}));
+
+const StyledTableCell = styled(TableCell)(({ theme }) => ({
+  padding: '16px 24px',
+  borderBottom: '1px solid #e5e7eb',
+  fontSize: '14px',
+}));
+
+const StyledStatusLabel = styled('span')<{ status: 'active' | 'inactive' }>(({ theme, status }) => ({
+  padding: '4px 8px',
+  fontSize: '12px',
+  fontWeight: 500,
+  borderRadius: '9999px',
+  ...(status === 'active' ? {
+    backgroundColor: '#dcfce7',
+    color: '#15803d',
+  } : {
+    backgroundColor: '#f3f4f6',
+    color: '#4b5563',
+  }),
+}));
+
+const StyledActionButton = styled(IconButton)(({ theme }) => ({
+  padding: '4px',
+  '&.edit': {
+    color: '#2563eb',
+    '&:hover': {
+      color: '#1d4ed8',
+    },
+  },
+  '&.delete': {
+    color: '#ef4444',
+    '&:hover': {
+      color: '#dc2626',
+    },
+  },
+}));
+
+const StyledFormControl = styled(FormControl)(({ theme }) => ({
+  '& .MuiOutlinedInput-root': {
+    '&.Mui-focused fieldset': {
+      borderColor: '#3b82f6',
+    },
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: '#3b82f6',
+  },
+}));
+
+const StyledMenuItem = styled(MenuItem)(({ theme }) => ({
+  backgroundColor: '#e3f2fd',
+  '&.Mui-selected': {
+    backgroundColor: '#bbdefb',
+  },
+  '&:hover': {
+    backgroundColor: '#90caf9',
+  },
+}));
 
 // Constants for filters
 const YEARS = Array.from(
@@ -425,10 +346,19 @@ const initialMovieState = {
   Production_Company: '',
 };
 
+const formFieldStyles = {
+  '& .MuiOutlinedInput-root': {
+    '&.Mui-focused fieldset': {
+      borderColor: '#3b82f6',
+    },
+  },
+  '& .MuiInputLabel-root.Mui-focused': {
+    color: '#3b82f6',
+  },
+};
+
 const ManageMoviePage: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(false);
   const [filters, setFilters] = useState<FilterState>({
     movieName: '',
@@ -436,7 +366,6 @@ const ManageMoviePage: React.FC = () => {
     genre: 'Tất cả',
     status: 'Tất cả',
   });
-  const limit = 10;
   const [openAddModal, setOpenAddModal] = useState(false);
   const [newMovie, setNewMovie] = useState<NewMovie>(initialMovieState);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -456,6 +385,7 @@ const ManageMoviePage: React.FC = () => {
   });
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [movieToDelete, setMovieToDelete] = useState<Movie | null>(null);
+  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
 
   const steps = ['Thông tin cơ bản', 'Thông tin chi tiết', 'Hình ảnh & Trailer'];
 
@@ -465,8 +395,6 @@ const ManageMoviePage: React.FC = () => {
       console.log('Fetching movies with filters:', filters);
       const response = await api.get('/movies', {
         params: {
-          page,
-          limit,
           name: filters.movieName || undefined,
           year: filters.releaseYear !== '' ? filters.releaseYear : undefined,
           genre: filters.genre !== 'Tất cả' ? filters.genre : undefined,
@@ -478,7 +406,6 @@ const ManageMoviePage: React.FC = () => {
       
       if (Array.isArray(response.data)) {
         setMovies(response.data);
-        setTotalPages(Math.ceil(response.data.length / limit));
       } else {
         console.error('Unexpected response format:', response.data);
       }
@@ -491,20 +418,15 @@ const ManageMoviePage: React.FC = () => {
 
   useEffect(() => {
     fetchMovies();
-  }, [page, filters]);
-
-  const handlePageChange = (event: React.ChangeEvent<unknown>, value: number) => {
-    setPage(value);
-  };
+  }, [filters]);
 
   const handleFilterChange = (field: keyof FilterState) => (
-    event: React.ChangeEvent<{ value: unknown }>
+    event: React.ChangeEvent<{ value: unknown }> | any
   ) => {
     setFilters(prev => ({
       ...prev,
       [field]: event.target.value as string
     }));
-    setPage(1); // Reset to first page when filter changes
   };
 
   const getStatusColor = (status: string) => {
@@ -814,17 +736,25 @@ const ManageMoviePage: React.FC = () => {
   const isStepValid = (step: number) => {
     switch (step) {
       case 0:
-        return newMovie.Movie_Name && 
-               newMovie.Release_Date && 
-               newMovie.End_Date &&
-               newMovie.Director;
+        return Boolean(
+          newMovie.Movie_Name && 
+          newMovie.Release_Date && 
+          newMovie.End_Date &&
+          newMovie.Director &&
+          (!newMovie.Release_Date || !newMovie.End_Date || new Date(newMovie.End_Date) > new Date(newMovie.Release_Date))
+        );
       case 1:
-        return newMovie.Duration > 0 && 
-               newMovie.Genre.length > 0 && 
-               newMovie.Rating &&
-               newMovie.Status;
+        return Boolean(
+          newMovie.Duration > 0 &&
+          newMovie.Genre.length > 0 &&
+          newMovie.Rating
+        );
       case 2:
-        return newMovie.Trailer_Link !== '';
+        return Boolean(
+          (selectedFile || newMovie.Poster_URL) &&
+          newMovie.Trailer_Link &&
+          newMovie.Status
+        );
       default:
         return false;
     }
@@ -834,317 +764,280 @@ const ManageMoviePage: React.FC = () => {
     switch (step) {
       case 0:
         return (
-          <Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <TextField
-              fullWidth
               label="Tên phim"
               value={newMovie.Movie_Name}
               onChange={handleInputChange('Movie_Name')}
+              fullWidth
               required
-              sx={{ 
-                ...styles.formField,
-                ...styles.requiredLabel,
-                ...(showErrors && !newMovie.Movie_Name && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-              }}
               error={showErrors && !newMovie.Movie_Name}
-              helperText={showErrors && !newMovie.Movie_Name ? "Vui lòng nhập tên phim" : ""}
+              helperText={showErrors && !newMovie.Movie_Name ? "Tên phim là bắt buộc" : ""}
+              sx={formFieldStyles}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={vi}>
-              <DatePicker
-                label="Ngày phát hành *"
-                value={newMovie.Release_Date ? new Date(newMovie.Release_Date) : null}
-                onChange={(date) => setNewMovie(prev => ({
-                  ...prev,
-                  Release_Date: date ? date.toISOString().split('T')[0] : ''
-                }))}
-                sx={{ 
-                  width: '100%', 
-                  mb: 3,
-                  ...styles.formField,
-                  ...styles.requiredLabel,
-                  ...(showErrors && !newMovie.Release_Date && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                }}
-                slotProps={{
-                  textField: {
-                    error: showErrors && !newMovie.Release_Date,
-                    helperText: showErrors && !newMovie.Release_Date ? "Vui lòng chọn ngày phát hành" : ""
-                  }
-                }}
-              />
-            </LocalizationProvider>
-            <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={vi}>
-              <DatePicker
-                label="Ngày kết thúc"
-                value={newMovie.End_Date ? new Date(newMovie.End_Date) : null}
-                onChange={(date) => setNewMovie(prev => ({
-                  ...prev,
-                  End_Date: date ? date.toISOString().split('T')[0] : ''
-                }))}
-                sx={{ 
-                  width: '100%', 
-                  mb: 3,
-                  ...styles.formField,
-                  ...styles.requiredLabel,
-                  ...(showErrors && !newMovie.End_Date && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                }}
-                slotProps={{
-                  textField: {
-                    error: showErrors && !newMovie.End_Date,
-                    helperText: showErrors && !newMovie.End_Date ? "Vui lòng chọn ngày kết thúc" : "",
-                    required: true
-                  }
-                }}
-              />
+              <Box sx={{ display: 'flex', gap: '20px' }}>
+                <DatePicker
+                  label="Ngày phát hành"
+                  value={newMovie.Release_Date ? new Date(newMovie.Release_Date) : null}
+                  onChange={(date) => setNewMovie(prev => ({
+                    ...prev,
+                    Release_Date: date ? date.toISOString().split('T')[0] : ''
+                  }))}
+                  sx={{ flex: 1, ...formFieldStyles }}
+                  slotProps={{
+                    textField: {
+                      required: true,
+                      error: showErrors && !newMovie.Release_Date,
+                      helperText: showErrors && !newMovie.Release_Date ? "Ngày phát hành là bắt buộc" : ""
+                    }
+                  }}
+                />
+                <DatePicker
+                  label="Ngày kết thúc"
+                  value={newMovie.End_Date ? new Date(newMovie.End_Date) : null}
+                  onChange={(date) => setNewMovie(prev => ({
+                    ...prev,
+                    End_Date: date ? date.toISOString().split('T')[0] : ''
+                  }))}
+                  sx={{ flex: 1, ...formFieldStyles }}
+                  slotProps={{
+                    textField: {
+                      required: true,
+                      error: showErrors && (!newMovie.End_Date || (newMovie.Release_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Release_Date))),
+                      helperText: showErrors ? 
+                        !newMovie.End_Date ? "Ngày kết thúc là bắt buộc" : 
+                        (newMovie.Release_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Release_Date)) ? "Ngày kết thúc phải sau ngày phát hành" : 
+                        "" : ""
+                    }
+                  }}
+                  minDate={newMovie.Release_Date ? new Date(newMovie.Release_Date) : undefined}
+                />
+              </Box>
             </LocalizationProvider>
             <TextField
-              fullWidth
               label="Đạo diễn"
               value={newMovie.Director}
               onChange={handleInputChange('Director')}
+              fullWidth
               required
-              sx={{ 
-                ...styles.formField,
-                ...styles.requiredLabel,
-                ...(showErrors && !newMovie.Director && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-              }}
               error={showErrors && !newMovie.Director}
-              helperText={showErrors && !newMovie.Director ? "Vui lòng nhập tên đạo diễn" : ""}
+              helperText={showErrors && !newMovie.Director ? "Đạo diễn là bắt buộc" : ""}
+              sx={formFieldStyles}
+            />
+            <TextField
+              label="Diễn viên"
+              value={newMovie.Cast}
+              onChange={handleInputChange('Cast')}
+              fullWidth
+              sx={formFieldStyles}
+            />
+            <TextField
+              label="Công ty sản xuất"
+              value={newMovie.Production_Company}
+              onChange={handleInputChange('Production_Company')}
+              fullWidth
+              sx={formFieldStyles}
             />
           </Box>
         );
       case 1:
         return (
-          <Box>
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <TextField
+              label="Thời lượng (phút)"
+              type="number"
+              value={newMovie.Duration}
+              onChange={handleInputChange('Duration')}
               fullWidth
-              label="Diễn viên"
-              value={newMovie.Cast}
-              onChange={handleInputChange('Cast')}
-              helperText="Nhập tên các diễn viên, phân cách bằng dấu phẩy"
-              sx={{ mb: 3, ...styles.formField }}
+              required
+              error={showErrors && (!newMovie.Duration || newMovie.Duration <= 0)}
+              helperText={showErrors && (!newMovie.Duration || newMovie.Duration <= 0) ? "Thời lượng phim phải lớn hơn 0" : ""}
+              sx={formFieldStyles}
             />
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <TextField
-                  fullWidth
-                  label="Thời lượng (phút)"
-                  type="number"
-                  value={newMovie.Duration}
-                  onChange={handleInputChange('Duration')}
-                  required
-                  sx={{ 
-                    ...styles.formField,
-                    ...styles.requiredLabel,
-                    ...(showErrors && (!newMovie.Duration || newMovie.Duration <= 0) && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                  }}
-                  error={showErrors && (!newMovie.Duration || newMovie.Duration <= 0)}
-                  helperText={showErrors && (!newMovie.Duration || newMovie.Duration <= 0) ? "Vui lòng nhập thời lượng hợp lệ" : ""}
-                />
-              </Box>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <FormControl 
-                  fullWidth 
-                  required 
-                  error={showErrors && newMovie.Genre.length === 0}
-                  sx={{ 
-                    ...styles.formField,
-                    ...styles.requiredLabel,
-                    ...(showErrors && newMovie.Genre.length === 0 && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                  }}
-                >
-                  <InputLabel>Thể loại</InputLabel>
-                  <Select
-                    multiple
-                    value={newMovie.Genre}
-                    label="Thể loại"
-                    onChange={handleGenreChange}
-                    required
-                    renderValue={(selected) => (selected as string[]).join(', ')}
-                  >
-                    {GENRES.filter(genre => genre !== 'Tất cả').map(genre => (
-                      <MenuItem 
-                        key={genre} 
-                        value={genre}
-                        sx={[
-                          styles.selectedMenuItem,
-                          newMovie.Genre.includes(genre) && {
-                            backgroundColor: '#bbdefb !important',
-                            fontWeight: 'bold'
-                          }
-                        ]}
-                      >
-                        {genre}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {showErrors && newMovie.Genre.length === 0 && (
-                    <FormHelperText error>Vui lòng chọn ít nhất một thể loại</FormHelperText>
-                  )}
-                </FormControl>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <FormControl 
-                  fullWidth 
-                  required
-                  error={showErrors && !newMovie.Rating}
-                  sx={{ 
-                    ...styles.formField,
-                    ...styles.requiredLabel,
-                    ...(showErrors && !newMovie.Rating && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                  }}
-                >
-                  <InputLabel>Xếp hạng</InputLabel>
-                  <Select
-                    value={newMovie.Rating}
-                    label="Xếp hạng"
-                    onChange={handleSelectChange('Rating')}
-                    required
-                  >
-                    {RATINGS.map(rating => (
-                      <MenuItem key={rating} value={rating}>{rating}</MenuItem>
-                    ))}
-                  </Select>
-                  {showErrors && !newMovie.Rating && (
-                    <FormHelperText error>Vui lòng chọn xếp hạng</FormHelperText>
-                  )}
-                </FormControl>
-              </Box>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <FormControl 
-                  fullWidth 
-                  required
-                  error={showErrors && !newMovie.Status}
-                  sx={{ 
-                    ...styles.formField,
-                    ...styles.requiredLabel,
-                    ...(showErrors && !newMovie.Status && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-                  }}
-                >
-                  <InputLabel>Trạng thái</InputLabel>
-                  <Select
-                    value={newMovie.Status}
-                    label="Trạng thái"
-                    onChange={handleSelectChange('Status')}
-                    required
-                  >
-                    {STATUSES.filter(status => status !== 'Tất cả').map(status => (
-                      <MenuItem key={status} value={status}>{status}</MenuItem>
-                    ))}
-                  </Select>
-                  {showErrors && !newMovie.Status && (
-                    <FormHelperText error>Vui lòng chọn trạng thái phim</FormHelperText>
-                  )}
-                </FormControl>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <FormControl 
-                  fullWidth 
-                  sx={styles.formField}
-                >
-                  <InputLabel>Ngôn ngữ</InputLabel>
-                  <Select
-                    value={newMovie.Language}
-                    label="Ngôn ngữ"
-                    onChange={handleSelectChange('Language')}
-                  >
-                    {LANGUAGES.map(lang => (
-                      <MenuItem key={lang} value={lang}>{lang}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <FormControl 
-                  fullWidth 
-                  sx={styles.formField}
-                >
-                  <InputLabel>Quốc gia</InputLabel>
-                  <Select
-                    value={newMovie.Country}
-                    label="Quốc gia"
-                    onChange={handleSelectChange('Country')}
-                  >
-                    {COUNTRIES.map(country => (
-                      <MenuItem key={country} value={country}>{country}</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Box>
-            </Box>
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3, mb: 3 }}>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <TextField
-                  fullWidth
-                  label="Công ty sản xuất"
-                  value={newMovie.Production_Company}
-                  onChange={handleInputChange('Production_Company')}
-                  sx={styles.formField}
-                />
-              </Box>
-              <Box sx={{ flexGrow: 1, minWidth: '250px', flex: '1 1 45%' }}>
-                <TextField
-                  fullWidth
-                  label="Tóm tắt nội dung"
-                  value={newMovie.Synopsis}
-                  onChange={handleInputChange('Synopsis')}
-                  multiline
-                  rows={4}
-                  sx={styles.formField}
-                />
-              </Box>
-            </Box>
+            <FormControl 
+              fullWidth 
+              required 
+              error={showErrors && newMovie.Genre.length === 0}
+              sx={formFieldStyles}
+            >
+              <InputLabel>Thể loại</InputLabel>
+              <Select
+                multiple
+                value={newMovie.Genre}
+                label="Thể loại"
+                onChange={handleGenreChange}
+                required
+                renderValue={(selected) => (selected as string[]).join(', ')}
+              >
+                {GENRES.filter(genre => genre !== 'Tất cả').map(genre => (
+                  <MenuItem key={genre} value={genre}>{genre}</MenuItem>
+                ))}
+              </Select>
+              {showErrors && newMovie.Genre.length === 0 && (
+                <FormHelperText>Vui lòng chọn ít nhất một thể loại</FormHelperText>
+              )}
+            </FormControl>
+            <FormControl fullWidth required error={showErrors && !newMovie.Rating} sx={formFieldStyles}>
+              <InputLabel>Xếp hạng độ tuổi</InputLabel>
+              <Select
+                value={newMovie.Rating}
+                label="Xếp hạng độ tuổi"
+                onChange={handleSelectChange('Rating')}
+              >
+                {RATINGS.map(rating => (
+                  <MenuItem key={rating} value={rating}>{rating}</MenuItem>
+                ))}
+              </Select>
+              {showErrors && !newMovie.Rating && (
+                <FormHelperText>Vui lòng chọn xếp hạng độ tuổi</FormHelperText>
+              )}
+            </FormControl>
+            <FormControl fullWidth sx={formFieldStyles}>
+              <InputLabel>Ngôn ngữ</InputLabel>
+              <Select
+                value={newMovie.Language}
+                label="Ngôn ngữ"
+                onChange={handleSelectChange('Language')}
+              >
+                {LANGUAGES.map(language => (
+                  <MenuItem key={language} value={language}>{language}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <FormControl fullWidth sx={formFieldStyles}>
+              <InputLabel>Quốc gia</InputLabel>
+              <Select
+                value={newMovie.Country}
+                label="Quốc gia"
+                onChange={handleSelectChange('Country')}
+              >
+                {COUNTRIES.map(country => (
+                  <MenuItem key={country} value={country}>{country}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <TextField
+              label="Tóm tắt nội dung"
+              value={newMovie.Synopsis}
+              onChange={handleInputChange('Synopsis')}
+              multiline
+              rows={4}
+              fullWidth
+              sx={formFieldStyles}
+            />
           </Box>
         );
       case 2:
         return (
-          <Box>
-            <Box 
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <Box
               sx={{
-                ...styles.uploadPreview,
-                backgroundImage: previewUrl ? `url(${previewUrl})` : 'none'
+                width: '100%',
+                height: '300px',
+                backgroundColor: '#f5f5f5',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                borderRadius: '8px',
+                border: '2px dashed #9e9e9e',
+                cursor: 'pointer',
+                transition: 'all 0.3s ease',
+                backgroundSize: 'contain',
+                backgroundRepeat: 'no-repeat',
+                backgroundPosition: 'center',
+                backgroundImage: previewUrl ? `url(${previewUrl})` : 'none',
+                '&:hover': {
+                  borderColor: '#2196f3',
+                  backgroundColor: '#f0f7ff'
+                }
               }}
+              onClick={() => document.getElementById('poster-upload')?.click()}
             >
               {!previewUrl && (
-                <Typography color="text.secondary">
-                  Chưa có ảnh poster
-                </Typography>
+                <>
+                  <input
+                    type="file"
+                    id="poster-upload"
+                    hidden
+                    accept="image/*"
+                    onChange={handleFileChange}
+                  />
+                  <FiUpload style={{ fontSize: '48px', color: '#9e9e9e', marginBottom: '16px' }} />
+                  <Typography color="textSecondary" variant="h6" sx={{ mb: 1 }}>
+                    Nhấp để tải ảnh lên
+                  </Typography>
+                  <Typography color="textSecondary" variant="body2">
+                    Hỗ trợ: JPG, JPEG, PNG, GIF, WEBP
+                  </Typography>
+                </>
               )}
             </Box>
-            <input
-              accept="image/*"
-              type="file"
-              id="poster-file"
-              onChange={handleFileChange}
-              style={{ display: 'none' }}
-            />
-            <label htmlFor="poster-file">
-              <Button
-                variant="outlined"
-                component="span"
-                fullWidth
-                sx={{ mb: 3 }}
-              >
-                {selectedFile ? 'Thay đổi poster' : 'Chọn poster phim'}
-              </Button>
-            </label>
+            {previewUrl && (
+              <Box sx={{ display: 'flex', justifyContent: 'center', gap: 2 }}>
+                <Button
+                  variant="outlined"
+                  color="error"
+                  onClick={() => {
+                    setPreviewUrl('');
+                    setSelectedFile(null);
+                    setNewMovie(prev => ({ ...prev, Poster_URL: '' }));
+                  }}
+                  startIcon={<FiTrash2 />}
+                >
+                  Xóa ảnh
+                </Button>
+                <Button
+                  variant="outlined"
+                  onClick={() => document.getElementById('poster-upload')?.click()}
+                  startIcon={<FiRefreshCw />}
+                >
+                  Thay đổi ảnh
+                </Button>
+              </Box>
+            )}
+            <Typography variant="subtitle2" color="textSecondary" sx={{ mt: 2 }}>
+              Hoặc nhập URL ảnh trực tiếp:
+            </Typography>
             <TextField
+              label="URL Poster"
+              value={newMovie.Poster_URL}
+              onChange={(e) => {
+                const url = e.target.value;
+                setNewMovie(prev => ({ ...prev, Poster_URL: url }));
+                setPreviewUrl(url);
+              }}
               fullWidth
-              label="Link trailer"
+              placeholder="https://example.com/movie-poster.jpg"
+              sx={formFieldStyles}
+            />
+            <TextField
+              label="URL Trailer"
               value={newMovie.Trailer_Link}
               onChange={handleInputChange('Trailer_Link')}
+              fullWidth
               required
-              sx={{ 
-                ...styles.formField,
-                ...styles.requiredLabel,
-                ...(showErrors && !newMovie.Trailer_Link && { '&.MuiFormControl-root': { '& .MuiFormLabel-asterisk': { color: 'red' } } })
-              }}
               error={showErrors && !newMovie.Trailer_Link}
-              helperText={showErrors && !newMovie.Trailer_Link ? "Vui lòng nhập link trailer" : ""}
+              helperText={showErrors && !newMovie.Trailer_Link ? "URL Trailer là bắt buộc" : ""}
+              placeholder="https://youtube.com/watch?v=..."
+              sx={formFieldStyles}
             />
+            <FormControl fullWidth required error={showErrors && !newMovie.Status} sx={formFieldStyles}>
+              <InputLabel>Trạng thái phim</InputLabel>
+              <Select
+                value={newMovie.Status}
+                label="Trạng thái phim"
+                onChange={handleSelectChange('Status')}
+              >
+                {STATUSES.filter(status => status !== 'Tất cả').map(status => (
+                  <MenuItem key={status} value={status}>{status}</MenuItem>
+                ))}
+              </Select>
+              {showErrors && !newMovie.Status && (
+                <FormHelperText>Vui lòng chọn trạng thái phim</FormHelperText>
+              )}
+            </FormControl>
           </Box>
         );
       default:
@@ -1184,144 +1077,469 @@ const ManageMoviePage: React.FC = () => {
   };
 
   return (
-    <Box sx={styles.pageContainer}>
-      <Paper elevation={3} sx={styles.mainPaper}>
-        <Typography variant="h4" gutterBottom sx={styles.pageTitle}>
-          QUẢN LÝ PHIM
-        </Typography>
-
-        {/* Filters */}
-        <Paper sx={styles.filterContainer}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} sm={6} md={3}>
-              <TextField
-                fullWidth
-                label="Tên phim"
-                variant="outlined"
-                value={filters.movieName}
-                onChange={handleFilterChange('movieName')}
-                sx={styles.filterItem}
-              />
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth sx={styles.filterItem}>
-                <InputLabel>Năm phát hành</InputLabel>
-                <Select
-                  value={filters.releaseYear}
-                  label="Năm phát hành"
-                  onChange={handleFilterChange('releaseYear')}
-                >
-                  <MenuItem value="">Tất cả</MenuItem>
-                  {YEARS.map(year => (
-                    <MenuItem key={year} value={year}>{year}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth sx={styles.filterItem}>
-                <InputLabel>Thể loại</InputLabel>
-                <Select
-                  value={filters.genre}
-                  label="Thể loại"
-                  onChange={handleFilterChange('genre')}
-                >
-                  {GENRES.map(genre => (
-                    <MenuItem key={genre} value={genre}>{genre}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth sx={styles.filterItem}>
-                <InputLabel>Trạng thái</InputLabel>
-                <Select
-                  value={filters.status}
-                  label="Trạng thái"
-                  onChange={handleFilterChange('status')}
-                >
-                  {STATUSES.map(status => (
-                    <MenuItem key={status} value={status}>{status}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        <Box sx={{ mt: 3, mb: 3, display: 'flex', justifyContent: 'flex-end' }}>
-          <Button 
-            variant="contained" 
-            sx={styles.addButton}
-            onClick={() => setOpenAddModal(true)}
+    <Box
+      component="main"
+      sx={{
+        padding: '24px',
+        backgroundColor: '#f9fafb',
+        minHeight: '100vh',
+      }}
+    >
+      <Box
+        component="header"
+        sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between',
+          alignItems: { xs: 'flex-start', md: 'center' },
+          marginBottom: '32px',
+        }}
+      >
+        <Box>
+          <Typography
+            variant="h1"
+            sx={{
+              marginBottom: '8px',
+              fontSize: '28px',
+              fontWeight: 700,
+              color: '#111827',
+            }}
           >
-            Thêm Phim Mới
-          </Button>
+            Quản Lý Phim
+          </Typography>
+          <Typography
+            variant="subtitle1"
+            sx={{
+              color: '#6b7280',
+              fontSize: '16px',
+            }}
+          >
+            Quản lý danh sách phim và thông tin chi tiết
+          </Typography>
+        </Box>
+        <Button
+          variant="contained"
+          onClick={() => {
+            resetForm();
+            setOpenAddModal(true);
+          }}
+          startIcon={<FiPlus />}
+          sx={{
+            marginTop: { xs: '16px', md: 0 },
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+            padding: '10px 20px',
+            backgroundColor: '#3b82f6',
+            color: '#ffffff',
+            fontWeight: 500,
+            fontSize: '16px',
+            borderRadius: '8px',
+            transition: 'background-color 0.3s, box-shadow 0.3s',
+            boxShadow: '0 2px 4px rgba(0, 0, 0, 0.1)',
+            '&:hover': {
+              backgroundColor: '#2563eb',
+              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.15)',
+            },
+          }}
+        >
+          Thêm Phim Mới
+        </Button>
+      </Box>
+
+      <Box
+        component="section"
+        sx={{
+          backgroundColor: '#ffffff',
+          borderRadius: '10px',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.05)',
+          padding: '16px',
+          marginBottom: '24px',
+          border: '1px solid #e5e7eb',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          gap: '16px',
+          flexWrap: 'wrap',
+        }}
+      >
+        <Box
+          sx={{
+            flex: '1',
+            minWidth: '250px',
+            maxWidth: '350px',
+            position: 'relative',
+          }}
+        >
+          <TextField
+            fullWidth
+            placeholder="Tìm kiếm phim..."
+            value={filters.movieName}
+            onChange={handleFilterChange('movieName')}
+            InputProps={{
+              startAdornment: <FiSearch style={{ color: '#9ca3af', marginRight: '8px' }} />,
+              endAdornment: filters.movieName && (
+                <IconButton
+                  size="small"
+                  onClick={() => setFilters(prev => ({ ...prev, movieName: '' }))}
+                  sx={{ color: '#9ca3af' }}
+                >
+                  <FiX />
+                </IconButton>
+              ),
+            }}
+            sx={{
+              '& .MuiOutlinedInput-root': {
+                backgroundColor: '#f9fafb',
+                transition: 'border-color 0.3s, box-shadow 0.3s',
+                boxShadow: '0 1px 3px rgba(0, 0, 0, 0.05)',
+                '&:hover': {
+                  borderColor: '#3b82f6',
+                },
+                '&.Mui-focused': {
+                  borderColor: '#3b82f6',
+                  boxShadow: '0 0 0 3px rgba(59, 130, 246, 0.1)',
+                  backgroundColor: '#ffffff',
+                },
+              },
+            }}
+          />
         </Box>
 
-        <TableContainer component={Paper} sx={styles.tableContainer}>
-          {loading && (
-            <Box sx={styles.loadingOverlay}>
-              <CircularProgress />
-            </Box>
-          )}
+        <Box
+          sx={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <IconButton
+            onClick={() => setViewMode('grid')}
+            sx={{
+              padding: '8px',
+              backgroundColor: viewMode === 'grid' ? '#dbeafe' : '#f3f4f6',
+              color: viewMode === 'grid' ? '#2563eb' : '#4b5563',
+              '&:hover': {
+                backgroundColor: viewMode === 'grid' ? '#dbeafe' : '#e5e7eb',
+              },
+            }}
+          >
+            <FiGrid />
+          </IconButton>
+          <IconButton
+            onClick={() => setViewMode('table')}
+            sx={{
+              padding: '8px',
+              backgroundColor: viewMode === 'table' ? '#dbeafe' : '#f3f4f6',
+              color: viewMode === 'table' ? '#2563eb' : '#4b5563',
+              '&:hover': {
+                backgroundColor: viewMode === 'table' ? '#dbeafe' : '#e5e7eb',
+              },
+            }}
+          >
+            <FiLayout />
+          </IconButton>
+        </Box>
+
+        <FormControl
+          sx={{
+            minWidth: '160px',
+            maxWidth: '200px',
+          }}
+        >
+          <InputLabel>Trạng thái</InputLabel>
+          <Select
+            value={filters.status}
+            onChange={handleFilterChange('status')}
+            label="Trạng thái"
+          >
+            <MenuItem value="Tất cả">Tất Cả Trạng Thái</MenuItem>
+            <MenuItem value="Coming Soon">Coming Soon</MenuItem>
+            <MenuItem value="Now Showing">Now Showing</MenuItem>
+          </Select>
+        </FormControl>
+      </Box>
+
+      {loading ? (
+        <Box
+          sx={{
+            textAlign: 'center',
+            padding: '48px 0',
+          }}
+        >
+          <CircularProgress sx={{ color: '#3b82f6' }} />
+          <Typography
+            sx={{
+              color: '#6b7280',
+              marginTop: '16px',
+            }}
+          >
+            Đang tải dữ liệu...
+          </Typography>
+        </Box>
+      ) : movies.length === 0 ? (
+        <Box
+          sx={{
+            textAlign: 'center',
+            padding: '48px 0',
+          }}
+        >
+          <FiAlertCircle
+            style={{
+              width: '48px',
+              height: '48px',
+              color: '#9ca3af',
+              margin: '0 auto 16px',
+            }}
+          />
+          <Typography
+            variant="h6"
+            sx={{
+              fontWeight: 500,
+              color: '#1f2937',
+              marginBottom: '4px',
+            }}
+          >
+            Không tìm thấy phim nào
+          </Typography>
+          <Typography
+            variant="body2"
+            sx={{
+              color: '#6b7280',
+            }}
+          >
+            Thử thay đổi bộ lọc hoặc thêm phim mới
+          </Typography>
+        </Box>
+      ) : (
+        <TableContainer
+          component={Paper}
+          sx={{
+            backgroundColor: '#ffffff',
+            borderRadius: '8px',
+            boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+            overflow: 'hidden',
+          }}
+        >
           <Table>
             <TableHead>
-              <TableRow sx={styles.tableHeader}>
-                <TableCell sx={styles.headerCell}>Poster</TableCell>
-                <TableCell sx={styles.headerCell}>Tên Phim</TableCell>
-                <TableCell sx={styles.headerCell}>Ngày Phát Hành</TableCell>
-                <TableCell sx={styles.headerCell}>Đạo Diễn</TableCell>
-                <TableCell sx={styles.headerCell}>Thể Loại</TableCell>
-                <TableCell sx={styles.headerCell}>Trạng Thái</TableCell>
-                <TableCell sx={styles.headerCell}>Thao Tác</TableCell>
+              <TableRow>
+                <TableCell
+                  sx={{
+                    padding: '12px 24px',
+                    backgroundColor: '#f3f4f6',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #e5e7eb',
+                    width: '50%',
+                  }}
+                >
+                  Tên phim
+                </TableCell>
+                <TableCell
+                  sx={{
+                    padding: '12px 24px',
+                    backgroundColor: '#f3f4f6',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #e5e7eb',
+                    width: '30%',
+                  }}
+                >
+                  Trạng thái
+                </TableCell>
+                <TableCell
+                  sx={{
+                    padding: '12px 10px',
+                    paddingLeft: '140px',
+                    backgroundColor: '#f3f4f6',
+                    fontSize: '12px',
+                    fontWeight: 500,
+                    color: '#6b7280',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.05em',
+                    borderBottom: '1px solid #e5e7eb',
+                    width: '20%',
+                  }}
+                >
+                  Thao tác
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {movies.map((movie) => (
-                <TableRow key={movie.Movie_ID} sx={styles.tableRow}>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={styles.posterContainer}>
-                      <img
+                <TableRow
+                  key={movie.Movie_ID}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: '#f9fafb',
+                    },
+                  }}
+                >
+                  <TableCell
+                    sx={{
+                      padding: '16px 24px',
+                      borderBottom: '1px solid #e5e7eb',
+                      width: '50%',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '20px',
+                      }}
+                    >
+                      <Box
+                        component="img"
                         src={movie.Poster_URL || PLACEHOLDER_IMAGE}
                         alt={movie.Movie_Name}
-                        style={styles.posterImage}
+                        sx={{
+                          width: '120px',
+                          height: '180px',
+                          objectFit: 'cover',
+                          borderRadius: '12px',
+                          boxShadow: '0 6px 12px rgba(0, 0, 0, 0.15)',
+                          transition: 'transform 0.3s ease-in-out, box-shadow 0.3s ease-in-out',
+                          '&:hover': {
+                            transform: 'scale(1.08)',
+                            boxShadow: '0 8px 16px rgba(0, 0, 0, 0.2)',
+                          },
+                        }}
                       />
+                      <Box>
+                        <Typography
+                          sx={{
+                            fontWeight: 600,
+                            color: '#1f2937',
+                            fontSize: '1.25rem',
+                            marginBottom: '8px',
+                            lineHeight: 1.4,
+                          }}
+                        >
+                          {movie.Movie_Name}
+                        </Typography>
+                      </Box>
                     </Box>
                   </TableCell>
-                  <TableCell sx={{ ...styles.tableCell, ...styles.movieName }}>{movie.Movie_Name}</TableCell>
-                  <TableCell sx={styles.tableCell}>{new Date(movie.Release_Date).toLocaleDateString('vi-VN')}</TableCell>
-                  <TableCell sx={styles.tableCell}>{movie.Director}</TableCell>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={styles.genreTag}>{movie.Genre}</Box>
-                  </TableCell>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={{
-                      ...styles.statusTag,
-                      backgroundColor: getStatusColor(movie.Status).bg,
-                      color: getStatusColor(movie.Status).color,
-                    }}>
+                  <TableCell
+                    sx={{
+                      padding: '16px 24px',
+                      borderBottom: '1px solid #e5e7eb',
+                      width: '30%',
+                    }}
+                  >
+                    <Box
+                      component="span"
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'flex-start',
+                        padding: '6px 12px',
+                        fontSize: '0.875rem',
+                        fontWeight: 600,
+                        borderRadius: '9999px',
+                        minWidth: '140px',
+                        ...(movie.Status === 'Now Showing' 
+                          ? {
+                              backgroundColor: '#dcfce7',
+                              color: '#15803d',
+                              border: '2px solid #86efac',
+                              '&::before': {
+                                content: '""',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: '#15803d',
+                                marginRight: '8px',
+                              },
+                            }
+                          : {
+                              backgroundColor: '#fef3c7',
+                              color: '#b45309',
+                              border: '2px solid #fcd34d',
+                              '&::before': {
+                                content: '""',
+                                width: '8px',
+                                height: '8px',
+                                borderRadius: '50%',
+                                backgroundColor: '#b45309',
+                                marginRight: '8px',
+                              },
+                            }
+                        ),
+                        transition: 'all 0.2s ease-in-out',
+                        '&:hover': {
+                          transform: 'translateY(-2px)',
+                          boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)',
+                        },
+                      }}
+                    >
                       {movie.Status}
                     </Box>
                   </TableCell>
-                  <TableCell sx={styles.tableCell}>
-                    <Box sx={{ display: 'flex', gap: 1 }}>
-                      <Button
-                        variant="outlined"
-                        size="medium"
-                        sx={styles.editButton}
+                  <TableCell
+                    align="center"
+                    sx={{
+                      padding: '16px 24px',
+                      borderBottom: '1px solid #e5e7eb',
+                      width: '15%',
+                      textAlign: 'center',
+                    }}
+                  >
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        gap: '8px',
+                        justifyContent: 'center',
+                        alignItems: 'center',
+                        width: '100%',
+                      }}
+                    >
+                      <IconButton
                         onClick={() => handleOpenEditModal(movie)}
+                        sx={{
+                          color: '#2563eb',
+                          backgroundColor: '#e8f0fe',
+                          width: '36px',
+                          height: '36px',
+                          '&:hover': {
+                            color: '#1d4ed8',
+                            backgroundColor: '#dbeafe',
+                          },
+                          '& svg': {
+                            width: '18px',
+                            height: '18px',
+                          },
+                        }}
                       >
-                        Sửa
-                      </Button>
-                      <Button
-                        variant="outlined"
-                        size="medium"
-                        sx={styles.deleteButton}
+                        <FiEdit2 />
+                      </IconButton>
+                      <IconButton
                         onClick={() => handleOpenDeleteDialog(movie)}
+                        sx={{
+                          color: '#ef4444',
+                          backgroundColor: '#fee2e2',
+                          width: '36px',
+                          height: '36px',
+                          '&:hover': {
+                            color: '#dc2626',
+                            backgroundColor: '#fecaca',
+                          },
+                          '& svg': {
+                            width: '18px',
+                            height: '18px',
+                          },
+                        }}
                       >
-                        Xóa
-                      </Button>
+                        <FiTrash2 />
+                      </IconButton>
                     </Box>
                   </TableCell>
                 </TableRow>
@@ -1329,16 +1547,7 @@ const ManageMoviePage: React.FC = () => {
             </TableBody>
           </Table>
         </TableContainer>
-
-        <Box sx={styles.pagination}>
-          <Pagination
-            count={totalPages}
-            page={page}
-            onChange={handlePageChange}
-            color="primary"
-          />
-        </Box>
-      </Paper>
+      )}
 
       {/* Add Movie Modal */}
       <Dialog
@@ -1352,56 +1561,52 @@ const ManageMoviePage: React.FC = () => {
             {isEditMode ? 'Sửa Thông Tin Phim' : 'Thêm Phim Mới'}
           </Typography>
         </DialogTitle>
-        <DialogContent>
-          <Stepper activeStep={activeStep} sx={styles.stepper}>
+        <DialogContent sx={{ p: 3 }}>
+          <Stepper activeStep={activeStep} sx={{ mb: 4 }}>
             {steps.map((label) => (
               <Step key={label}>
                 <StepLabel>{label}</StepLabel>
               </Step>
             ))}
           </Stepper>
-          <Card sx={styles.formCard}>
-            <CardContent sx={{ flex: 1 }}>
+          <Card sx={{ flex: 1 }}>
+            <CardContent sx={{ p: 3 }}>
               {renderStepContent(activeStep)}
             </CardContent>
-            <Box sx={styles.stepButtons}>
+            <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #e0e0e0' }}>
               <Button
-                disabled={activeStep === 0}
                 onClick={handleBack}
+                disabled={activeStep === 0}
+                variant="outlined"
+                sx={{ minWidth: '100px' }}
               >
                 Quay lại
               </Button>
-              <Box>
+              {activeStep === steps.length - 1 ? (
                 <Button
-                  onClick={() => setOpenAddModal(false)}
-                  sx={{ mr: 1 }}
+                  onClick={handleAddMovie}
+                  variant="contained"
+                  disabled={loading || !isStepValid(activeStep)}
+                  sx={{ minWidth: '100px' }}
                 >
-                  Hủy
+                  {loading ? <CircularProgress size={24} /> : isEditMode ? 'Cập nhật phim' : 'Thêm phim'}
                 </Button>
-                {activeStep === steps.length - 1 ? (
-                  <Button
-                    variant="contained"
-                    onClick={handleAddMovie}
-                    disabled={loading}
-                  >
-                    {loading ? <CircularProgress size={24} /> : isEditMode ? 'Cập nhật phim' : 'Thêm phim'}
-                  </Button>
-                ) : (
-                  <Button
-                    variant="contained"
-                    onClick={handleNext}
-                    disabled={!isStepValid(activeStep)}
-                  >
-                    Tiếp tục
-                  </Button>
-                )}
-              </Box>
+              ) : (
+                <Button
+                  onClick={handleNext}
+                  variant="contained"
+                  disabled={!isStepValid(activeStep)}
+                  sx={{ minWidth: '100px' }}
+                >
+                  Tiếp tục
+                </Button>
+              )}
             </Box>
           </Card>
         </DialogContent>
       </Dialog>
 
-      {/* Add Delete Confirmation Dialog */}
+      {/* Delete Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}
         onClose={handleCloseDeleteDialog}
@@ -1432,7 +1637,7 @@ const ManageMoviePage: React.FC = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Add Snackbar at the end of the component */}
+      {/* Snackbar */}
       <Snackbar
         open={snackbar.open}
         autoHideDuration={6000}
