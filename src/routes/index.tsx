@@ -15,7 +15,9 @@ import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
+import QRCodeScanner from "../pages/QRCodeScan/QRCodeScan";
 import ManagerDashboard from "../pages/ManagerDashboard/ManagerDashboard";
+
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -29,6 +31,8 @@ const AppRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/movie" element={<ViewMoviePage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
+        {/* Staff routes inside main Layout */}
+        <Route path="/staff/scan" element={<QRCodeScanner />} />
       </Route>
 
       {/* Admin routes with nested structure */}
@@ -47,8 +51,12 @@ const AppRoutes = () => {
 
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
+
+        <Route index element={<ManageCinemaRoom/>} />
+
         <Route index element={<ManagerDashboard />} />
         <Route path="manager-dashboard" element={<ManagerDashboard />} />
+
         <Route path="showtimes" element={<ManageShowtime />} />
         <Route path="cinemarooms" element={<ManageCinemaRoom />} />
       </Route>

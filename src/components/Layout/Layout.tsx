@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header/Header";
 import HeaderLoginUser from "../../components/Header-Login/Header-Login-User";
+import HeaderLoginStaff from "../../components/Header-Login/Header-Login-Staff";
 import Footer from "../../components/Footer/Footer";
 import { Outlet } from "react-router-dom";
 
@@ -15,13 +16,13 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
   const role = localStorage.getItem("role");
   console.log("Current user role from localStorage:", role);
 
-  // Điều hướng nếu role là Admin
+  // Điều hướng dựa trên role
   useEffect(() => {
     if (role === "Admin") {
       navigate("/admin");
     } else if (role === "Manager") {
       navigate("/manager");
-    }
+    } 
   }, [role, navigate]); // Phụ thuộc vào role và navigate
 
   const renderHeader = () => {
@@ -30,6 +31,8 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
     switch (role) {
       case "Customer":
         return <HeaderLoginUser />;
+      case "Staff":
+        return <HeaderLoginStaff />;
       default:
         return <Header />;
     }
