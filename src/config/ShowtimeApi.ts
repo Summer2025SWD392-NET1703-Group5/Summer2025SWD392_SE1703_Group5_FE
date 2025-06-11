@@ -12,9 +12,18 @@ const getAllShowtimes = async () => {
 };
 
 // Create new showtime (Admin/Staff only)
-const createShowtime = async (showtimeData: any) => {
+const createShowtime = async (showtimeData: any, allowEarlyShowtime?: boolean) => {
   try {
-    const response = await api.post("showtimes", showtimeData);
+    // Include parameter in both URL and request body to ensure it's received
+    const url = allowEarlyShowtime ? "showtimes?allowEarlyShowtime=true" : "showtimes";
+
+    // Clone the showtime data and add the allowEarlyShowtime flag to the body as well
+    const requestData = { ...showtimeData };
+    if (allowEarlyShowtime) {
+      requestData.allowEarlyShowtime = true;
+    }
+
+    const response = await api.post(url, requestData);
     return response.data;
   } catch (error) {
     console.error("Error creating showtime:", error);
@@ -56,9 +65,10 @@ const getShowtimeById = async (id: string) => {
 };
 
 // Update showtime (Admin/Staff only)
-const updateShowtime = async (id: string, showtimeData: any) => {
+const updateShowtime = async (id: string, showtimeData: any, allowEarlyShowtime?: boolean) => {
   try {
-    const response = await api.put(`showtimes/${id}`, showtimeData);
+    const url = allowEarlyShowtime ? `showtimes/${id}?allowEarlyShowtime=true` : `showtimes/${id}`;
+    const response = await api.put(url, showtimeData);
     return response.data;
   } catch (error) {
     console.error(`Error updating showtime with ID ${id}:`, error);

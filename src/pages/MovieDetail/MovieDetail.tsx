@@ -234,7 +234,7 @@ const MovieDetail: React.FC = () => {
       );
     }
 
-    const remainingStars = 10 - Math.ceil(rating);
+    const remainingStars = 5 - Math.ceil(rating);
     for (let i = 0; i < remainingStars; i++) {
       stars.push(
         <span key={`empty-${i}`} className="star empty">
@@ -444,7 +444,7 @@ const MovieDetail: React.FC = () => {
               <div className="detail-meta">
                 <span className="detail-rating">
                   {renderStars(movie?.Average_Rating || 0)}
-                  <span className="detail-rating-score">{movie?.Average_Rating || 0}/10</span>
+                  <span className="detail-rating-score">{movie?.Average_Rating || 0}/5</span>
                 </span>
                 <span className="detail-duration">{formatDuration(movie?.Duration || 0)}</span>
                 <span className="detail-age-rating">{movie?.Rating}</span>
@@ -601,7 +601,7 @@ const MovieDetail: React.FC = () => {
 
                 {movieData?.Rating_Summary?.Rating_Distribution && (
                   <div className="rating-distribution">
-                    {movieData.Rating_Summary.Rating_Distribution.map((count, index) => (
+                    {movieData.Rating_Summary.Rating_Distribution.slice(0, 5).map((count, index) => (
                       <div key={index} className="rating-bar">
                         <span>{index + 1} sao</span>
                         <div className="bar">
