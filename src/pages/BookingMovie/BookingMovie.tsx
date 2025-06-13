@@ -15,7 +15,7 @@ interface Coupon {
   description: string;
 }
 
-const CinemaBooking: React.FC = () => {
+const BookingMovie: React.FC = () => {
   // Khởi tạo dữ liệu ghế theo layout
   const initializeSeats = (): Seat[] => {
     const seats: Seat[] = [];
@@ -777,4 +777,4 @@ const CinemaBooking: React.FC = () => {
   );
 };
 
-export default CinemaBooking;
+export default BookingMovie;

@@ -16,7 +16,6 @@ const ShowtimeFilters: React.FC<ShowtimeFiltersProps> = ({
   onSearchChange,
   onDateFilterChange,
   onStatusFilterChange,
-  onClearDateFilter,
 }) => {
   return (
     <div className="showtime-filters">

@@ -9,7 +9,6 @@ import {
   FiTrash2,
   FiSearch,
   FiX,
-  FiAlertCircle,
   FiRefreshCw,
   FiAlertTriangle,
   FiGrid,
@@ -42,6 +41,30 @@ interface Room {
   Status: string;
   Notes: string;
   Cinema_ID: number;
+}
+
+// Định nghĩa kiểu dữ liệu cho lỗi API
+interface ApiError {
+  response?: {
+    data?: {
+      message?: string;
+      errors?: Array<{
+        field: string;
+        message: string;
+        value: string;
+      }>;
+    };
+  };
+  message?: string;
+}
+
+interface ApiErrorData {
+  message?: string;
+  errors?: Array<{
+    field: string;
+    message: string;
+    value: string;
+  }>;
 }
 
 interface ModalProps {
@@ -81,6 +104,8 @@ const ManageCinemaBranch: React.FC = () => {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [apiErrorData, setApiErrorData] = useState<ApiErrorData | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [viewMode, setViewMode] = useState<"table" | "grid">("table");
@@ -120,6 +145,7 @@ const ManageCinemaBranch: React.FC = () => {
   const fetchCinemas = async () => {
     setLoading(true);
     setError(null);
+    setApiErrorData(null);
     try {
       const response = await api.get("/cinemas");
       if (response.data.success) {
@@ -131,9 +157,18 @@ const ManageCinemaBranch: React.FC = () => {
         setError("Không thể tải danh sách rạp phim.");
         toast.error("Không thể tải danh sách rạp phim.");
       }
-    } catch (err: any) {
-      setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu.");
-      toast.error(err.message || "Đã xảy ra lỗi khi tải dữ liệu.");
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage =
+        apiError.response?.data?.message || "Đã xảy ra lỗi khi tải dữ liệu.";
+      setError(errorMessage);
+      
+      // Lưu dữ liệu lỗi API để hiển thị chi tiết
+      if (apiError.response?.data) {
+        setApiErrorData(apiError.response.data);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -143,15 +178,26 @@ const ManageCinemaBranch: React.FC = () => {
   const fetchRooms = async (cinemaId: number) => {
     try {
       setLoading(true);
+      setError(null);
+      setApiErrorData(null);
       const response = await api.get(`/cinemas/${cinemaId}/rooms`);
       if (response.data.success) {
         setRooms(response.data.data);
       } else {
         throw new Error("Không thể tải danh sách phòng chiếu.");
       }
-    } catch (err: any) {
-      setError(err.message || "Đã xảy ra lỗi khi tải dữ liệu phòng chiếu.");
-      toast.error(err.message || "Đã xảy ra lỗi khi tải dữ liệu phòng chiếu.");
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
+      const errorMessage =
+        apiError.response?.data?.message || "Đã xảy ra lỗi khi tải dữ liệu phòng chiếu.";
+      setError(errorMessage);
+      
+      // Lưu dữ liệu lỗi API để hiển thị chi tiết
+      if (apiError.response?.data) {
+        setApiErrorData(apiError.response.data);
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -282,79 +328,133 @@ const ManageCinemaBranch: React.FC = () => {
       } else {
         throw new Error("Dữ liệu trả về từ server không hợp lệ.");
       }
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
+        apiError.response?.data?.message ||
+        apiError.message ||
         "Không thể tạo rạp phim.";
+      
+      setError(errorMessage);
+      
+      // Lưu dữ liệu lỗi API để hiển thị chi tiết
+      if (apiError.response?.data) {
+        setApiErrorData(apiError.response.data);
+      }
+      
+      // Xử lý lỗi theo từng trường cụ thể
+      if (apiError.response?.data?.errors && apiError.response.data.errors.length > 0) {
+        const newFieldErrors: Record<string, string> = {};
+        
+        apiError.response.data.errors.forEach(error => {
+          newFieldErrors[error.field] = error.message;
+        });
+        
+        setFieldErrors(newFieldErrors);
+      }
+      
       toast.error(`Lỗi: ${errorMessage}`);
     }
   };
 
   // Cập nhật rạp phim
-  const handleUpdateCinema = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!currentCinemaId) {
-      toast.error("Không có rạp phim nào được chọn để cập nhật.");
-      return;
+ const handleUpdateCinema = async (e: React.FormEvent) => {
+  e.preventDefault();
+
+  if (!currentCinemaId) {
+    toast.error("Không có rạp phim nào được chọn để cập nhật.");
+    return;
+  }
+
+  const token = localStorage.getItem("token");
+  if (!token) {
+    toast.error("Xác thực thất bại. Vui lòng đăng nhập lại.");
+    return;
+  }
+
+  // Kiểm tra các trường bắt buộc
+  if (!newCinema.Cinema_Name?.trim()) {
+    toast.error("Tên rạp là bắt buộc.");
+    return;
+  }
+
+  if (!newCinema.Address?.trim()) {
+    toast.error("Địa chỉ là bắt buộc.");
+    return;
+  }
+
+  if (!newCinema.City?.trim()) {
+    toast.error("Thành phố là bắt buộc.");
+    return;
+  }
+
+  if (!newCinema.Province?.trim()) {
+    toast.error("Tỉnh là bắt buộc.");
+    return;
+  }
+
+  if (!newCinema.Phone_Number?.trim()) {
+    toast.error("Số điện thoại là bắt buộc.");
+    return;
+  }
+
+  const email = newCinema.Email?.trim() || "";
+
+  if (!email) {
+    toast.error("Email là bắt buộc.");
+    return;
+  }
+
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+  if (!emailRegex.test(email)) {
+    toast.error("Email không hợp lệ.");
+    return;
+  }
+
+  if (!email.toLowerCase().endsWith("@gmail.com")) {
+    toast.error("Email phải sử dụng đuôi @gmail.com.");
+    return;
+  }
+
+  try {
+    const response = await api.put(`/cinemas/${currentCinemaId}`, newCinema, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (response.data) {
+      await fetchCinemas();
+      toast.success(`Rạp phim '${newCinema.Cinema_Name}' đã được cập nhật thành công!`);
+      handleCloseModal();
+    } else {
+      throw new Error("Dữ liệu trả về từ server không hợp lệ.");
     }
 
-    const token = localStorage.getItem("token");
-    if (!token) {
-      toast.error("Xác thực thất bại. Vui lòng đăng nhập lại.");
-      return;
+  } catch (err: unknown) {
+    const apiError = err as ApiError;
+    const errorMessage =
+      apiError.response?.data?.message ||
+      apiError.message ||
+      "Không thể cập nhật rạp phim.";
+
+    setError(errorMessage);
+
+    if (apiError.response?.data) {
+      setApiErrorData(apiError.response.data);
     }
 
-    if (!newCinema.Cinema_Name?.trim()) {
-      toast.error("Tên rạp là bắt buộc.");
-      return;
-    }
-    if (!newCinema.Address?.trim()) {
-      toast.error("Địa chỉ là bắt buộc.");
-      return;
-    }
-    if (!newCinema.City?.trim()) {
-      toast.error("Thành phố là bắt buộc.");
-      return;
-    }
-    if (!newCinema.Province?.trim()) {
-      toast.error("Tỉnh là bắt buộc.");
-      return;
-    }
-    if (!newCinema.Phone_Number?.trim()) {
-      toast.error("Số điện thoại là bắt buộc.");
-      return;
-    }
-    if (!newCinema.Email?.trim()) {
-      toast.error("Email là bắt buộc.");
-      return;
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newCinema.Email || "")) {
-      toast.error("Email không hợp lệ.");
-      return;
-    }
-
-    try {
-      const response = await api.put(`/cinemas/${currentCinemaId}`, newCinema, {
-        headers: { Authorization: `Bearer ${token}` },
+    if (apiError.response?.data?.errors && apiError.response.data.errors.length > 0) {
+      const newFieldErrors: Record<string, string> = {};
+      apiError.response.data.errors.forEach(error => {
+        newFieldErrors[error.field] = error.message;
       });
-      if (response.data) {
-        await fetchCinemas();
-        toast.success(
-          `Rạp phim '${newCinema.Cinema_Name}' đã được cập nhật thành công!`
-        );
-        handleCloseModal();
-      } else {
-        throw new Error("Dữ liệu trả về từ server không hợp lệ.");
-      }
-    } catch (error: any) {
-      const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể cập nhật rạp phim.";
-      toast.error(`Lỗi: ${errorMessage}`);
+      setFieldErrors(newFieldErrors);
     }
-  };
+
+    toast.error(`Lỗi: ${errorMessage}`);
+  }
+};
+
 
   // Xóa rạp phim
   const handleDeleteCinema = async (id: number) => {
@@ -371,10 +471,11 @@ const ManageCinemaBranch: React.FC = () => {
       await fetchCinemas();
       toast.success("Rạp phim đã được xóa thành công!");
       setConfirmDeleteId(null);
-    } catch (error: any) {
+    } catch (err: unknown) {
+      const apiError = err as ApiError;
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
+        apiError.response?.data?.message ||
+        apiError.message ||
         "Không thể xóa rạp phim.";
       toast.error(`Lỗi: ${errorMessage}`);
       setConfirmDeleteId(null);
@@ -397,7 +498,7 @@ const ManageCinemaBranch: React.FC = () => {
         <div>
           <h1 className="page-title">Quản Lý Rạp Phim</h1>
           <p className="page-subtitle">
-            Quản lý các rạp phim và thông tin chi tiết của chúng
+            Quản lý {cinemas.length} rạp phim và thông tin chi tiết của chúng
           </p>
         </div>
         <button
@@ -479,18 +580,43 @@ const ManageCinemaBranch: React.FC = () => {
 
       {/* Error Display */}
       {error && (
-        <div className="error-message">
+        <div className="error-message-banner">
           <div className="error-content">
-            <FiAlertCircle className="error-icon" />
-            <p className="error-text">{error}</p>
+            <FiAlertTriangle className="error-icon" />
+            <div className="error-details">
+              <h3 className="error-title">Đã xảy ra lỗi</h3>
+              <p className="error-text">{error}</p>
+              {apiErrorData?.errors && apiErrorData.errors.length > 0 && (
+                <ul className="error-list">
+                  {apiErrorData.errors.map((err, index) => (
+                    <li key={index} className="error-item">
+                      <strong>{err.field}:</strong> {err.message}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={fetchCinemas}
-            className="error-retry-button"
-          >
-            <FiRefreshCw className="error-retry-icon" /> Thử Lại
-          </button>
+          <div className="error-actions">
+            <button
+              type="button"
+              onClick={() => {
+                setError(null);
+                setApiErrorData(null);
+              }}
+              className="error-close-button"
+              title="Đóng thông báo lỗi"
+            >
+              <FiX className="error-close-icon" />
+            </button>
+            <button
+              type="button"
+              onClick={fetchCinemas}
+              className="error-retry-button"
+            >
+              <FiRefreshCw className="error-retry-icon" /> Thử Lại
+            </button>
+          </div>
         </div>
       )}
 
@@ -506,7 +632,140 @@ const ManageCinemaBranch: React.FC = () => {
           {viewMode === "table" && (
             <div className="table-view">
               {filteredCinemas.length > 0 ? (
-                <div className="table-scroll-container">
+                <div className="table-scroll-container" style={{
+                  scrollbarWidth: 'auto',
+                  scrollbarColor: '#FFFFFF rgb(221, 218, 218)'
+                }}>
+                  <style>
+                    {`
+                    .table-scroll-container::-webkit-scrollbar {
+                      width: 10px;
+                      height: 10px;
+                    }
+                    .table-scroll-container::-webkit-scrollbar-track {
+                      background: rgb(80, 80, 80);
+                      border-radius: 4px;
+                    }
+                    .table-scroll-container::-webkit-scrollbar-thumb {
+                      background-color: #FFFFFF;
+                      border-radius: 4px;
+                      border: 2px solid rgb(80, 80, 80);
+                    }
+                    .table-scroll-container::-webkit-scrollbar-thumb:hover {
+                      background-color: #DDDDDD;
+                    }
+                    .room-table-container::-webkit-scrollbar {
+                      width: 10px;
+                      height: 10px;
+                    }
+                    .room-table-container::-webkit-scrollbar-track {
+                      background: rgb(80, 80, 80);
+                      border-radius: 4px;
+                    }
+                    .room-table-container::-webkit-scrollbar-thumb {
+                      background-color: #FFFFFF;
+                      border-radius: 4px;
+                      border: 2px solid rgb(80, 80, 80);
+                    }
+                    .room-table-container::-webkit-scrollbar-thumb:hover {
+                      background-color: #DDDDDD;
+                    }
+                    .error-message-banner {
+                      display: flex;
+                      align-items: flex-start;
+                      justify-content: space-between;
+                      background-color: #FEF2F2;
+                      border: 1px solid #F87171;
+                      border-radius: 6px;
+                      padding: 16px;
+                      margin-bottom: 20px;
+                      position: relative;
+                    }
+                    
+                    .error-content {
+                      display: flex;
+                      flex: 1;
+                    }
+                    
+                    .error-icon {
+                      color: #EF4444;
+                      margin-right: 14px;
+                      margin-top: 2px;
+                      flex-shrink: 0;
+                    }
+                    
+                    .error-details {
+                      flex: 1;
+                    }
+                    
+                    .error-title {
+                      font-weight: 600;
+                      font-size: 16px;
+                      margin: 0 0 4px 0;
+                      color: #991B1B;
+                    }
+                    
+                    .error-text {
+                      margin: 0 0 8px 0;
+                      color: #7F1D1D;
+                    }
+                    
+                    .error-list {
+                      margin: 8px 0 0 0;
+                      padding-left: 20px;
+                      list-style-type: disc;
+                    }
+                    
+                    .error-item {
+                      margin-bottom: 4px;
+                      font-size: 14px;
+                      color: #7F1D1D;
+                    }
+                    
+                    .error-actions {
+                      display: flex;
+                      flex-direction: column;
+                      align-items: flex-end;
+                      margin-left: 12px;
+                    }
+                    
+                    .error-close-button {
+                      background: transparent;
+                      border: none;
+                      cursor: pointer;
+                      padding: 0;
+                      color: #991B1B;
+                      margin-bottom: 10px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      width: 24px;
+                      height: 24px;
+                    }
+                    
+                    .error-retry-button {
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      background-color: #EF4444;
+                      color: white;
+                      border: none;
+                      border-radius: 4px;
+                      padding: 6px 12px;
+                      font-size: 14px;
+                      cursor: pointer;
+                      transition: background-color 0.3s ease;
+                    }
+                    
+                    .error-retry-button:hover {
+                      background-color: #DC2626;
+                    }
+                    
+                    .error-retry-icon {
+                      margin-right: 6px;
+                    }
+                    `}
+                  </style>
                   <table className="cinema-table">
                     <thead className="table-header">
                       <tr>
@@ -733,10 +992,13 @@ const ManageCinemaBranch: React.FC = () => {
                 onChange={(e) =>
                   setNewCinema({ ...newCinema, Cinema_Name: e.target.value })
                 }
-                className="form-input"
+                className={`form-input ${fieldErrors.Cinema_Name ? 'form-input-error' : ''}`}
                 placeholder="Nhập tên rạp"
                 required
               />
+              {fieldErrors.Cinema_Name && (
+                <div className="form-error">{fieldErrors.Cinema_Name}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -749,10 +1011,13 @@ const ManageCinemaBranch: React.FC = () => {
                 onChange={(e) =>
                   setNewCinema({ ...newCinema, Address: e.target.value })
                 }
-                className="form-input"
+                className={`form-input ${fieldErrors.Address ? 'form-input-error' : ''}`}
                 placeholder="Nhập địa chỉ"
                 required
               />
+              {fieldErrors.Address && (
+                <div className="form-error">{fieldErrors.Address}</div>
+              )}
             </div>
 
             <div className="form-row">
@@ -766,10 +1031,13 @@ const ManageCinemaBranch: React.FC = () => {
                   onChange={(e) =>
                     setNewCinema({ ...newCinema, City: e.target.value })
                   }
-                  className="form-input"
+                  className={`form-input ${fieldErrors.City ? 'form-input-error' : ''}`}
                   placeholder="Nhập thành phố"
                   required
                 />
+                {fieldErrors.City && (
+                  <div className="form-error">{fieldErrors.City}</div>
+                )}
               </div>
 
               <div className="form-group">
@@ -782,10 +1050,13 @@ const ManageCinemaBranch: React.FC = () => {
                   onChange={(e) =>
                     setNewCinema({ ...newCinema, Province: e.target.value })
                   }
-                  className="form-input"
+                  className={`form-input ${fieldErrors.Province ? 'form-input-error' : ''}`}
                   placeholder="Nhập tỉnh"
                   required
                 />
+                {fieldErrors.Province && (
+                  <div className="form-error">{fieldErrors.Province}</div>
+                )}
               </div>
             </div>
 
@@ -800,10 +1071,13 @@ const ManageCinemaBranch: React.FC = () => {
                   onChange={(e) =>
                     setNewCinema({ ...newCinema, Phone_Number: e.target.value })
                   }
-                  className="form-input"
+                  className={`form-input ${fieldErrors.Phone_Number ? 'form-input-error' : ''}`}
                   placeholder="Nhập số điện thoại"
                   required
                 />
+                {fieldErrors.Phone_Number && (
+                  <div className="form-error">{fieldErrors.Phone_Number}</div>
+                )}
               </div>
 
               <div className="form-group">
@@ -816,10 +1090,13 @@ const ManageCinemaBranch: React.FC = () => {
                   onChange={(e) =>
                     setNewCinema({ ...newCinema, Email: e.target.value })
                   }
-                  className="form-input"
+                  className={`form-input ${fieldErrors.Email ? 'form-input-error' : ''}`}
                   placeholder="Nhập email"
                   required
                 />
+                {fieldErrors.Email && (
+                  <div className="form-error">{fieldErrors.Email}</div>
+                )}
               </div>
             </div>
 
@@ -830,10 +1107,13 @@ const ManageCinemaBranch: React.FC = () => {
                 onChange={(e) =>
                   setNewCinema({ ...newCinema, Description: e.target.value })
                 }
-                className="form-textarea"
+                className={`form-textarea ${fieldErrors.Description ? 'form-textarea-error' : ''}`}
                 rows={4}
                 placeholder="Mô tả rạp phim (Tùy Chọn)"
               ></textarea>
+              {fieldErrors.Description && (
+                <div className="form-error">{fieldErrors.Description}</div>
+              )}
             </div>
 
             <div className="form-group">
@@ -845,12 +1125,15 @@ const ManageCinemaBranch: React.FC = () => {
                 onChange={(e) =>
                   setNewCinema({ ...newCinema, Status: e.target.value })
                 }
-                className="form-select"
+                className={`form-select ${fieldErrors.Status ? 'form-select-error' : ''}`}
                 required
               >
                 <option value="Active">Hoạt Động</option>
                 <option value="Inactive">Không Hoạt Động</option>
               </select>
+              {fieldErrors.Status && (
+                <div className="form-error">{fieldErrors.Status}</div>
+              )}
             </div>
 
             <div className="modal-actions">
@@ -873,9 +1156,13 @@ const ManageCinemaBranch: React.FC = () => {
       <Modal isOpen={isManagingRooms} onClose={handleCloseModal} size="lg">
         <div className="modal-body">
           <h2 className="modal-title">
-            Quản Lý Phòng Chiếu - Rạp {currentCinemaId}
+            Quản Lý Phòng Chiếu - Rạp {currentCinemaId} (Tổng {rooms.length}{" "}
+            phòng)
           </h2>
-          <div className="room-table-container">
+          <div className="room-table-container" style={{
+            scrollbarWidth: 'auto',
+            scrollbarColor: '#FFFFFFrgb(255, 255, 255)'
+          }}>
             {loading ? (
               <div className="loading-container">
                 <div className="loading-spinner"></div>
