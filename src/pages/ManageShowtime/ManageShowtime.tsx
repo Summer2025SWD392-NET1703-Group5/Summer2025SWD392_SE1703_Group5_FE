@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import AddShowtimeModal from "./components/AddShowtimeModal";
 import EditShowtimeModal from "./components/EditShowtimeModal";
+import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ShowtimeFilters from "./components/ShowtimeFilters";
 import useShowtimeFilters, { type Showtime } from "../../hooks/useShowtimeFilters";
-import { getAllShowtimes, createShowtime, deleteShowtime } from "../../config/ShowtimeApi";
+import { getShowtimesByRoom, createShowtime, deleteShowtime } from "../../config/ShowtimeApi";
 import { getAllMovies } from "../../config/MovieApi";
+import { getManagerCinemaRooms } from "../../config/CinemasApi";
 import {
   formatDate,
   formatTime,
@@ -18,13 +20,21 @@ import {
 const ManageShowtime: React.FC = () => {
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(true);
-  const [actionLoading, setActionLoading] = useState<number | null>(null);
+  const [actionEditLoading, setActionEditLoading] = useState<number | null>(null);
+  const [actionDeleteLoading, setActionDeleteLoading] = useState<number | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedShowtimes, setSelectedShowtimes] = useState<number[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingShowtime, setEditingShowtime] = useState<Showtime | null>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteModalData, setDeleteModalData] = useState<{
+    type: "single" | "bulk";
+    showtimeId?: number;
+    title: string;
+    message: string;
+  } | null>(null);
 
   // Use the custom filter hook
   const {
@@ -65,8 +75,36 @@ const ManageShowtime: React.FC = () => {
         return;
       }
 
-      // Fetch showtimes and movies simultaneously
-      const [showtimesData, moviesData] = await Promise.all([getAllShowtimes(), getAllMovies()]);
+      // Fetch manager's cinema rooms and movies simultaneously
+      const [managerRooms, moviesData] = await Promise.all([
+        getManagerCinemaRooms(),
+        getAllMovies()
+      ]);
+
+      // Ensure managerRooms is an array
+      const rooms = Array.isArray(managerRooms) ? managerRooms : [];
+      
+      if (rooms.length === 0) {
+        console.warn("Manager has no cinema rooms assigned");
+        setShowtimes([]);
+        return;
+      }
+
+      // Fetch showtimes for each room managed by the current manager
+      const showtimePromises = rooms.map(room => 
+        getShowtimesByRoom(room.Cinema_Room_ID.toString()).catch(error => {
+          console.error(`Error fetching showtimes for room ${room.Cinema_Room_ID}:`, error);
+          return []; // Return empty array if room has no showtimes or error occurs
+        })
+      );
+
+      const showtimeResults = await Promise.all(showtimePromises);
+      
+      // Flatten the array of showtime arrays and remove duplicates
+      const allShowtimes = showtimeResults.flat();
+      const uniqueShowtimes = allShowtimes.filter((showtime, index, self) => 
+        index === self.findIndex(s => s.Showtime_ID === showtime.Showtime_ID)
+      );
 
       // Create a map of movies for quick lookup
       const movieMap = new Map();
@@ -74,10 +112,17 @@ const ManageShowtime: React.FC = () => {
         movieMap.set(movie.Movie_ID, movie);
       });
 
-      // Populate movie information in showtimes
-      const enrichedShowtimes = showtimesData.map((showtime: any) => ({
+      // Create a map of rooms for quick lookup
+      const roomMap = new Map();
+      rooms.forEach((room: any) => {
+        roomMap.set(room.Cinema_Room_ID, room);
+      });
+
+      // Populate movie and room information in showtimes
+      const enrichedShowtimes = uniqueShowtimes.map((showtime: any) => ({
         ...showtime,
         Movies: movieMap.get(showtime.Movie_ID) || null,
+        Rooms: roomMap.get(showtime.Cinema_Room_ID) || null,
       }));
 
       setShowtimes(enrichedShowtimes);
@@ -96,7 +141,6 @@ const ManageShowtime: React.FC = () => {
       // Handle specific error cases
       if (error?.response?.status === 401) {
         errorMessage = "Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.";
-        // Could redirect to login page here
         localStorage.removeItem("token");
       } else if (error?.response?.status === 403) {
         errorMessage = "Bạn không có quyền truy cập chức năng này.";
@@ -154,6 +198,7 @@ const ManageShowtime: React.FC = () => {
 
   const handleEditShowtime = (showtime: Showtime) => {
     setEditingShowtime(showtime);
+    setActionEditLoading(showtime.Showtime_ID);
     setShowEditModal(true);
   };
 
@@ -187,6 +232,7 @@ const ManageShowtime: React.FC = () => {
 
   const handleCloseEditModal = () => {
     setShowEditModal(false);
+    setActionEditLoading(null);
     setEditingShowtime(null);
   };
 
@@ -208,37 +254,15 @@ const ManageShowtime: React.FC = () => {
     const showtime = showtimes.find((s) => s.Showtime_ID === showtimeId);
     if (!showtime) return;
 
-    const confirmMessage = `Bạn có chắc chắn muốn xóa suất chiếu phòng "${
-      showtime.Rooms?.Room_Name || showtime.Room_Name
-    }" - ${formatDate(showtime.Show_Date)}?\nSuất chiếu sẽ bị xóa hoàn toàn khỏi hệ thống.`;
-
-    if (!window.confirm(confirmMessage)) return;
-
-    try {
-      setActionLoading(showtimeId);
-      // Call the deleteShowtime API
-      await deleteShowtime(showtimeId.toString());
-
-      // Fetch fresh data to ensure we have complete information
-      await fetchShowtimes();
-
-      // Clear selected showtimes that might have been deleted
-      setSelectedShowtimes((prev) => prev.filter((id) => id !== showtimeId));
-      showSuccessToast("Đã ẩn suất chiếu thành công");
-    } catch (error: any) {
-      // Use API error message if available
-      let errorMessage = "Lỗi khi xóa suất chiếu";
-
-      if (error?.response?.data?.message) {
-        errorMessage = error.response.data.message;
-      } else if (error?.message) {
-        errorMessage = error.message;
-      }
-
-      showErrorToast(errorMessage);
-    } finally {
-      setActionLoading(null);
-    }
+    setDeleteModalData({
+      type: "single",
+      showtimeId,
+      title: "Xác nhận ẩn suất chiếu",
+      message: `Bạn có chắc chắn muốn ẩn suất chiếu phòng "${
+        showtime.Rooms?.Room_Name || showtime.Room_Name
+      }" - ${formatDate(showtime.Show_Date)}?\n\nSuất chiếu sẽ bị ẩn khỏi hệ thống.`,
+    });
+    setShowDeleteModal(true);
   };
 
   const handleBulkDelete = async () => {
@@ -247,28 +271,36 @@ const ManageShowtime: React.FC = () => {
       return;
     }
 
-    if (
-      !window.confirm(
-        `Bạn có chắc chắn muốn xóa ${selectedShowtimes.length} suất chiếu?\nCác suất chiếu sẽ bị xóa hoàn toàn khỏi hệ thống.`
-      )
-    )
-      return;
+    setDeleteModalData({
+      type: "bulk",
+      title: "Xác nhận ẩn suất chiếu",
+      message: `Bạn có chắc chắn muốn ẩn ${selectedShowtimes.length} suất chiếu?\n\nCác suất chiếu sẽ bị ẩn khỏi hệ thống.`,
+    });
+    setShowDeleteModal(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!deleteModalData) return;
 
     try {
-      setLoading(true);
-      // Delete each showtime using the deleteShowtime API
-      const deletePromises = selectedShowtimes.map((showtimeId) => deleteShowtime(showtimeId.toString()));
-      await Promise.all(deletePromises);
+      if (deleteModalData.type === "single" && deleteModalData.showtimeId) {
+        setActionDeleteLoading(deleteModalData.showtimeId);
+        await deleteShowtime(deleteModalData.showtimeId.toString());
+        showSuccessToast("Đã ẩn suất chiếu thành công");
+        setSelectedShowtimes((prev) => prev.filter((id) => id !== deleteModalData.showtimeId));
+      } else if (deleteModalData.type === "bulk") {
+        setLoading(true);
+        const deletePromises = selectedShowtimes.map((showtimeId) => deleteShowtime(showtimeId.toString()));
+        await Promise.all(deletePromises);
+        showSuccessToast(`Đã ẩn ${selectedShowtimes.length} suất chiếu thành công`);
+        setSelectedShowtimes([]);
+      }
 
-      // Fetch fresh data to ensure we have complete information
       await fetchShowtimes();
-
-      // Clear all selected showtimes since they've been processed
-      setSelectedShowtimes([]);
-      showSuccessToast(`Đã xóa ${selectedShowtimes.length} suất chiếu thành công`);
+      setShowDeleteModal(false);
+      setDeleteModalData(null);
     } catch (error: any) {
-      // Use API error message if available
-      let errorMessage = "Lỗi khi xóa suất chiếu";
+      let errorMessage = "Lỗi khi ẩn suất chiếu";
 
       if (error?.response?.data?.message) {
         errorMessage = error.response.data.message;
@@ -277,11 +309,18 @@ const ManageShowtime: React.FC = () => {
       }
 
       showErrorToast(errorMessage);
-      // Still fetch fresh data even if there was an error to ensure state consistency
-      await fetchShowtimes();
+      if (deleteModalData.type === "bulk") {
+        await fetchShowtimes();
+      }
     } finally {
+      setActionDeleteLoading(null);
       setLoading(false);
     }
+  };
+
+  const handleCloseDeleteModal = () => {
+    setShowDeleteModal(false);
+    setDeleteModalData(null);
   };
 
   const getStatusBadge = (status: string) => {
@@ -427,8 +466,13 @@ const ManageShowtime: React.FC = () => {
                     )}
                     {!showtime.Movies && <div className="movie-missing">Thông tin phim không có</div>}
                   </td>
-                  <td className="room-name">
-                    {showtime.Rooms?.Room_Name || showtime.Room_Name || "Chưa có thông tin"}
+                  <td className="room-info">
+                    <div className="room-name">
+                      {showtime.Rooms?.Room_Name || showtime.Room_Name || "Chưa có thông tin"}
+                    </div>
+                    {showtime.Rooms?.Room_Type && (
+                      <div className="room-type">({showtime.Rooms.Room_Type})</div>
+                    )}
                   </td>
                   <td>{formatDate(showtime.Show_Date)}</td>
                   <td>
@@ -444,18 +488,18 @@ const ManageShowtime: React.FC = () => {
                       <button
                         className="action-btn edit"
                         title="Chỉnh sửa suất chiếu"
-                        disabled={actionLoading === showtime.Showtime_ID}
+                        disabled={actionEditLoading === showtime.Showtime_ID}
                         onClick={() => handleEditShowtime(showtime)}
                       >
-                        {actionLoading === showtime.Showtime_ID ? <LoadingSpinner size="small" /> : "✏️"}
+                        {actionEditLoading === showtime.Showtime_ID ? <LoadingSpinner size="small" /> : "✏️"}
                       </button>
                       <button
                         onClick={() => handleDeleteShowtime(showtime.Showtime_ID)}
                         className="action-btn delete"
-                        disabled={actionLoading === showtime.Showtime_ID}
+                        disabled={actionDeleteLoading === showtime.Showtime_ID}
                         title="Xóa suất chiếu"
                       >
-                        {actionLoading === showtime.Showtime_ID ? <LoadingSpinner size="small" /> : "🗑️"}
+                        {actionDeleteLoading === showtime.Showtime_ID ? <LoadingSpinner size="small" /> : "🗑️"}
                       </button>
                     </div>
                   </td>
@@ -533,6 +577,19 @@ const ManageShowtime: React.FC = () => {
           onClose={handleCloseEditModal}
           onUpdateShowtime={handleUpdateShowtime}
           showtime={editingShowtime}
+        />
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {showDeleteModal && deleteModalData && (
+        <DeleteConfirmModal
+          isOpen={showDeleteModal}
+          onClose={handleCloseDeleteModal}
+          onConfirm={handleConfirmDelete}
+          title={deleteModalData.title}
+          message={deleteModalData.message}
+          isLoading={deleteModalData.type === "single" ? actionDeleteLoading === deleteModalData.showtimeId : loading}
+          confirmText="Ẩn suất chiếu"
         />
       )}
 
@@ -825,8 +882,20 @@ const ManageShowtime: React.FC = () => {
           font-style: italic;
         }
 
+        .room-info {
+          font-weight: 500;
+        }
+
         .room-name {
           font-weight: 500;
+          color: #2c3e50;
+        }
+
+        .room-type {
+          font-size: 0.8rem;
+          color: #7f8c8d;
+          font-weight: normal;
+          margin-top: 0.25rem;
         }
 
         .time-range {
@@ -971,29 +1040,33 @@ const ManageShowtime: React.FC = () => {
           padding: 0.5rem 0.75rem;
           border: 1px solid #ddd;
           background-color: white;
-          color: #2c3e50;
+          color: #2c3e50 !important;
           border-radius: 4px;
           cursor: pointer;
           font-size: 0.9rem;
+          font-weight: 500;
           transition: all 0.2s ease;
         }
 
         .pagination-btn:hover:not(:disabled) {
           background-color: #3498db;
-          color: white;
+          color: white !important;
           border-color: #3498db;
         }
 
         .pagination-btn.active {
           background-color: #3498db;
-          color: white;
+          color: white !important;
           border-color: #3498db;
+          font-weight: 600;
         }
 
         .pagination-btn:disabled {
-          background-color: #ecf0f1;
-          color: #95a5a6;
+          background-color: #f8f9fa;
+          color: #495057 !important;
+          border-color: #e9ecef;
           cursor: not-allowed;
+          opacity: 1;
         }
 
         .showtimes-summary {

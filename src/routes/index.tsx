@@ -16,6 +16,7 @@ import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
 import ManagerDashboard from "../pages/ManagerDashboard/ManagerDashboard";
+import StaffBooking from "../pages/StaffBooking/StaffBooking";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -29,6 +30,12 @@ const AppRoutes = () => {
         <Route path="/profile" element={<Profile />} />
         <Route path="/movie" element={<ViewMoviePage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
+      </Route>
+
+      {/* Staff routes */}
+      <Route element={<Layout key={location.pathname} showNavbar={true} />}>
+        <Route path="/staff" element={<StaffBooking />} />
+        <Route path="/staff/booking" element={<StaffBooking />} />
       </Route>
 
       {/* Admin routes with nested structure */}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { formatDate, LoadingSpinner, convertToDateInputFormat } from "../../../components/utils/utils";
 import { getAllMovies } from "../../../config/MovieApi";
-import { getShowtimeRooms } from "../../../config/ShowtimeApi";
+import { getManagerCinemaRooms } from "../../../config/CinemasApi";
 
 interface AddShowtimeModalProps {
   isOpen: boolean;
@@ -91,11 +91,12 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
   const fetchCinemaRooms = async () => {
     try {
       setLoadingRooms(true);
-      const data = await getShowtimeRooms();
-      // The getShowtimeRooms API should return rooms that are available for showtime scheduling
-      setCinemaRooms(data);
+      // Use manager-specific API to get only rooms managed by current manager
+      const data = await getManagerCinemaRooms();
+      // Ensure data is an array before setting state
+      setCinemaRooms(Array.isArray(data) ? data : []);
     } catch (error: any) {
-      console.error("Error fetching cinema rooms:", error);
+      console.error("Error fetching manager cinema rooms:", error);
       setCinemaRooms([]);
     } finally {
       setLoadingRooms(false);
@@ -408,7 +409,6 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
                 {isSubmitting ? (
                   <>
                     <LoadingSpinner size="small" />
-                    Đang thêm...
                   </>
                 ) : (
                   "Thêm suất chiếu"

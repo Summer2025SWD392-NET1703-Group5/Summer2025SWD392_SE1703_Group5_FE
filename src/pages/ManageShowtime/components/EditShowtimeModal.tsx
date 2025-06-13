@@ -7,7 +7,8 @@ import {
   convertToDateInputFormat,
 } from "../../../components/utils/utils";
 import { getAllMovies } from "../../../config/MovieApi";
-import { getShowtimeRooms, updateShowtime } from "../../../config/ShowtimeApi";
+import { getManagerCinemaRooms } from "../../../config/CinemasApi";
+import { updateShowtime } from "../../../config/ShowtimeApi";
 
 interface EditShowtimeModalProps {
   isOpen: boolean;
@@ -121,11 +122,12 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
   const fetchCinemaRooms = async () => {
     try {
       setLoadingRooms(true);
-      const data = await getShowtimeRooms();
-      // Include all cinema rooms for editing - getShowtimeRooms should return available rooms
-      setCinemaRooms(data);
+      // Use manager-specific API to get only rooms managed by current manager
+      const data = await getManagerCinemaRooms();
+      // Ensure data is an array before setting state
+      setCinemaRooms(Array.isArray(data) ? data : []);
     } catch (error: any) {
-      console.error("Error fetching cinema rooms:", error);
+      console.error("Error fetching manager cinema rooms:", error);
       const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi tải danh sách phòng chiếu";
       showErrorToast(errorMessage);
       setCinemaRooms([]);
@@ -468,7 +470,6 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
                 {isSubmitting ? (
                   <>
                     <LoadingSpinner size="small" />
-                    Đang cập nhật...
                   </>
                 ) : (
                   "Cập nhật suất chiếu"

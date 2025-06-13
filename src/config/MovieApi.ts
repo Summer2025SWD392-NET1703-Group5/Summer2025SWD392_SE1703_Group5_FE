@@ -1,16 +1,5 @@
 import api from "./axios";
 
-// Get all movies
-const getAllMovies = async () => {
-  try {
-    const response = await api.get("movies");
-    return response.data;
-  } catch (error) {
-    console.error("Error fetching movies:", error);
-    throw error;
-  }
-};
-
 // Create new movie (Admin/Staff only)
 const createMovie = async (movieData: any) => {
   try {
@@ -155,8 +144,51 @@ const getMovieShowtimes = async (movieId: string, cinemaId?: string) => {
   }
 };
 
+// Get all movies with optional filtering
+const getAllMovies = async (params?: { status?: string; filter?: string; page?: number; limit?: number }) => {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (params?.status) queryParams.append("status", params.status);
+    if (params?.filter) queryParams.append("filter", params.filter);
+    if (params?.page) queryParams.append("page", params.page.toString());
+    if (params?.limit) queryParams.append("limit", params.limit.toString());
+
+    const endpoint = queryParams.toString() ? `movies?${queryParams.toString()}` : "movies";
+    const response = await api.get(endpoint);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching movies:", error);
+    throw error;
+  }
+};
+
+// Get movies with advanced filters
+const getMoviesWithFilters = async (filters: {
+  status?: "Coming Soon" | "Now Showing" | "Ended" | "Cancelled" | "Inactive";
+  filter?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  try {
+    const queryParams = new URLSearchParams();
+
+    if (filters.status) queryParams.append("status", filters.status);
+    if (filters.filter) queryParams.append("filter", filters.filter);
+    if (filters.page) queryParams.append("page", filters.page.toString());
+    if (filters.limit) queryParams.append("limit", filters.limit.toString());
+
+    const response = await api.get(`movies?${queryParams.toString()}`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching movies with filters:", error);
+    throw error;
+  }
+};
+
 export {
   getAllMovies,
+  getMoviesWithFilters,
   createMovie,
   getComingSoonMovies,
   getNowShowingMovies,
