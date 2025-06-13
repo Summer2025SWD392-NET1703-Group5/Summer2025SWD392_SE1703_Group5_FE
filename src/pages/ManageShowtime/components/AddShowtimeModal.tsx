@@ -33,7 +33,11 @@ interface Movie {
 interface CinemaRoom {
   Cinema_Room_ID: number;
   Room_Name: string;
+  Seat_Quantity: number;
   Room_Type: string;
+  Status: string;
+  Notes: string;
+  Cinema_ID: number;
 }
 
 const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, onAddShowtime }) => {
@@ -76,10 +80,8 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
   const fetchMovies = async () => {
     try {
       setLoadingMovies(true);
-      const data = await getAllMovies();
-      // Filter only now-showing movies
-      const activeMovies = data.filter((movie: Movie) => movie.Status === "Now Showing");
-      setMovies(activeMovies);
+      const data = await getAllMovies({ status: "Now Showing"});
+      setMovies(data);
     } catch (error: any) {
       console.error("Error fetching movies:", error);
       setMovies([]);
@@ -93,8 +95,10 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
       setLoadingRooms(true);
       // Use manager-specific API to get only rooms managed by current manager
       const data = await getManagerCinemaRooms();
+
+      const activeRooms = data.filter((room: CinemaRoom) => room.Status == "Active");
       // Ensure data is an array before setting state
-      setCinemaRooms(Array.isArray(data) ? data : []);
+      setCinemaRooms(Array.isArray(activeRooms) ? activeRooms : []);
     } catch (error: any) {
       console.error("Error fetching manager cinema rooms:", error);
       setCinemaRooms([]);

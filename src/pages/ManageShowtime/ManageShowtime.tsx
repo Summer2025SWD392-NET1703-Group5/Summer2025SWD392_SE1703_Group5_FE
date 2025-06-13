@@ -4,8 +4,7 @@ import EditShowtimeModal from "./components/EditShowtimeModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ShowtimeFilters from "./components/ShowtimeFilters";
 import useShowtimeFilters, { type Showtime } from "../../hooks/useShowtimeFilters";
-import { getShowtimesByRoom, createShowtime, deleteShowtime } from "../../config/ShowtimeApi";
-import { getAllMovies } from "../../config/MovieApi";
+import { getAllShowtimesByRoom, createShowtime, deleteShowtime } from "../../config/ShowtimeApi";
 import { getManagerCinemaRooms } from "../../config/CinemasApi";
 import {
   formatDate,
@@ -75,15 +74,14 @@ const ManageShowtime: React.FC = () => {
         return;
       }
 
-      // Fetch manager's cinema rooms and movies simultaneously
-      const [managerRooms, moviesData] = await Promise.all([
-        getManagerCinemaRooms(),
-        getAllMovies()
-      ]);
+      // Fetch manager's cinema rooms
+      const managerRooms = await getManagerCinemaRooms();
+
+      const activeManagerRooms = managerRooms.filter((room: any) => room.Status === "Active");
 
       // Ensure managerRooms is an array
-      const rooms = Array.isArray(managerRooms) ? managerRooms : [];
-      
+      const rooms = Array.isArray(activeManagerRooms) ? activeManagerRooms : [];
+
       if (rooms.length === 0) {
         console.warn("Manager has no cinema rooms assigned");
         setShowtimes([]);
@@ -91,41 +89,57 @@ const ManageShowtime: React.FC = () => {
       }
 
       // Fetch showtimes for each room managed by the current manager
-      const showtimePromises = rooms.map(room => 
-        getShowtimesByRoom(room.Cinema_Room_ID.toString()).catch(error => {
+      const showtimePromises = rooms.map((room) =>
+        getAllShowtimesByRoom(room.Cinema_Room_ID.toString()).catch((error) => {
           console.error(`Error fetching showtimes for room ${room.Cinema_Room_ID}:`, error);
-          return []; // Return empty array if room has no showtimes or error occurs
+          return null; // Return null if room has error
         })
       );
 
       const showtimeResults = await Promise.all(showtimePromises);
-      
-      // Flatten the array of showtime arrays and remove duplicates
-      const allShowtimes = showtimeResults.flat();
-      const uniqueShowtimes = allShowtimes.filter((showtime, index, self) => 
-        index === self.findIndex(s => s.Showtime_ID === showtime.Showtime_ID)
+
+      // Process the API response and extract showtimes
+      const allShowtimes: Showtime[] = [];
+
+      showtimeResults.forEach((roomData, index) => {
+        if (roomData && roomData.dates && Array.isArray(roomData.dates)) {
+          const room = rooms[index];
+
+          // Process each date in the room
+          roomData.dates.forEach((dateData: any) => {
+            if (dateData.showtimes && Array.isArray(dateData.showtimes)) {
+              // Process each showtime in the date
+              dateData.showtimes.forEach((showtime: any) => {
+                allShowtimes.push({
+                  ...showtime,
+                  // Map the Movie data to Movies for consistency with existing code
+                  Movies: showtime.Movie || null,
+                  // Add room information
+                  Rooms: {
+                    Cinema_Room_ID: room.Cinema_Room_ID,
+                    Room_Name: roomData.room_name || room.Room_Name,
+                    Room_Type: roomData.room_type || room.Room_Type,
+                  },
+                  // Add Cinema_Room_ID for compatibility
+                  Cinema_Room_ID: room.Cinema_Room_ID,
+                  Room_Name: roomData.room_name || room.Room_Name,
+                  // Add Show_Date from the date data
+                  Show_Date: dateData.date,
+                  // Map Movie_ID from nested Movie object
+                  Movie_ID: showtime.Movie?.Movie_ID || showtime.Movie_ID,
+                });
+              });
+            }
+          });
+        }
+      });
+
+      // Remove duplicates based on Showtime_ID
+      const uniqueShowtimes = allShowtimes.filter(
+        (showtime, index, self) => index === self.findIndex((s) => s.Showtime_ID === showtime.Showtime_ID)
       );
 
-      // Create a map of movies for quick lookup
-      const movieMap = new Map();
-      moviesData.forEach((movie: any) => {
-        movieMap.set(movie.Movie_ID, movie);
-      });
-
-      // Create a map of rooms for quick lookup
-      const roomMap = new Map();
-      rooms.forEach((room: any) => {
-        roomMap.set(room.Cinema_Room_ID, room);
-      });
-
-      // Populate movie and room information in showtimes
-      const enrichedShowtimes = uniqueShowtimes.map((showtime: any) => ({
-        ...showtime,
-        Movies: movieMap.get(showtime.Movie_ID) || null,
-        Rooms: roomMap.get(showtime.Cinema_Room_ID) || null,
-      }));
-
-      setShowtimes(enrichedShowtimes);
+      setShowtimes(uniqueShowtimes);
     } catch (error: any) {
       console.error("Lỗi khi tải danh sách suất chiếu:", error);
 
@@ -259,7 +273,7 @@ const ManageShowtime: React.FC = () => {
       showtimeId,
       title: "Xác nhận ẩn suất chiếu",
       message: `Bạn có chắc chắn muốn ẩn suất chiếu phòng "${
-        showtime.Rooms?.Room_Name || showtime.Room_Name
+        showtime.Rooms?.Room_Name || showtime.Rooms.Room_Name
       }" - ${formatDate(showtime.Show_Date)}?\n\nSuất chiếu sẽ bị ẩn khỏi hệ thống.`,
     });
     setShowDeleteModal(true);
@@ -460,19 +474,17 @@ const ManageShowtime: React.FC = () => {
                   </td>
                   <td>#{showtime.Showtime_ID}</td>
                   <td className="movie-title">
-                    {showtime.Movies?.Movie_Name || `Phim #${showtime.Movie_ID}`}
+                    {showtime.Movies?.Movie_Name || `Phim #${showtime.Movies?.Movie_ID}`}
                     {showtime.Movies?.Duration && (
-                      <div className="movie-duration">({showtime.Movies.Duration} phút)</div>
+                      <div className="movie-duration">({showtime.Movies?.Duration} phút)</div>
                     )}
                     {!showtime.Movies && <div className="movie-missing">Thông tin phim không có</div>}
                   </td>
                   <td className="room-info">
                     <div className="room-name">
-                      {showtime.Rooms?.Room_Name || showtime.Room_Name || "Chưa có thông tin"}
+                      {showtime.Rooms?.Room_Name || showtime.Rooms.Room_Name || "Chưa có thông tin"}
                     </div>
-                    {showtime.Rooms?.Room_Type && (
-                      <div className="room-type">({showtime.Rooms.Room_Type})</div>
-                    )}
+                    {showtime.Rooms?.Room_Type && <div className="room-type">({showtime.Rooms.Room_Type})</div>}
                   </td>
                   <td>{formatDate(showtime.Show_Date)}</td>
                   <td>

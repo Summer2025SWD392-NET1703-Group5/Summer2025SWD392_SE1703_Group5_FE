@@ -16,17 +16,15 @@ interface EditShowtimeModalProps {
   onUpdateShowtime: (showtimeData: any) => void;
   showtime: {
     Showtime_ID: number;
-    Movie_ID: number;
-    Cinema_Room_ID: number;
     Show_Date: string;
     Start_Time: string;
     Status: string;
-    Movies?: {
+    Movies: {
       Movie_ID: number;
       Movie_Name: string;
       Duration: number;
     };
-    Rooms?: {
+    Rooms: {
       Cinema_Room_ID: number;
       Room_Name: string;
       Room_Type: string;
@@ -47,12 +45,23 @@ interface Movie {
   Movie_Name: string;
   Duration: number;
   Status: string;
+  End_Date: string;
+  Release_Date: string;
+  Director: string;
+  Language: string;
+  Trailer: string;
+  Poster: string;
+  ShowtimeCount?: number;
 }
 
 interface CinemaRoom {
   Cinema_Room_ID: number;
   Room_Name: string;
+  Seat_Quantity: number;
   Room_Type: string;
+  Status: string;
+  Notes: string;
+  Cinema_ID: number;
 }
 
 const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, onUpdateShowtime, showtime }) => {
@@ -91,8 +100,8 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
       console.log("Setting form data with Start_Time:", startTime, "from original:", showtime.Start_Time);
 
       setFormData({
-        Movie_ID: showtime.Movie_ID.toString(),
-        Cinema_Room_ID: showtime.Cinema_Room_ID.toString(),
+        Movie_ID: showtime.Movies.Movie_ID.toString(),
+        Cinema_Room_ID: showtime.Rooms.Cinema_Room_ID.toString(),
         Show_Date: showDate,
         Start_Time: startTime,
         Status: showtime.Status || "Scheduled",
@@ -106,8 +115,7 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
   const fetchMovies = async () => {
     try {
       setLoadingMovies(true);
-      const data = await getAllMovies();
-      // Include all movies for editing (not just "Now Showing")
+      const data = await getAllMovies({ status: "Now Showing" });
       setMovies(data);
     } catch (error: any) {
       console.error("Error fetching movies:", error);
@@ -124,8 +132,9 @@ const EditShowtimeModal: React.FC<EditShowtimeModalProps> = ({ isOpen, onClose, 
       setLoadingRooms(true);
       // Use manager-specific API to get only rooms managed by current manager
       const data = await getManagerCinemaRooms();
+      const activeRooms = data.filter((room: CinemaRoom) => room.Status == "Active");
       // Ensure data is an array before setting state
-      setCinemaRooms(Array.isArray(data) ? data : []);
+      setCinemaRooms(Array.isArray(activeRooms) ? activeRooms : []);
     } catch (error: any) {
       console.error("Error fetching manager cinema rooms:", error);
       const errorMessage = error?.response?.data?.message || error.message || "Lỗi khi tải danh sách phòng chiếu";

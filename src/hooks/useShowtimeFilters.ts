@@ -10,9 +10,6 @@ export interface ShowtimeFilters {
 
 export interface Showtime {
   Showtime_ID: number;
-  Movie_ID: number;
-  Cinema_Room_ID: number;
-  Room_Name: string;
   Show_Date: string;
   Start_Time: string;
   End_Time: string;
@@ -22,7 +19,7 @@ export interface Showtime {
     Room_Name: string;
     Room_Type: string;
   };
-  Movies?: {
+  Movies: {
     Movie_ID: number;
     Movie_Name: string;
     Duration: number;
@@ -80,7 +77,6 @@ const useShowtimeFilters = (showtimes: Showtime[]) => {
 
     const searchLower = removeAccents(searchTerm.toLowerCase());
     return (
-      removeAccents(showtime.Room_Name?.toLowerCase() || "").includes(searchLower) ||
       removeAccents(showtime.Rooms?.Room_Name?.toLowerCase() || "").includes(searchLower) ||
       removeAccents(showtime.Movies?.Movie_Name?.toLowerCase() || "").includes(searchLower)
     );
