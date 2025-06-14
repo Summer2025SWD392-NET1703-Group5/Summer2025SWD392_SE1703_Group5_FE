@@ -23,7 +23,6 @@ interface Cinema {
   Cinema_Name: string;
   Address: string;
   City: string;
-  Province: string;
   Phone_Number: string;
   Email: string;
   Description: string;
@@ -118,7 +117,6 @@ const ManageCinemaBranch: React.FC = () => {
     Cinema_Name: "",
     Address: "",
     City: "",
-    Province: "",
     Phone_Number: "",
     Email: "",
     Description: "",
@@ -211,8 +209,7 @@ const ManageCinemaBranch: React.FC = () => {
   const filteredCinemas = cinemas.filter((cinema) => {
     const matchesSearch =
       cinema.Cinema_Name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cinema.City.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      cinema.Province.toLowerCase().includes(searchTerm.toLowerCase());
+      cinema.City.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus =
       statusFilter === "all" || cinema.Status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -224,7 +221,6 @@ const ManageCinemaBranch: React.FC = () => {
       Cinema_Name: "",
       Address: "",
       City: "",
-      Province: "",
       Phone_Number: "",
       Email: "",
       Description: "",
@@ -241,7 +237,6 @@ const ManageCinemaBranch: React.FC = () => {
       Cinema_Name: cinema.Cinema_Name,
       Address: cinema.Address,
       City: cinema.City,
-      Province: cinema.Province,
       Phone_Number: cinema.Phone_Number,
       Email: cinema.Email,
       Description: cinema.Description,
@@ -269,7 +264,6 @@ const ManageCinemaBranch: React.FC = () => {
       Cinema_Name: "",
       Address: "",
       City: "",
-      Province: "",
       Phone_Number: "",
       Email: "",
       Description: "",
@@ -296,10 +290,6 @@ const ManageCinemaBranch: React.FC = () => {
     }
     if (!newCinema.City?.trim()) {
       toast.error("Thành phố là bắt buộc.");
-      return;
-    }
-    if (!newCinema.Province?.trim()) {
-      toast.error("Tỉnh là bắt buộc.");
       return;
     }
     if (!newCinema.Phone_Number?.trim()) {
@@ -385,11 +375,6 @@ const ManageCinemaBranch: React.FC = () => {
 
   if (!newCinema.City?.trim()) {
     toast.error("Thành phố là bắt buộc.");
-    return;
-  }
-
-  if (!newCinema.Province?.trim()) {
-    toast.error("Tỉnh là bắt buộc.");
     return;
   }
 
@@ -773,7 +758,6 @@ const ManageCinemaBranch: React.FC = () => {
                         <td className="table-header-cell">Tên Rạp</td>
                         <td className="table-header-cell">Địa Chỉ</td>
                         <td className="table-header-cell">Thành Phố</td>
-                        <td className="table-header-cell">Tỉnh</td>
                         <td className="table-header-cell">Số Điện Thoại</td>
                         <td className="table-header-cell">Email</td>
                         <td className="table-header-cell">Mô Tả</td>
@@ -790,7 +774,6 @@ const ManageCinemaBranch: React.FC = () => {
                           <td className="table-cell">{cinema.Cinema_Name}</td>
                           <td className="table-cell">{cinema.Address}</td>
                           <td className="table-cell">{cinema.City}</td>
-                          <td className="table-cell">{cinema.Province}</td>
                           <td className="table-cell">{cinema.Phone_Number}</td>
                           <td className="table-cell">{cinema.Email}</td>
                           <td className="table-cell">
@@ -895,29 +878,6 @@ const ManageCinemaBranch: React.FC = () => {
                             <span className="detail-label">Thành Phố:</span>
                             <span className="detail-value">{cinema.City}</span>
                           </div>
-                          <div className="grid-card-detail">
-                            <span className="detail-label">Tỉnh:</span>
-                            <span className="detail-value">
-                              {cinema.Province}
-                            </span>
-                          </div>
-                          <div className="grid-card-detail">
-                            <span className="detail-label">Địa Chỉ:</span>
-                            <span className="detail-value truncate">
-                              {cinema.Address}
-                            </span>
-                          </div>
-                          {cinema.Description && (
-                            <div className="grid-card-detail description">
-                              <span className="detail-label">Mô Tả:</span>
-                              <p
-                                className="detail-value line-clamp"
-                                title={cinema.Description}
-                              >
-                                {cinema.Description}
-                              </p>
-                            </div>
-                          )}
                         </div>
 
                         <div className="grid-card-actions">
@@ -1037,25 +997,6 @@ const ManageCinemaBranch: React.FC = () => {
                 />
                 {fieldErrors.City && (
                   <div className="form-error">{fieldErrors.City}</div>
-                )}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">
-                  Tỉnh <span className="required">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={newCinema.Province || ""}
-                  onChange={(e) =>
-                    setNewCinema({ ...newCinema, Province: e.target.value })
-                  }
-                  className={`form-input ${fieldErrors.Province ? 'form-input-error' : ''}`}
-                  placeholder="Nhập tỉnh"
-                  required
-                />
-                {fieldErrors.Province && (
-                  <div className="form-error">{fieldErrors.Province}</div>
                 )}
               </div>
             </div>
