@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
-import { getNowShowingMovies, getComingSoonMovies } from "../../config/MovieApi";
+import { getMoviesWithFilters } from "../../config/MovieApi";
 import { EmptyState, formatDuration } from "../../components/utils/utils";
 import { PlaySquareOutlined } from "@ant-design/icons";
 import ticket from "../../assets/images/ticket-icon.png";
@@ -51,14 +51,17 @@ const HomePage: React.FC = () => {
   const fetchHomePageData = async () => {
     try {
       setLoading(true);
-      const [nowShowing, comingSoon] = await Promise.all([getNowShowingMovies(), getComingSoonMovies()]);
+      const [nowShowing, comingSoon] = await Promise.all([
+        getMoviesWithFilters({ status: "Now Showing" }),
+        getMoviesWithFilters({ status: "Coming Soon" }),
+      ]);
 
       setNowShowingMovies(Array.isArray(nowShowing) ? nowShowing : []);
       setComingSoonMovies(Array.isArray(comingSoon) ? comingSoon : []);
 
-      // Set featured movies as first 3 now showing movies
+      // Set featured movies as first 5 now showing movies
       if (nowShowing && nowShowing.length > 0) {
-        setFeaturedMovies(nowShowing.slice(0, 3));
+        setFeaturedMovies(nowShowing.slice(0, 5));
       }
     } catch (error) {
       console.error("Error fetching homepage data:", error);
@@ -83,13 +86,13 @@ const HomePage: React.FC = () => {
       });
     }
   };
-
   const renderStars = (rating: number) => {
     const stars = [];
+    // Convert 10-scale rating to 5-star scale
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
 
-    // Show stars on 10-scale
+    // Show stars on 5-scale
     for (let i = 0; i < fullStars; i++) {
       stars.push(
         <span key={i} className="star filled">
@@ -106,7 +109,7 @@ const HomePage: React.FC = () => {
       );
     }
 
-    const remainingStars = 10 - Math.ceil(rating);
+    const remainingStars = 5 - Math.ceil(rating);
     for (let i = 0; i < remainingStars; i++) {
       stars.push(
         <span key={`empty-${i}`} className="star empty">
@@ -118,7 +121,7 @@ const HomePage: React.FC = () => {
     return (
       <span className="stars-container">
         {stars}
-        <span className="rating-number">{rating}/10</span>
+        <span className="rating-number">{rating.toFixed(1)}/5</span>
       </span>
     );
   };
@@ -240,7 +243,7 @@ const HomePage: React.FC = () => {
                           Trailer
                         </button>
                       </div>
-                      <div className="movie-rating">⭐ {movie.Average_Rating}/10</div>
+                      <div className="movie-rating">⭐ {(movie.Average_Rating / 2).toFixed(1)}/5</div>
                     </div>
                     <div className="movie-info">
                       <h3 className="movie-title">{movie.Movie_Name}</h3>
@@ -431,17 +434,16 @@ const HomePage: React.FC = () => {
           z-index: 2;
           max-width: 600px;
           padding: 2rem;
-        }
-
-        .movie-badge {
-          background: #ffd700;
-          color: #000;
+        }        .movie-badge {
+          background: none;
+          color: #ffd700;
           padding: 0.4rem 0.8rem;
-          border-radius: 15px;
+          border-radius: 12px;
           font-size: 0.8rem;
           font-weight: bold;
           display: inline-block;
           margin-bottom: 0.8rem;
+          border: 1px solid #ffd700;
         }
 
         .hero-title {
@@ -449,21 +451,25 @@ const HomePage: React.FC = () => {
           font-weight: bold;
           margin: 0.5rem 0;
           text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
-        }
-
-        .hero-meta {
+        }        .hero-meta {
           display: flex;
           align-items: center;
           gap: 0.8rem;
           margin: 0.8rem 0;
           flex-wrap: wrap;
+        }        
+        .hero-meta span {
+          background: none;
+          padding: 0.3rem 0.8rem;
+          border-radius: 15px;
+          font-size: 0.85rem;
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          color: #fff;
         }
 
-        .hero-meta span {
-          background: rgba(255, 255, 255, 0.1);
-          padding: 0.2rem 0.6rem;
-          border-radius: 12px;
-          font-size: 0.8rem;
+        .hero-meta span.rating {
+          border: none;
+          padding: 0.3rem 0;
         }
 
         .hero-description {
@@ -484,14 +490,12 @@ const HomePage: React.FC = () => {
           display: flex;
           gap: 0.8rem;
           margin-top: 1.5rem;
-        }
-
-        .btn-primary {
-          background: #ffd700;
-          color: #000;
-          border: none;
+        }        .btn-primary {
+          background: none;
+          color: #ffd700;
+          border: 2px solid #ffd700;
           padding: 0.7rem 1.2rem;
-          border-radius: 25px;
+          border-radius: 20px;
           font-weight: bold;
           font-size: 0.9rem;
           cursor: pointer;
@@ -499,16 +503,15 @@ const HomePage: React.FC = () => {
         }
 
         .btn-primary:hover {
-          background: #ffa500;
+          background: #ffd700;
+          color: #000;
           transform: translateY(-2px);
-        }
-
-        .btn-secondary {
-          background: rgba(255, 255, 255, 0.2);
+        }        .btn-secondary {
+          background: none;
           color: #fff;
-          border: 2px solid rgba(255, 255, 255, 0.3);
+          border: 2px solid rgba(255, 255, 255, 0.5);
           padding: 0.7rem 1.2rem;
-          border-radius: 25px;
+          border-radius: 20px;
           font-weight: bold;
           cursor: pointer;
           transition: all 0.3s;
@@ -516,8 +519,9 @@ const HomePage: React.FC = () => {
         }
 
         .btn-secondary:hover {
-          background: rgba(255, 255, 255, 0.1);
+          background: none;
           border-color: #ffd700;
+          color: #ffd700;
         }
 
         /* Carousel Navigation */
@@ -551,15 +555,13 @@ const HomePage: React.FC = () => {
           height: 100%;
           object-fit: cover;
           transition: all 0.3s;
-        }
-
-        .indicator-overlay {
+        }        .indicator-overlay {
           position: absolute;
           top: 0;
           left: 0;
           right: 0;
           bottom: 0;
-          background: rgba(0, 0, 0, 0.3);
+          background: none;
           transition: all 0.3s;
         }
 
@@ -570,7 +572,7 @@ const HomePage: React.FC = () => {
         }
 
         .indicator.active .indicator-overlay {
-          background: rgba(255, 215, 0, 0.2);
+          background: none;
         }
 
         .indicator:hover {
@@ -579,7 +581,7 @@ const HomePage: React.FC = () => {
         }
 
         .indicator:hover .indicator-overlay {
-          background: rgba(255, 215, 0, 0.1);
+          background: none;
         }
 
         /* Movies Section */
@@ -603,14 +605,12 @@ const HomePage: React.FC = () => {
           font-size: 2.5rem;
           font-weight: bold;
           color: #ffd700;
-        }
-
-        .view-all-btn {
+        }        .view-all-btn {
           background: none;
           color: #ffd700;
           border: 1px solid #ffd700;
           padding: 0.75rem 1.5rem;
-          border-radius: 25px;
+          border-radius: 20px;
           cursor: pointer;
           transition: all 0.3s;
           font-weight: 500;
@@ -628,9 +628,7 @@ const HomePage: React.FC = () => {
           align-items: center;
           gap: 1rem;
           margin: 0 60px;
-        }
-
-        .carousel-side-btn {
+        }        .carousel-side-btn {
           position: absolute;
           top: 50%;
           transform: translateY(-50%);
@@ -638,7 +636,7 @@ const HomePage: React.FC = () => {
           height: 50px;
           border-radius: 50%;
           border: 2px solid #ffd700;
-          background: rgba(0, 0, 0, 0.8);
+          background: none;
           color: #ffd700;
           font-size: 1.5rem;
           cursor: pointer;
@@ -647,7 +645,6 @@ const HomePage: React.FC = () => {
           align-items: center;
           justify-content: center;
           z-index: 10;
-          backdrop-filter: blur(10px);
         }
 
         .carousel-side-btn.left {
@@ -740,15 +737,13 @@ const HomePage: React.FC = () => {
         .movie-card:hover .movie-overlay {
           opacity: 1;
           pointer-events: auto;
-        }
-
-        .btn-buy-ticket,
+        }        .btn-buy-ticket,
         .btn-info,
         .btn-trailer {
-          background-color: transparent;
+          background: none;
           color: white;
           padding: 10px 15px;
-          border: 1px solid white;
+          border: 1px solid rgba(255, 255, 255, 0.6);
           border-radius: 5px;
           cursor: pointer;
           font-size: 1em;
@@ -762,7 +757,7 @@ const HomePage: React.FC = () => {
         .btn-buy-ticket:hover,
         .btn-info:hover,
         .btn-trailer:hover {
-          background-color: rgba(255, 255, 255, 0.1);
+          background: none;
           border-color: #ffd700;
           color: #ffd700;
         }
@@ -798,30 +793,29 @@ const HomePage: React.FC = () => {
           color: #fff;
           font-weight: bold;
           font-size: 1rem;
-        }
-
+        }        
         .movie-rating {
           position: absolute;
           top: 15px;
           right: 15px;
-          background: rgba(0, 0, 0, 0.8);
+          background: none;
           color: #ffd700;
-          padding: 0.4rem 0.8rem;
-          border-radius: 20px;
-          font-size: 0.9rem;
-          font-weight: bold;
-        }
-
-        .coming-soon-badge {
+          padding: 0.3rem 0.6rem;
+          border-radius: 12px;
+          font-size: 0.85rem;
+          font-weight: 600;
+          border: 1px solid rgba(255, 215, 0, 0.5);
+        }        .coming-soon-badge {
           position: absolute;
           top: 15px;
           left: 15px;
-          background: #ffd700;
-          color: #000;
-          padding: 0.4rem 0.8rem;
-          border-radius: 20px;
-          font-size: 0.8rem;
-          font-weight: bold;
+          background: none;
+          color: #ffd700;
+          padding: 0.3rem 0.6rem;
+          border-radius: 12px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          border: 1px solid #ffd700;
         }
 
         .movie-info {
@@ -844,35 +838,43 @@ const HomePage: React.FC = () => {
           color: #ccc;
           font-size: 0.9rem;
           margin: 0.3rem 0;
-        }
-
-        /* Stars */
+        }        /* Stars */
         .star {
-          color: #ffc107;
+          color: #ffd700;
           font-size: 1rem;
+          text-shadow: none;
+          background: none;
+          border: none;
+          padding: 0;
+          margin: 0;
         }
 
         .star.filled {
-          color: #ffc107;
+          border: none;
+          color: #ffd700;
         }
 
         .star.half {
-          color: #ffc107;
-          opacity: 0.5;
+          border: none;
+          color: #ffd700;
+          opacity: 0.6;
         }
 
         .star.empty {
-          color: #333;
+          border: none;
+          color: #555;
         }
 
-        .stars-container {
+        span.stars-container {
           display: inline-flex;
           align-items: center;
-          gap: 0.5rem;
+          gap: 0.3rem;
+          padding: 0;
         }
 
-        .rating-number {
-          color: #ffc107;
+        span.rating-number {
+          border: none; 
+          color: #ffd700;
           font-weight: 600;
           font-size: 0.9rem;
         }

@@ -121,6 +121,17 @@ const getShowtimesByRoom = async (roomId: string, date?: string) => {
   }
 };
 
+const getAllShowtimesByRoom = async (roomId: string) => {
+  try {
+    const response = await api.get(`showtimes/room/${roomId}/dates`);
+    return response.data;
+  }
+catch (error) {
+    console.error(`Error fetching all showtimes for room ${roomId}:`, error);
+    throw error;
+  }
+};
+
 // Get available dates for a movie
 const getMovieShowtimeDates = async (movieId: string) => {
   try {
@@ -190,6 +201,7 @@ export {
   hideExpiredShowtimes,
   getShowtimesByMovie,
   getShowtimesByRoom,
+  getAllShowtimesByRoom,
   getMovieShowtimeDates,
   getShowtimesByMovieAndDate,
   searchShowtimes,

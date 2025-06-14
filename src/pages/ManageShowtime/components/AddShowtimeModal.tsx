@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { formatDate, LoadingSpinner, convertToDateInputFormat } from "../../../components/utils/utils";
 import { getAllMovies } from "../../../config/MovieApi";
-import { getShowtimeRooms } from "../../../config/ShowtimeApi";
+import { getManagerCinemaRooms } from "../../../config/CinemasApi";
 
 interface AddShowtimeModalProps {
   isOpen: boolean;
@@ -33,7 +33,11 @@ interface Movie {
 interface CinemaRoom {
   Cinema_Room_ID: number;
   Room_Name: string;
+  Seat_Quantity: number;
   Room_Type: string;
+  Status: string;
+  Notes: string;
+  Cinema_ID: number;
 }
 
 const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, onAddShowtime }) => {
@@ -76,10 +80,8 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
   const fetchMovies = async () => {
     try {
       setLoadingMovies(true);
-      const data = await getAllMovies();
-      // Filter only now-showing movies
-      const activeMovies = data.filter((movie: Movie) => movie.Status === "Now Showing");
-      setMovies(activeMovies);
+      const data = await getAllMovies({ status: "Now Showing"});
+      setMovies(data);
     } catch (error: any) {
       console.error("Error fetching movies:", error);
       setMovies([]);
@@ -91,11 +93,14 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
   const fetchCinemaRooms = async () => {
     try {
       setLoadingRooms(true);
-      const data = await getShowtimeRooms();
-      // The getShowtimeRooms API should return rooms that are available for showtime scheduling
-      setCinemaRooms(data);
+      // Use manager-specific API to get only rooms managed by current manager
+      const data = await getManagerCinemaRooms();
+
+      const activeRooms = data.filter((room: CinemaRoom) => room.Status == "Active");
+      // Ensure data is an array before setting state
+      setCinemaRooms(Array.isArray(activeRooms) ? activeRooms : []);
     } catch (error: any) {
-      console.error("Error fetching cinema rooms:", error);
+      console.error("Error fetching manager cinema rooms:", error);
       setCinemaRooms([]);
     } finally {
       setLoadingRooms(false);
@@ -408,7 +413,6 @@ const AddShowtimeModal: React.FC<AddShowtimeModalProps> = ({ isOpen, onClose, on
                 {isSubmitting ? (
                   <>
                     <LoadingSpinner size="small" />
-                    Đang thêm...
                   </>
                 ) : (
                   "Thêm suất chiếu"

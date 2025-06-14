@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useState, useEffect } from "react";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import "./ViewMoviePage.css";
 import ticket from "../../assets/images/ticket-icon.png";
-import Header from "../../components/Header/Header";
 import { PlaySquareOutlined } from "@ant-design/icons";
 import api from "../../config/axios";
 import loading from "../../assets/images/loading.gif";
@@ -34,6 +33,7 @@ const filters = [
 
 const ViewMoviePage = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const statusFromUrl = decodeURIComponent(searchParams.get("status") || "Coming Soon");
   const [activeFilter, setActiveFilter] = useState(statusFromUrl);
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -68,6 +68,10 @@ const ViewMoviePage = () => {
     }
   }, [searchParams]);
 
+  const handleBuyTicket = (movieId: number) => {
+    navigate(`/showtimes?movieId=${movieId}`);
+  };
+
   if (isLoading) {
     return (
       <div className="loading-wrapper">
@@ -82,7 +86,6 @@ const ViewMoviePage = () => {
 
   return (
     <>
-      <Header />
       <div className="movie-filter-bar">
         <span className="movie-filter-title">
           <span className="blue-bar" /> PHIM
@@ -112,7 +115,7 @@ const ViewMoviePage = () => {
                 }}
               />
               <div className="movie-overlay">
-                <button className="btn-buy-ticket">
+                <button className="btn-buy-ticket" onClick={() => handleBuyTicket(movie.Movie_ID)}>
                   <img src={ticket} alt="ticket icon" className="ticket-icon" /> Mua vé
                 </button>
                 <button className="btn-trailer" onClick={() => window.open(movie.Trailer_Link, "_blank")}>
