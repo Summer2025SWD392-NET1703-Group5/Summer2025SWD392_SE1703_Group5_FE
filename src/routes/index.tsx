@@ -15,8 +15,10 @@ import ManageMoviePage from "../pages/ManageMovie/ManageMoviePage";
 import ManagePromotion from "../pages/ManagePromotion/ManagePromotion";
 import ManagerLayout from "../components/Layout/ManagerLayout/ManagerLayout";
 import ManageCinemaRoom from "../pages/ManageCinemaRoom/ManageCinemaRoom";
+import BookingMovie from "../pages/BookingMovie/BookingMovie";
 import QRCodeScanner from "../pages/QRCodeScan/QRCodeScan";
 import ManagerDashboard from "../pages/ManagerDashboard/ManagerDashboard";
+import ShowtimesPage from "../pages/ShowtimesPage/ShowtimesPage";
 import StaffBooking from "../pages/StaffBooking/StaffBooking";
 
 
@@ -29,9 +31,11 @@ const AppRoutes = () => {
       <Route element={<Layout key={location.pathname} showNavbar={true} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<Profile />} />
+        <Route path="/profile" element={<Profile />} /> 
         <Route path="/movie" element={<ViewMoviePage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
+        <Route path="/booking" element={<BookingMovie />} />
+        <Route path="/showtimes" element={<ShowtimesPage />} />
         {/* Staff routes inside main Layout */}
         <Route path="/staff/scan" element={<QRCodeScanner />} />
       </Route>
