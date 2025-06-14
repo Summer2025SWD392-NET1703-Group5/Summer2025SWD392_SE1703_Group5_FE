@@ -1,8 +1,7 @@
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import "./ViewMoviePage.css";
 import ticket from "../../assets/images/ticket-icon.png";
-import Header from "../../components/Header/Header";
 import { PlaySquareOutlined } from "@ant-design/icons";
 import api from "../../config/axios";
 import loading from "../../assets/images/loading.gif";
@@ -87,7 +86,6 @@ const ViewMoviePage = () => {
 
   return (
     <>
-      <Header />
       <div className="movie-filter-bar">
         <span className="movie-filter-title">
           <span className="blue-bar" /> PHIM

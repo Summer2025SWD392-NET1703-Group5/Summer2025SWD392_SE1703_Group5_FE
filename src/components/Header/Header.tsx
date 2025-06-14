@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
-import './Header.css';
-import { SearchOutlined } from '@ant-design/icons';
-import logo from '../../assets/images/Logo.png';
-import buybutton from '../../assets/images/buybutton.png';
-import LoginPage from '../../pages/LoginPage/LoginPage';
-import RegisterPage from '../../pages/RegisterPage/RegisterPage';
-import ForgotPasswordPage from '../../pages/ForgotPasswordPage/ForgotPasswordPage';
+import React, { useState, useEffect, useRef } from "react";
+import "./Header.css";
+import { SearchOutlined } from "@ant-design/icons";
+import logo from "../../assets/images/Logo.png";
+import buybutton from "../../assets/images/buybutton.png";
+import LoginPage from "../../pages/LoginPage/LoginPage";
+import RegisterPage from "../../pages/RegisterPage/RegisterPage";
+import ForgotPasswordPage from "../../pages/ForgotPasswordPage/ForgotPasswordPage";
 import { useNavigate } from "react-router-dom";
 interface HeaderProps {
   onLoginClick?: () => void;
@@ -14,7 +14,30 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
   const [showLogin, setShowLogin] = useState(false);
   const [showRegister, setShowRegister] = useState(false);
   const [showForgot, setShowForgot] = useState(false);
+  const [isSticky, setIsSticky] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        // When sentinel is not visible, header is sticky
+        setIsSticky(!entry.isIntersecting);
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(sentinel);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
+
   const goToHome = () => {
     navigate("/");
   };
@@ -23,15 +46,20 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
   };
 
   // Fallback login click handler if onLoginClick is not provided
-  const handleLoginClick = onLoginClick || (() => {
-    setShowLogin(true);
-    setShowRegister(false);
-    setShowForgot(false);
-  });
+  const handleLoginClick =
+    onLoginClick ||
+    (() => {
+      setShowLogin(true);
+      setShowRegister(false);
+      setShowForgot(false);
+    });
 
   return (
     <>
-      <header className="header">
+      {/* Sentinel element to detect sticky state */}
+      <div ref={sentinelRef} style={{ position: "absolute", top: 0, height: "1px", visibility: "hidden" }} />
+
+      <header ref={headerRef} className={`header ${isSticky ? "sticky-active" : ""}`}>
         <div className="header__logo">
           <img src={logo} alt="Logo" className="header__logo-img" onClick={goToHome} />
           <div>
@@ -39,7 +67,9 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           </div>
         </div>
         <div className="header__search">
-          <button className="header__search-icon"><SearchOutlined /></button>
+          <button className="header__search-icon">
+            <SearchOutlined />
+          </button>
           <input type="text" placeholder="Tìm kiếm phim, diễn viên" />
         </div>
         <nav className="header__nav">
@@ -50,7 +80,9 @@ const Header: React.FC<HeaderProps> = ({ onLoginClick }) => {
           <a href="#">Phim Lẻ</a>
           <a href="#">Phim Bộ</a>
           <div className="header__dropdown">
-            <a href="#">Quốc gia <span>▼</span></a>
+            <a href="#">
+              Quốc gia <span>▼</span>
+            </a>
           </div>
           <a href="#">Diễn Viên</a>
           <a href="#">Lịch chiếu</a>

@@ -21,7 +21,6 @@ import ManagerDashboard from "../pages/ManagerDashboard/ManagerDashboard";
 import ShowtimesPage from "../pages/ShowtimesPage/ShowtimesPage";
 import StaffBooking from "../pages/StaffBooking/StaffBooking";
 
-
 const AppRoutes = () => {
   const location = useLocation();
 
@@ -31,19 +30,16 @@ const AppRoutes = () => {
       <Route element={<Layout key={location.pathname} showNavbar={true} />}>
         <Route path="/" element={<HomePage />} />
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/profile" element={<Profile />} /> 
+        <Route path="/profile" element={<Profile />} />
         <Route path="/movie" element={<ViewMoviePage />} />
         <Route path="/movie/:id" element={<MovieDetail />} />
         <Route path="/booking" element={<BookingMovie />} />
         <Route path="/showtimes" element={<ShowtimesPage />} />
-        {/* Staff routes inside main Layout */}
-        <Route path="/staff/scan" element={<QRCodeScanner />} />
-      </Route>
 
-      {/* Staff routes */}
-      <Route element={<Layout key={location.pathname} showNavbar={true} />}>
+        {/* Staff routes inside main Layout */}
         <Route path="/staff" element={<StaffBooking />} />
         <Route path="/staff/booking" element={<StaffBooking />} />
+        <Route path="/staff/scan" element={<QRCodeScanner />} />
       </Route>
 
       {/* Admin routes with nested structure */}
@@ -62,12 +58,8 @@ const AppRoutes = () => {
 
       {/* Manager routes with nested structure */}
       <Route path="/manager" element={<ManagerLayout />}>
-
-        <Route index element={<ManageCinemaRoom/>} />
-
         <Route index element={<ManagerDashboard />} />
         <Route path="manager-dashboard" element={<ManagerDashboard />} />
-
         <Route path="showtimes" element={<ManageShowtime />} />
         <Route path="cinemarooms" element={<ManageCinemaRoom />} />
       </Route>

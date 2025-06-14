@@ -3,14 +3,16 @@ import { LoadingSpinner, showSuccessToast, showErrorToast } from "../../componen
 import { getMoviesWithFilters } from "../../config/MovieApi";
 import { getShowtimesByMovieAndDate, getMovieShowtimeDates } from "../../config/ShowtimeApi";
 
-// CSS Styles as objects
+// CSS Styles as objects - Updated to match QRCodeScan theme
 const styles: { [key: string]: CSSProperties } = {
   staffBooking: {
-    padding: "2rem",
-    backgroundColor: "#f8fafc",
+    padding: "8rem 2rem 4rem 2rem",
+    background: "linear-gradient(135deg, #001F54 0%, #0A1128 100%)",
     minHeight: "100vh",
     fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-    color: "#1e293b",
+    color: "#ffffff",
+    position: "relative",
+    overflow: "hidden",
   },
   bookingHeader: {
     marginBottom: "2rem",
@@ -20,8 +22,8 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "2.5rem",
     fontWeight: "700",
     marginBottom: "2rem",
-    color: "#d97706",
-    textShadow: "0 2px 4px rgba(0,0,0,0.1)",
+    color: "#FFD700",
+    textShadow: "0 2px 4px rgba(0,0,0,0.3)",
   },
   stepIndicator: {
     display: "flex",
@@ -37,19 +39,23 @@ const styles: { [key: string]: CSSProperties } = {
     gap: "0.5rem",
     padding: "0.75rem 1rem",
     borderRadius: "12px",
-    backgroundColor: "#e2e8f0",
-    color: "#64748b",
+    backgroundColor: "rgba(26, 44, 56, 0.6)",
+    color: "rgba(255, 255, 255, 0.8)",
     transition: "all 0.3s ease",
+    border: "1px solid rgba(79, 106, 126, 0.3)",
+    backdropFilter: "blur(10px)",
   },
   stepActive: {
-    backgroundColor: "#eab308",
-    color: "white",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
     transform: "scale(1.05)",
-    boxShadow: "0 4px 12px rgba(234, 179, 8, 0.3)",
+    boxShadow: "0 4px 12px rgba(255, 215, 0, 0.3)",
+    border: "1px solid #FFD700",
   },
   stepCompleted: {
-    backgroundColor: "#10b981",
+    backgroundColor: "#00A896",
     color: "white",
+    border: "1px solid #00A896",
   },
   stepNumber: {
     width: "2rem",
@@ -75,11 +81,12 @@ const styles: { [key: string]: CSSProperties } = {
     opacity: 0.8,
   },
   bookingContent: {
-    backgroundColor: "white",
+    background: "rgba(26, 44, 56, 0.9)",
     borderRadius: "16px",
     padding: "2rem",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.1)",
-    border: "1px solid #e2e8f0",
+    boxShadow: "0 20px 60px rgba(0, 0, 0, 0.2)",
+    border: "1px solid rgba(79, 106, 126, 0.5)",
+    backdropFilter: "blur(10px)",
   },
   stepContent: {
     minHeight: "400px",
@@ -88,7 +95,7 @@ const styles: { [key: string]: CSSProperties } = {
     fontSize: "1.875rem",
     fontWeight: "600",
     marginBottom: "1.5rem",
-    color: "#d97706",
+    color: "#FFD700",
     textAlign: "center" as const,
   },
   // Layout for movies left, showtimes right
@@ -99,30 +106,32 @@ const styles: { [key: string]: CSSProperties } = {
     minHeight: "70vh",
   },
   moviesPanel: {
-    backgroundColor: "#f8fafc",
-    border: "2px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.7)",
+    border: "2px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "12px",
     padding: "1.5rem",
     height: "fit-content",
     maxHeight: "70vh",
     overflowY: "auto" as const,
+    backdropFilter: "blur(10px)",
   },
   showtimesPanel: {
-    backgroundColor: "#f8fafc",
-    border: "2px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.7)",
+    border: "2px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "12px",
     padding: "1.5rem",
     height: "fit-content",
     maxHeight: "70vh",
     overflowY: "auto" as const,
+    backdropFilter: "blur(10px)",
   },
   panelTitle: {
     fontSize: "1.5rem",
     fontWeight: "600",
     marginBottom: "1.5rem",
-    color: "#d97706",
+    color: "#FFD700",
     textAlign: "center" as const,
-    borderBottom: "2px solid #e2e8f0",
+    borderBottom: "2px solid rgba(79, 106, 126, 0.5)",
     paddingBottom: "0.75rem",
   },
   dateFilterContainer: {
@@ -131,14 +140,14 @@ const styles: { [key: string]: CSSProperties } = {
     gap: "1rem",
     marginBottom: "1.5rem",
     padding: "1rem",
-    backgroundColor: "#fefce8",
+    background: "rgba(255, 215, 0, 0.1)",
     borderRadius: "8px",
-    border: "1px solid #fde047",
+    border: "1px solid rgba(255, 215, 0, 0.3)",
   },
   dateFilterLabel: {
     fontSize: "0.875rem",
     fontWeight: "600",
-    color: "#a16207",
+    color: "#FFD700",
   },
   datePickerContainer: {
     position: "relative" as const,
@@ -148,10 +157,10 @@ const styles: { [key: string]: CSSProperties } = {
   datePickerButton: {
     padding: "0.75rem 1rem",
     borderRadius: "8px",
-    border: "2px solid #eab308",
+    border: "2px solid #FFD700",
     fontSize: "0.875rem",
-    backgroundColor: "white",
-    color: "#1e293b",
+    background: "rgba(26, 44, 56, 0.8)",
+    color: "#ffffff",
     cursor: "pointer",
     width: "100%",
     textAlign: "left" as const,
@@ -161,8 +170,8 @@ const styles: { [key: string]: CSSProperties } = {
     transition: "all 0.2s ease",
   },
   datePickerButtonActive: {
-    border: "2px solid #ca8a04",
-    boxShadow: "0 0 0 3px rgba(234, 179, 8, 0.1)",
+    border: "2px solid #FFD700",
+    boxShadow: "0 0 0 3px rgba(255, 215, 0, 0.1)",
   },
   datePickerDropdown: {
     position: "absolute" as const,
@@ -170,15 +179,16 @@ const styles: { [key: string]: CSSProperties } = {
     left: 0,
     right: 0,
     zIndex: 10,
-    backgroundColor: "white",
-    border: "2px solid #eab308",
+    background: "rgba(26, 44, 56, 0.95)",
+    border: "2px solid #FFD700",
     borderRadius: "8px",
     marginTop: "0.25rem",
-    boxShadow: "0 10px 25px rgba(0,0,0,0.15)",
+    boxShadow: "0 10px 25px rgba(0,0,0,0.3)",
     maxHeight: "350px",
     overflowY: "auto" as const,
     minWidth: "280px",
     maxWidth: "320px",
+    backdropFilter: "blur(10px)",
   },
   calendarContainer: {
     padding: "0.75rem",
@@ -191,8 +201,8 @@ const styles: { [key: string]: CSSProperties } = {
     padding: "0.25rem 0",
   },
   calendarNavButton: {
-    backgroundColor: "#eab308",
-    color: "white",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
     border: "none",
     borderRadius: "4px",
     padding: "0.375rem 0.5rem",
@@ -205,7 +215,7 @@ const styles: { [key: string]: CSSProperties } = {
   calendarTitle: {
     fontSize: "0.875rem",
     fontWeight: "600",
-    color: "#a16207",
+    color: "#FFD700",
   },
   calendarGrid: {
     display: "grid",
@@ -218,8 +228,8 @@ const styles: { [key: string]: CSSProperties } = {
     textAlign: "center" as const,
     fontSize: "0.7rem",
     fontWeight: "600",
-    color: "#64748b",
-    backgroundColor: "#f8fafc",
+    color: "rgba(255, 255, 255, 0.8)",
+    background: "rgba(26, 44, 56, 0.8)",
   },
   calendarDay: {
     padding: "0.5rem 0.25rem",
@@ -233,73 +243,75 @@ const styles: { [key: string]: CSSProperties } = {
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
+    color: "#ffffff",
   },
   calendarDayDisabled: {
-    color: "#cbd5e1",
+    color: "rgba(255, 255, 255, 0.3)",
     cursor: "not-allowed",
-    backgroundColor: "#f8fafc",
+    background: "rgba(26, 44, 56, 0.5)",
   },
   calendarDayToday: {
-    backgroundColor: "#fef3c7",
-    color: "#a16207",
+    background: "rgba(255, 215, 0, 0.2)",
+    color: "#FFD700",
     fontWeight: "600",
-    border: "1px solid #eab308",
+    border: "1px solid #FFD700",
   },
   calendarDaySelected: {
-    backgroundColor: "#eab308",
-    color: "white",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
     fontWeight: "600",
   },
   calendarDayHover: {
-    backgroundColor: "#fef3c7",
-    color: "#a16207",
+    background: "rgba(255, 215, 0, 0.2)",
+    color: "#FFD700",
     transform: "scale(1.05)",
   },
   datePickerHeader: {
     padding: "1rem",
-    borderBottom: "1px solid #fef3c7",
-    backgroundColor: "#fefce8",
+    borderBottom: "1px solid rgba(255, 215, 0, 0.3)",
+    background: "rgba(255, 215, 0, 0.1)",
   },
   datePickerTitle: {
     fontSize: "0.875rem",
     fontWeight: "600",
-    color: "#a16207",
+    color: "#FFD700",
     marginBottom: "0.5rem",
   },
   customDateInput: {
     width: "100%",
     padding: "0.5rem",
-    border: "1px solid #eab308",
+    border: "1px solid #FFD700",
     borderRadius: "6px",
     fontSize: "0.875rem",
-    backgroundColor: "white",
-    color: "#1e293b",
+    background: "rgba(26, 44, 56, 0.8)",
+    color: "#ffffff",
   },
   quickDatesSection: {
     padding: "1rem",
-    borderBottom: "1px solid #fef3c7",
+    borderBottom: "1px solid rgba(255, 215, 0, 0.3)",
   },
   quickDatesSectionTitle: {
     fontSize: "0.75rem",
     fontWeight: "600",
-    color: "#a16207",
+    color: "#FFD700",
     marginBottom: "0.5rem",
   },
   dateOption: {
     padding: "0.75rem 1rem",
     cursor: "pointer",
-    borderBottom: "1px solid #fef3c7",
+    borderBottom: "1px solid rgba(255, 215, 0, 0.3)",
     transition: "all 0.2s ease",
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
+    color: "#ffffff",
   },
   dateOptionHover: {
-    backgroundColor: "#fef3c7",
+    background: "rgba(255, 215, 0, 0.2)",
   },
   dateOptionSelected: {
-    backgroundColor: "#eab308",
-    color: "white",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
   },
   quickDateButtons: {
     display: "flex",
@@ -308,55 +320,59 @@ const styles: { [key: string]: CSSProperties } = {
   },
   quickDateButton: {
     padding: "0.375rem 0.75rem",
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.8)",
+    border: "1px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "6px",
     fontSize: "0.75rem",
     fontWeight: "500",
     cursor: "pointer",
     transition: "all 0.2s ease",
-    color: "#64748b",
+    color: "rgba(255, 255, 255, 0.8)",
   },
   quickDateButtonActive: {
-    backgroundColor: "#eab308",
-    color: "white",
-    border: "1px solid #ca8a04",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
+    border: "1px solid #FFD700",
   },
   movieCard: {
-    backgroundColor: "#ffffff",
-    border: "2px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.8)",
+    border: "2px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "12px",
     padding: "1.5rem",
     cursor: "pointer",
     transition: "all 0.3s ease",
     textAlign: "center" as const,
+    backdropFilter: "blur(10px)",
   },
   movieCardHover: {
-    backgroundColor: "#fef3c7",
+    background: "rgba(255, 215, 0, 0.1)",
     transform: "translateY(-4px)",
-    boxShadow: "0 8px 20px rgba(234, 179, 8, 0.2)",
+    boxShadow: "0 8px 20px rgba(255, 215, 0, 0.2)",
+    border: "2px solid rgba(255, 215, 0, 0.3)",
   },
   movieCardSelected: {
-    backgroundColor: "#fef3c7",
-    border: "2px solid #eab308",
-    boxShadow: "0 4px 12px rgba(234, 179, 8, 0.25)",
+    background: "rgba(255, 215, 0, 0.1)",
+    border: "2px solid #FFD700",
+    boxShadow: "0 4px 12px rgba(255, 215, 0, 0.25)",
   },
   showtimeCard: {
-    backgroundColor: "#ffffff",
-    border: "2px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.8)",
+    border: "2px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "12px",
     padding: "1.5rem",
     cursor: "pointer",
     transition: "all 0.3s ease",
+    backdropFilter: "blur(10px)",
   },
   showtimeCardHover: {
-    backgroundColor: "#fef3c7",
+    background: "rgba(255, 215, 0, 0.1)",
     transform: "translateX(4px)",
+    border: "2px solid rgba(255, 215, 0, 0.3)",
   },
   showtimeCardSelected: {
-    backgroundColor: "#fef3c7",
-    border: "2px solid #eab308",
-    boxShadow: "0 4px 12px rgba(234, 179, 8, 0.25)",
+    background: "rgba(255, 215, 0, 0.1)",
+    border: "2px solid #FFD700",
+    boxShadow: "0 4px 12px rgba(255, 215, 0, 0.25)",
   },
   buttonGroup: {
     display: "flex",
@@ -365,8 +381,8 @@ const styles: { [key: string]: CSSProperties } = {
     marginTop: "2rem",
   },
   primaryButton: {
-    backgroundColor: "#eab308",
-    color: "white",
+    backgroundColor: "#FFD700",
+    color: "#0A1128",
     border: "none",
     borderRadius: "8px",
     padding: "0.75rem 2rem",
@@ -376,24 +392,25 @@ const styles: { [key: string]: CSSProperties } = {
     transition: "all 0.3s ease",
   },
   primaryButtonHover: {
-    backgroundColor: "#ca8a04",
+    backgroundColor: "#FBBF24",
     transform: "translateY(-2px)",
-    boxShadow: "0 4px 12px rgba(234, 179, 8, 0.3)",
+    boxShadow: "0 4px 12px rgba(255, 215, 0, 0.3)",
   },
   secondaryButton: {
-    backgroundColor: "#f1f5f9",
-    color: "#475569",
-    border: "2px solid #e2e8f0",
+    background: "rgba(26, 44, 56, 0.8)",
+    color: "#ffffff",
+    border: "2px solid rgba(79, 106, 126, 0.5)",
     borderRadius: "8px",
     padding: "0.75rem 2rem",
     fontSize: "1rem",
     fontWeight: "600",
     cursor: "pointer",
     transition: "all 0.3s ease",
+    backdropFilter: "blur(10px)",
   },
   secondaryButtonHover: {
-    backgroundColor: "#e2e8f0",
-    border: "2px solid #cbd5e1",
+    background: "rgba(79, 106, 126, 0.3)",
+    border: "2px solid rgba(255, 215, 0, 0.3)",
   },
   loadingOverlay: {
     position: "fixed" as const,
@@ -401,7 +418,7 @@ const styles: { [key: string]: CSSProperties } = {
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: "rgba(0,0,0,0.5)",
+    backgroundColor: "rgba(0,0,0,0.7)",
     display: "flex",
     justifyContent: "center",
     alignItems: "center",
@@ -473,6 +490,7 @@ const StaffBooking: React.FC = () => {
 
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [showtimesLoading, setShowtimesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   // Data states
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -624,7 +642,7 @@ const StaffBooking: React.FC = () => {
 
   const loadShowtimesForDate = async (movieId: string, date: string) => {
     try {
-      setLoading(true);
+      setShowtimesLoading(true);
       console.log("🔍 Loading showtimes for movie:", movieId, "on date:", date);
 
       const showtimesData = await getShowtimesByMovieAndDate(movieId, date);
@@ -637,7 +655,7 @@ const StaffBooking: React.FC = () => {
       showErrorToast("Không thể tải suất chiếu cho ngày đã chọn");
       setShowtimes([]);
     } finally {
-      setLoading(false);
+      setShowtimesLoading(false);
     }
   };
 
@@ -661,7 +679,7 @@ const StaffBooking: React.FC = () => {
   };
   const loadShowtimesForMovie = async (movieId: string) => {
     try {
-      setLoading(true);
+      setShowtimesLoading(true);
 
       // First, get available dates for this movie
       console.log("🔍 Loading available dates for movie:", movieId);
@@ -695,7 +713,7 @@ const StaffBooking: React.FC = () => {
       setShowtimes([]);
       setAvailableDates([]);
     } finally {
-      setLoading(false);
+      setShowtimesLoading(false);
     }
   };
 
@@ -705,7 +723,7 @@ const StaffBooking: React.FC = () => {
         return (
           <div style={styles.stepContent}>
             <h2 style={styles.sectionTitle}>Chọn Phim và Suất Chiếu</h2>
-            <p style={{ textAlign: "center", color: "#64748b", marginBottom: "2rem" }}>
+            <p style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.8)", marginBottom: "2rem" }}>
               Chọn phim từ danh sách bên trái, sau đó chọn suất chiếu phù hợp bên phải
             </p>
 
@@ -1041,8 +1059,8 @@ const StaffBooking: React.FC = () => {
                       <div style={{ fontSize: "0.75rem", color: "#64748b" }}>
                         Thời lượng: {bookingData.selectedMovie.Duration} phút
                       </div>
-                      {loading && (
-                        <div style={{ fontSize: "0.75rem", color: "#a16207", marginTop: "0.5rem" }}>
+                      {showtimesLoading && (
+                        <div style={{ fontSize: "0.75rem", color: "#FFD700", marginTop: "0.5rem" }}>
                           Đang tải suất chiếu...
                         </div>
                       )}
@@ -1051,18 +1069,18 @@ const StaffBooking: React.FC = () => {
                     <div
                       style={{ marginBottom: "1rem", padding: "1rem", backgroundColor: "#fef3c7", borderRadius: "8px" }}
                     >
-                      <div style={{ fontSize: "0.875rem", color: "#92400e", textAlign: "center" }}>
+                      <div style={{ fontSize: "0.875rem", color: "#FFD700", textAlign: "center" }}>
                         Vui lòng chọn phim trước để xem suất chiếu
                       </div>
                     </div>
                   )}
                   <div style={{ display: "flex", flexDirection: "column", gap: "0.75rem" }}>
                     {!bookingData.selectedMovie ? (
-                      <div style={{ textAlign: "center", color: "#64748b", padding: "2rem" }}>
+                      <div style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.6)", padding: "2rem" }}>
                         Vui lòng chọn phim để xem suất chiếu
                       </div>
-                    ) : loading ? (
-                      <div style={{ textAlign: "center", color: "#64748b", padding: "2rem" }}>
+                    ) : showtimesLoading ? (
+                      <div style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.6)", padding: "2rem" }}>
                         <LoadingSpinner />
                         <div style={{ marginTop: "1rem" }}>Đang tải suất chiếu...</div>
                       </div>
@@ -1093,7 +1111,9 @@ const StaffBooking: React.FC = () => {
                                 padding: "0.75rem",
                               });
                             }}
-                          >                            <div
+                          >
+                            {" "}
+                            <div
                               style={{
                                 display: "grid",
                                 gridTemplateColumns: "1fr 1fr",
@@ -1102,27 +1122,28 @@ const StaffBooking: React.FC = () => {
                               }}
                             >
                               <div>
-                                <div style={{ color: "#64748b", fontSize: "0.75rem" }}>Ngày</div>
-                                <div style={{ fontWeight: "600" }}>
+                                <div style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "0.75rem" }}>Ngày</div>
+                                <div style={{ fontWeight: "600", color: "#ffffff" }}>
                                   {new Date(showtime.Show_Date).toLocaleDateString("vi-VN")}
                                 </div>
                               </div>
                               <div>
-                                <div style={{ color: "#64748b", fontSize: "0.75rem" }}>Giờ chiếu</div>
-                                <div style={{ fontWeight: "600" }}>
+                                <div style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "0.75rem" }}>Giờ chiếu</div>
+                                <div style={{ fontWeight: "600", color: "#ffffff" }}>
                                   {showtime.Start_Time} - {showtime.End_Time}
                                 </div>
                               </div>
                               <div>
-                                <div style={{ color: "#64748b", fontSize: "0.75rem" }}>Phòng</div>
-                                <div style={{ fontWeight: "600" }}>
-                                  {showtime.Room_Name} ({showtime.Room?.Room_Type || ''})
+                                <div style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "0.75rem" }}>Phòng</div>
+                                <div style={{ fontWeight: "600", color: "#ffffff" }}>
+                                  {showtime.Room_Name} ({showtime.Room?.Room_Type || ""})
                                 </div>
                               </div>
                               <div>
-                                <div style={{ color: "#64748b", fontSize: "0.75rem" }}>Ghế trống</div>
-                                <div style={{ fontWeight: "600", color: "#059669" }}>
-                                  {showtime.AvailableSeats || showtime.Capacity_Available || 0}/{showtime.TotalSeats || 'N/A'}
+                                <div style={{ color: "rgba(255, 255, 255, 0.6)", fontSize: "0.75rem" }}>Ghế trống</div>
+                                <div style={{ fontWeight: "600", color: "#00A896" }}>
+                                  {showtime.AvailableSeats || showtime.Capacity_Available || 0}/
+                                  {showtime.TotalSeats || "N/A"}
                                 </div>
                               </div>
                             </div>
@@ -1130,9 +1151,9 @@ const StaffBooking: React.FC = () => {
                         );
                       })
                     )}
-                  </div>{" "}
-                  {bookingData.selectedMovie && !loading && showtimes.length === 0 && (
-                    <div style={{ textAlign: "center", color: "#64748b", marginTop: "2rem" }}>
+                  </div>
+                  {bookingData.selectedMovie && !showtimesLoading && showtimes.length === 0 && (
+                    <div style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.6)", marginTop: "2rem" }}>
                       Không có suất chiếu nào cho ngày đã chọn
                     </div>
                   )}
@@ -1146,13 +1167,13 @@ const StaffBooking: React.FC = () => {
                 style={{
                   marginTop: "2rem",
                   padding: "1.5rem",
-                  backgroundColor: "#fefce8",
-                  border: "2px solid #fde047",
+                  background: "rgba(255, 215, 0, 0.1)",
+                  border: "2px solid rgba(255, 215, 0, 0.3)",
                   borderRadius: "12px",
                   textAlign: "center",
                 }}
               >
-                <div style={{ color: "#a16207", marginBottom: "1rem" }}>
+                <div style={{ color: "#FFD700", marginBottom: "1rem" }}>
                   <strong>Đã chọn:</strong> {bookingData.selectedMovie.Title} -{" "}
                   {new Date(bookingData.selectedShowtime.Show_Date).toLocaleDateString("vi-VN")}{" "}
                   {bookingData.selectedShowtime.Start_Time}
@@ -1189,7 +1210,7 @@ const StaffBooking: React.FC = () => {
         return (
           <div style={styles.stepContent}>
             <h2 style={styles.sectionTitle}>Chức năng đang được phát triển</h2>
-            <p style={{ textAlign: "center", color: "#64748b", marginBottom: "2rem" }}>
+            <p style={{ textAlign: "center", color: "rgba(255, 255, 255, 0.8)", marginBottom: "2rem" }}>
               Các bước tiếp theo sẽ được bổ sung trong các phiên bản sau.
             </p>
             <div style={styles.buttonGroup}>
@@ -1219,25 +1240,27 @@ const StaffBooking: React.FC = () => {
             style={{
               textAlign: "center",
               padding: "2rem",
-              backgroundColor: "#fef2f2",
-              border: "2px solid #fecaca",
+              background: "rgba(230, 57, 70, 0.1)",
+              border: "2px solid rgba(230, 57, 70, 0.3)",
               borderRadius: "12px",
               maxWidth: "400px",
+              backdropFilter: "blur(10px)",
             }}
           >
-            <h2 style={{ color: "#dc2626", marginBottom: "1rem" }}>Có lỗi xảy ra</h2>
-            <p style={{ marginBottom: "1.5rem", color: "#7f1d1d" }}>{error}</p>
+            <h2 style={{ color: "#E63946", marginBottom: "1rem" }}>Có lỗi xảy ra</h2>
+            <p style={{ marginBottom: "1.5rem", color: "rgba(255, 255, 255, 0.8)" }}>{error}</p>
             <button
               style={{
                 ...styles.primaryButton,
-                backgroundColor: "#dc2626",
+                backgroundColor: "#E63946",
+                color: "#ffffff",
               }}
               onClick={loadMovies}
               onMouseEnter={(e) => {
-                Object.assign(e.currentTarget.style, { backgroundColor: "#b91c1c" });
+                Object.assign(e.currentTarget.style, { backgroundColor: "#DC2626" });
               }}
               onMouseLeave={(e) => {
-                Object.assign(e.currentTarget.style, { backgroundColor: "#dc2626" });
+                Object.assign(e.currentTarget.style, { backgroundColor: "#E63946" });
               }}
             >
               Thử lại

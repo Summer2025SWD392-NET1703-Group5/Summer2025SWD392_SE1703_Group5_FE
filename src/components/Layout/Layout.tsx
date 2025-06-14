@@ -2,7 +2,7 @@ import React, { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import Header from "../../components/Header/Header";
 import HeaderLoginUser from "../../components/Header-Login/Header-Login-User";
-import HeaderLoginStaff from "../../components/Header-Login/Header-Login-Staff";
+import HeaderLoginStaff from "../Header-Login/Header-Login-Staff";
 import Footer from "../../components/Footer/Footer";
 import { Outlet } from "react-router-dom";
 
@@ -12,18 +12,25 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
-  const navigate = useNavigate(); // Khởi tạo useNavigate
+  const navigate = useNavigate();
   const role = localStorage.getItem("role");
   console.log("Current user role from localStorage:", role);
 
-  // Điều hướng dựa trên role
+  // Only redirect on initial login, not on every render
   useEffect(() => {
-    if (role === "Admin") {
-      navigate("/admin");
-    } else if (role === "Manager") {
-      navigate("/manager");
-    } 
-  }, [role, navigate]); // Phụ thuộc vào role và navigate
+    const currentPath = window.location.pathname;
+
+    // Only redirect if user is on root path or login path
+    if (currentPath === "/" || currentPath === "/login") {
+      if (role === "Admin") {
+        navigate("/admin");
+      } else if (role === "Manager") {
+        navigate("/manager");
+      } else if (role === "Staff") {
+        navigate("/staff");
+      }
+    }
+  }, [role, navigate]); // Add role and navigate back to dependencies
 
   const renderHeader = () => {
     if (!showNavbar) return null;
