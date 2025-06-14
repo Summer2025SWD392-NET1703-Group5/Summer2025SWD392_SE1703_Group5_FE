@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import "./ManagerSidebar.css";
 import Logo from "../../assets/images/Logo.png";
 import { useAuth } from "../../pages/context/AuthContext";
+import api from "../../config/axios";
+
 interface SidebarItem {
   id: string;
   label: string;
@@ -17,6 +19,7 @@ const ManagerSidebar: React.FC = () => {
   const [isCollapsed, setIsCollapsed] = useState(false);
   const navigate = useNavigate();
   const { logout } = useAuth();
+  const [cinemaName, setCinemaName] = useState<string>("");
 
   const sidebarItems: SidebarItem[] = [
     {
@@ -62,6 +65,25 @@ const ManagerSidebar: React.FC = () => {
   const handleLogout = () => {
     logout();
   };
+
+  useEffect(() => {
+    const fetchCinemaInfo = async () => {
+      const token = localStorage.getItem("token");
+      if (!token) return;
+      try {
+        const response = await api.get("/cinemas/manager/my-cinema", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (response.data && response.data.success && response.data.data?.Cinema_Name) {
+          setCinemaName(response.data.data.Cinema_Name);
+        }
+      } catch {
+        // Không hiển thị gì nếu lỗi
+      }
+    };
+    fetchCinemaInfo();
+  }, []);
+
   return (
     <div className={`manager-sidebar ${isCollapsed ? "collapsed" : ""}`}>
       {/* Header */}
@@ -71,6 +93,11 @@ const ManagerSidebar: React.FC = () => {
             <img src={Logo} alt="Logo Galaxy" className="logo-img" />
             <span className="logo-text">Galaxy</span>
           </div>
+          {cinemaName && (
+            <div style={{ fontSize: "0.95rem", color: "#bdc3c7", marginTop: 4, fontWeight: 500 }}>
+              {cinemaName}
+            </div>
+          )}
           <button
             className="collapse-btn"
             onClick={() => setIsCollapsed(!isCollapsed)}
@@ -102,7 +129,9 @@ const ManagerSidebar: React.FC = () => {
             <div className="manager-profile">
               <div className="profile-avatar">👤</div>
               <div className="profile-info">
-                <span className="profile-name">Quản Lý</span>
+                <span className="profile-name">
+                  Quản Lý{cinemaName ? ` | ${cinemaName}` : ""}
+                </span>
                 <span className="profile-role">Manager</span>
               </div>
             </div>
