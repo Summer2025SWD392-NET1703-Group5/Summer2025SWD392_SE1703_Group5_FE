@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { getMoviesWithFilters } from "../../config/MovieApi";
 import { EmptyState, formatDuration } from "../../components/utils/utils";
-import { PlaySquareOutlined } from "@ant-design/icons";
+import { PlaySquareOutlined, SoundTwoTone, SoundOutlined } from "@ant-design/icons";
 import ticket from "../../assets/images/ticket-icon.png";
 import loadingGif from "../../assets/images/loading.gif";
 
@@ -31,9 +31,12 @@ const HomePage: React.FC = () => {
   const [featuredMovies, setFeaturedMovies] = useState<Movie[]>([]);
   const [currentSlide, setCurrentSlide] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [isMuted, setIsMuted] = useState(true);
 
   const nowShowingRef = useRef<HTMLDivElement>(null);
   const comingSoonRef = useRef<HTMLDivElement>(null);
+  const iframeRefs = useRef<(HTMLIFrameElement | null)[]>([]);
+  const intervalRef = useRef<number | null>(null);
 
   useEffect(() => {
     fetchHomePageData();
@@ -41,12 +44,39 @@ const HomePage: React.FC = () => {
 
   useEffect(() => {
     if (featuredMovies.length > 0) {
-      const interval = setInterval(() => {
+      // Clear any existing interval
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+
+      // Set new interval
+      intervalRef.current = setInterval(() => {
         setCurrentSlide((prev) => (prev + 1) % featuredMovies.length);
-      }, 5000);
-      return () => clearInterval(interval);
+      }, 30000);
+
+      return () => {
+        if (intervalRef.current) {
+          clearInterval(intervalRef.current);
+        }
+      };
     }
   }, [featuredMovies.length]);
+
+  // Handle mute state when slide changes
+  useEffect(() => {
+    if (featuredMovies.length > 0) {
+      const timer = setTimeout(() => {
+        const currentIframe = iframeRefs.current[currentSlide];
+        if (currentIframe && currentIframe.contentWindow) {
+          // Apply current mute state to the newly active iframe
+          const command = isMuted ? "mute" : "unMute";
+          currentIframe.contentWindow.postMessage(`{"event":"command","func":"${command}","args":""}`, "*");
+        }
+      }, 1000); // Wait for iframe to load
+
+      return () => clearTimeout(timer);
+    }
+  }, [currentSlide, isMuted, featuredMovies.length]);
 
   const fetchHomePageData = async () => {
     try {
@@ -88,7 +118,7 @@ const HomePage: React.FC = () => {
   };
   const renderStars = (rating: number) => {
     const stars = [];
-    // Convert 10-scale rating to 5-star scale
+
     const fullStars = Math.floor(rating);
     const hasHalfStar = rating % 1 >= 0.5;
 
@@ -126,6 +156,56 @@ const HomePage: React.FC = () => {
     );
   };
 
+  const getYouTubeEmbedUrl = (url: string) => {
+    if (!url) return "";
+
+    // Extract video ID from various YouTube URL formats
+    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+    const match = url.match(regExp);
+
+    if (match && match[2].length === 11) {
+      // Always start muted to avoid audio conflicts, then control via postMessage
+      return `https://www.youtube.com/embed/${match[2]}?autoplay=1&mute=1&controls=0&loop=1&playlist=${match[2]}&rel=0&showinfo=0&modestbranding=1&enablejsapi=1`;
+    }
+
+    return url; // Return original if not a YouTube URL
+  };
+
+  const toggleMute = () => {
+    const newMutedState = !isMuted;
+    setIsMuted(newMutedState);
+
+    // Send message to current active iframe to control mute
+    const currentIframe = iframeRefs.current[currentSlide];
+    if (currentIframe && currentIframe.contentWindow) {
+      const command = newMutedState ? "mute" : "unMute";
+      currentIframe.contentWindow.postMessage(`{"event":"command","func":"${command}","args":""}`, "*");
+    }
+  };
+
+  const handleSlideChange = (index: number) => {
+    setCurrentSlide(index);
+
+    // Reset the timer when manually changing slides
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
+    }
+
+    // Start a new timer
+    intervalRef.current = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % featuredMovies.length);
+    }, 30000);
+
+    // Apply current mute state to the newly selected iframe after a short delay
+    setTimeout(() => {
+      const targetIframe = iframeRefs.current[index];
+      if (targetIframe && targetIframe.contentWindow) {
+        const command = isMuted ? "mute" : "unMute";
+        targetIframe.contentWindow.postMessage(`{"event":"command","func":"${command}","args":""}`, "*");
+      }
+    }, 1000);
+  };
+
   if (loading) {
     return (
       <div className="loading-wrapper">
@@ -141,11 +221,22 @@ const HomePage: React.FC = () => {
         <section className="hero-carousel">
           <div className="carousel-container">
             {featuredMovies.map((movie, index) => (
-              <div
-                key={movie.Movie_ID}
-                className={`carousel-slide ${index === currentSlide ? "active" : ""}`}
-                style={{ backgroundImage: `url(${movie.Poster_URL})` }}
-              >
+              <div key={movie.Movie_ID} className={`carousel-slide ${index === currentSlide ? "active" : ""}`}>
+                {movie.Trailer_Link && (
+                  <div className="trailer-background">
+                    <iframe
+                      ref={(el) => {
+                        iframeRefs.current[index] = el;
+                      }}
+                      src={index === currentSlide ? getYouTubeEmbedUrl(movie.Trailer_Link) : ""}
+                      title={`${movie.Movie_Name} Trailer`}
+                      frameBorder="0"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      className="trailer-iframe"
+                    />
+                  </div>
+                )}
                 <div className="hero-overlay">
                   <div className="container">
                     <div className="hero-content">
@@ -159,18 +250,18 @@ const HomePage: React.FC = () => {
                         </div>
                         <p className="hero-description">{movie.Synopsis}</p>
                         <div className="hero-actions">
-                          <button className="btn-primary" onClick={() => handleMovieClick(movie.Movie_ID)}>
+                          <button className="book-btn-primary" onClick={() => handleMovieClick(movie.Movie_ID)}>
                             🎬 Đặt vé ngay
                           </button>
                           <button
-                            className="btn-secondary"
+                            className="trailer-btn-secondary"
                             onClick={() => {
                               if (movie.Trailer_Link) {
                                 window.open(movie.Trailer_Link, "_blank");
                               }
                             }}
                           >
-                            ▶️ Xem Trailer
+                            ▶️ Xem Trailer đầy đủ
                           </button>
                         </div>
                       </div>
@@ -183,12 +274,19 @@ const HomePage: React.FC = () => {
 
           {/* Carousel Navigation */}
           <div className="carousel-navigation">
+            <button className="mute-toggle-btn" onClick={toggleMute} title={isMuted ? "Bật âm thanh" : "Tắt âm thanh"}>
+              {isMuted ? (
+                <SoundOutlined style={{ fontSize: "15px", opacity: 0.6 }} />
+              ) : (
+                <SoundTwoTone style={{ fontSize: "15px" }} twoToneColor="#ffd700" />
+              )}
+            </button>
             <div className="carousel-indicators">
               {featuredMovies.map((movie, index) => (
                 <button
                   key={index}
                   className={`indicator ${index === currentSlide ? "active" : ""}`}
-                  onClick={() => setCurrentSlide(index)}
+                  onClick={() => handleSlideChange(index)}
                 >
                   <img src={movie.Poster_URL} alt={movie.Movie_Name} className="indicator-poster" />
                   <div className="indicator-overlay"></div>
@@ -376,17 +474,17 @@ const HomePage: React.FC = () => {
           bottom: 0;
           background: linear-gradient(
             to right,
-            rgba(0, 0, 0, 0.4) 0%,
+            rgba(0, 0, 0, 0.6) 0%,
             transparent 10%,
             transparent 90%,
-            rgba(0, 0, 0, 0.4) 100%
+            rgba(0, 0, 0, 0.6) 100%
           ),
           linear-gradient(
             to bottom,
-            rgba(0, 0, 0, 0.3) 0%,
+            rgba(0, 0, 0, 0.5) 0%,
             transparent 15%,
             transparent 85%,
-            rgba(0, 0, 0, 0.3) 100%
+            rgba(0, 0, 0, 0.5) 100%
           );
           z-index: 1;
           pointer-events: none;
@@ -404,17 +502,31 @@ const HomePage: React.FC = () => {
           left: 0;
           width: 100%;
           height: 100%;
-          background-size: cover;
-          background-position: center;
           opacity: 0;
           transition: opacity 0.5s ease-in-out;
           display: flex;
           align-items: center;
-          filter: blur(0px);
         }
 
         .carousel-slide.active {
           opacity: 1;
+        }
+
+        .trailer-background {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 0;
+        }
+
+        .trailer-iframe {
+          width: 100%;
+          height: 100%;
+          object-fit: cover;
+          border: none;
+          pointer-events: none;
         }
 
         .hero-overlay {
@@ -423,14 +535,14 @@ const HomePage: React.FC = () => {
           left: 0;
           right: 0;
           bottom: 0;
-          background: linear-gradient(45deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.3));
+          background: linear-gradient(45deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.4));
           z-index: 1;
         }
 
         .hero-content {
           position: absolute;
           bottom: 60px;
-          left: 120px;
+          left: 60px;
           z-index: 2;
           max-width: 600px;
           padding: 2rem;
@@ -447,7 +559,7 @@ const HomePage: React.FC = () => {
         }
 
         .hero-title {
-          font-size: 2.5rem;
+          font-size: 2rem;
           font-weight: bold;
           margin: 0.5rem 0;
           text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.5);
@@ -473,7 +585,7 @@ const HomePage: React.FC = () => {
         }
 
         .hero-description {
-          font-size: 1rem;
+          font-size: 0.85rem;
           line-height: 1.5;
           margin: 1rem 0;
           opacity: 0.9;
@@ -490,7 +602,8 @@ const HomePage: React.FC = () => {
           display: flex;
           gap: 0.8rem;
           margin-top: 1.5rem;
-        }        .btn-primary {
+        }        
+        .book-btn-primary {
           background: none;
           color: #ffd700;
           border: 2px solid #ffd700;
@@ -502,11 +615,14 @@ const HomePage: React.FC = () => {
           transition: all 0.3s;
         }
 
-        .btn-primary:hover {
-          background: #ffd700;
-          color: #000;
+        .book-btn-primary:hover {
+          background:rgb(119, 104, 31);
+          border: 2px solid #ffd700;
+          color: #ffd700;
           transform: translateY(-2px);
-        }        .btn-secondary {
+        }      
+
+        .trailer-btn-secondary {
           background: none;
           color: #fff;
           border: 2px solid rgba(255, 255, 255, 0.5);
@@ -518,10 +634,11 @@ const HomePage: React.FC = () => {
           font-size: 0.9rem;
         }
 
-        .btn-secondary:hover {
+        .trailer-btn-secondary:hover {
           background: none;
           border-color: #ffd700;
           color: #ffd700;
+          transform: translateY(-2px);
         }
 
         /* Carousel Navigation */
@@ -530,6 +647,33 @@ const HomePage: React.FC = () => {
           bottom: 90px;
           right: 90px;
           z-index: 10;
+          display: flex;
+          flex-direction: column;
+          align-items: flex-end;
+          gap: 1rem;
+        }
+
+        .mute-toggle-btn {
+          background: rgba(0, 0, 0, 0.7);
+          border: 1px solid rgba(255, 255, 255, 0.6);
+          color: #fff;
+          width: 50px;
+          height: 50px;
+          border-radius: 50%;
+          cursor: pointer;
+          transition: all 0.3s;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.2rem;
+          backdrop-filter: blur(10px);
+        }
+
+        .mute-toggle-btn:hover {
+          border-color: #ffd700;
+          color: #ffd700;
+          background: rgba(255, 215, 0, 0.1);
+          transform: scale(1.05);
         }
 
         .carousel-indicators {
@@ -951,13 +1095,10 @@ const HomePage: React.FC = () => {
             right: 20px;
           }
 
-          .indicator {
-            width: 45px;
-            height: 68px;
-          }
-
-          .hero-carousel {
-            height: 100vh;
+          .mute-toggle-btn {
+            width: 40px;
+            height: 40px;
+            font-size: 1rem;
           }
         }
 
@@ -992,9 +1133,10 @@ const HomePage: React.FC = () => {
             right: 15px;
           }
 
-          .indicator {
+          .mute-toggle-btn {
             width: 35px;
-            height: 53px;
+            height: 35px;
+            font-size: 0.9rem;
           }
 
           .btn-primary, .btn-secondary {
