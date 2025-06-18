@@ -277,6 +277,7 @@ interface Movie {
   Movie_Name: string;
   Release_Date: string;
   End_Date: string;
+  Premiere_Date: string;
   Director: string;
   Cast: string;
   Duration: number;
@@ -302,6 +303,7 @@ interface NewMovie {
   Movie_Name: string;
   Release_Date: string;
   End_Date: string;
+  Premiere_Date: string;
   Director: string;
   Cast: string;
   Duration: number;
@@ -332,6 +334,7 @@ const initialMovieState = {
   Movie_Name: '',
   Release_Date: '',
   End_Date: '',
+  Premiere_Date: '',
   Director: '',
   Cast: '',
   Duration: 0,
@@ -355,7 +358,47 @@ const formFieldStyles = {
   '& .MuiInputLabel-root.Mui-focused': {
     color: '#3b82f6',
   },
+  '& .MuiFormHelperText-root': {
+    color: '#ef4444',
+    '&.Mui-error': {
+      color: '#ef4444',
+    },
+  },
 };
+
+const validateMovieName = (name: string): boolean => {
+  // Check if name starts with a number
+  if (/^\d/.test(name)) {
+    return false;
+  }
+  return true;
+};
+
+const validateDates = (releaseDate: string, premiereDate: string, endDate: string): boolean => {
+  if (!releaseDate || !premiereDate || !endDate) return false;
+  
+  const release = new Date(releaseDate);
+  const premiere = new Date(premiereDate);
+  const end = new Date(endDate);
+
+  // Kiểm tra thứ tự: Release -> Premiere -> End
+  if (premiere < release) {
+    return false;
+  }
+  if (end <= premiere) {
+    return false;
+  }
+  return true;
+};
+
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+const YOUTUBE_VIDEO_REGEX = /^(https?:\/\/)?(www\.)?(youtube\.com\/watch\?v=|youtu\.be\/)[\w-]{11}($|&|\?)/;
 
 const ManageMoviePage: React.FC = () => {
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -386,6 +429,11 @@ const ManageMoviePage: React.FC = () => {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [movieToDelete, setMovieToDelete] = useState<Movie | null>(null);
   const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
+  const [movieNameError, setMovieNameError] = useState<string>('');
+  const [originalStatus, setOriginalStatus] = useState<string>('');
+  const [durationError, setDurationError] = useState<string>('');
+  const [synopsisError, setSynopsisError] = useState<string>('');
+  const [trailerError, setTrailerError] = useState<string>('');
 
   const steps = ['Thông tin cơ bản', 'Thông tin chi tiết', 'Hình ảnh & Trailer'];
 
@@ -457,6 +505,7 @@ const ManageMoviePage: React.FC = () => {
     setActiveStep(0);
     setIsEditMode(false);
     setEditMovieId(null);
+    setOriginalStatus('');
   };
 
   const handleCloseSnackbar = () => {
@@ -480,48 +529,123 @@ const ManageMoviePage: React.FC = () => {
   };
 
   const validateForm = () => {
-    if (!newMovie.Movie_Name) {
+    // Validate tên phim
+    if (!newMovie.Movie_Name.trim()) {
       showError('Vui lòng nhập tên phim');
       return false;
     }
+    if (!validateMovieName(newMovie.Movie_Name)) {
+      showError('Tên phim không được bắt đầu bằng số');
+      return false;
+    }
+    if (newMovie.Movie_Name.length < 2) {
+      showError('Tên phim phải có ít nhất 2 ký tự');
+      return false;
+    }
+
+    // Validate ngày tháng
     if (!newMovie.Release_Date) {
       showError('Vui lòng chọn ngày phát hành');
+      return false;
+    }
+    if (!newMovie.Premiere_Date) {
+      showError('Vui lòng chọn ngày công chiếu');
       return false;
     }
     if (!newMovie.End_Date) {
       showError('Vui lòng chọn ngày kết thúc');
       return false;
     }
-    if (!newMovie.Director) {
+    if (!validateDates(newMovie.Release_Date, newMovie.Premiere_Date, newMovie.End_Date)) {
+      showError('Thứ tự ngày không hợp lệ: Ngày phát hành -> Ngày công chiếu -> Ngày kết thúc');
+      return false;
+    }
+
+    // Validate đạo diễn
+    if (!newMovie.Director.trim()) {
       showError('Vui lòng nhập tên đạo diễn');
       return false;
     }
-    if (!newMovie.Duration || newMovie.Duration <= 0) {
-      showError('Vui lòng nhập thời lượng hợp lệ');
+    if (newMovie.Director.length < 2) {
+      showError('Tên đạo diễn phải có ít nhất 2 ký tự');
       return false;
     }
+
+    // Validate diễn viên
+    if (!newMovie.Cast.trim()) {
+      showError('Vui lòng nhập tên diễn viên');
+      return false;
+    }
+
+    // Validate thời lượng
+    if (!newMovie.Duration || newMovie.Duration <= 0) {
+      showError('Vui lòng nhập thời lượng phim hợp lệ (lớn hơn 0)');
+      return false;
+    }
+    if (newMovie.Duration > 300) {
+      showError('Thời lượng phim không được vượt quá 300 phút');
+      return false;
+    }
+
+    // Validate thể loại
     if (newMovie.Genre.length === 0) {
       showError('Vui lòng chọn ít nhất một thể loại');
       return false;
     }
+
+    // Validate xếp hạng
     if (!newMovie.Rating) {
-      showError('Vui lòng chọn xếp hạng');
-      return false;
-    }
-    if (!newMovie.Status) {
-      showError('Vui lòng chọn trạng thái phim');
-      return false;
-    }
-    if (!newMovie.Trailer_Link) {
-      showError('Vui lòng nhập link trailer');
+      showError('Vui lòng chọn xếp hạng độ tuổi');
       return false;
     }
 
-    // Kiểm tra ngày kết thúc phải sau ngày phát hành
-    const releaseDate = new Date(newMovie.Release_Date);
-    const endDate = new Date(newMovie.End_Date);
-    if (endDate <= releaseDate) {
-      showError('Ngày kết thúc phải sau ngày phát hành');
+    // Validate ngôn ngữ
+    if (!newMovie.Language) {
+      showError('Vui lòng chọn ngôn ngữ');
+      return false;
+    }
+
+    // Validate quốc gia
+    if (!newMovie.Country) {
+      showError('Vui lòng chọn quốc gia');
+      return false;
+    }
+
+    // Validate tóm tắt
+    if (!newMovie.Synopsis.trim()) {
+      showError('Vui lòng nhập tóm tắt nội dung');
+      return false;
+    }
+    if (newMovie.Synopsis.length < 50) {
+      showError('Tóm tắt nội dung phải có ít nhất 50 ký tự');
+      return false;
+    }
+
+    // Validate poster
+    if (!newMovie.Poster_URL && !selectedFile) {
+      showError('Vui lòng tải lên poster hoặc nhập URL poster');
+      return false;
+    }
+
+    // Validate trailer
+    if (!newMovie.Trailer_Link.trim()) {
+      showError('Vui lòng nhập link trailer');
+      return false;
+    }
+    if (!YOUTUBE_VIDEO_REGEX.test(newMovie.Trailer_Link)) {
+      showError('Link trailer phải là link video YouTube hợp lệ (có id video)');
+      return false;
+    }
+
+    // Validate công ty sản xuất
+    if (!newMovie.Production_Company.trim()) {
+      showError('Vui lòng nhập tên công ty sản xuất');
+      return false;
+    }
+
+    // Validate trạng thái
+    if (!newMovie.Status) {
+      showError('Vui lòng chọn trạng thái phim');
       return false;
     }
 
@@ -635,12 +759,13 @@ const ManageMoviePage: React.FC = () => {
   const handleOpenEditModal = (movie: Movie) => {
     setIsEditMode(true);
     setEditMovieId(movie.Movie_ID);
+    setOriginalStatus(movie.Status);
     
-    // Convert movie data to NewMovie format
     const movieToEdit: NewMovie = {
       Movie_Name: movie.Movie_Name,
       Release_Date: movie.Release_Date,
       End_Date: movie.End_Date,
+      Premiere_Date: movie.Premiere_Date,
       Director: movie.Director,
       Cast: movie.Cast || '',
       Duration: movie.Duration || 0,
@@ -674,6 +799,7 @@ const ManageMoviePage: React.FC = () => {
       switch (activeStep) {
         case 0:
           if (!newMovie.Movie_Name) showError('Vui lòng nhập tên phim');
+          else if (!newMovie.Premiere_Date) showError('Vui lòng chọn ngày công chiếu');
           else if (!newMovie.Release_Date) showError('Vui lòng chọn ngày phát hành');
           else if (!newMovie.End_Date) showError('Vui lòng chọn ngày kết thúc');
           else if (!newMovie.Director) showError('Vui lòng nhập tên đạo diễn');
@@ -707,9 +833,45 @@ const ManageMoviePage: React.FC = () => {
   const handleInputChange = (field: keyof NewMovie) => (
     event: React.ChangeEvent<HTMLInputElement | { value: unknown }>
   ) => {
+    const value = event.target.value as string;
+    if (field === 'Movie_Name') {
+      if (!validateMovieName(value)) {
+        setMovieNameError('Tên phim không được bắt đầu bằng số');
+      } else {
+        setMovieNameError('');
+      }
+    }
+    if (field === 'Duration') {
+      const num = Number(value);
+      if (!num) {
+        setDurationError('Vui lòng nhập thời lượng phim');
+      } else if (num <= 60) {
+        setDurationError('Thời lượng phim phải lớn hơn 60 phút');
+      } else {
+        setDurationError('');
+      }
+    }
+    if (field === 'Synopsis') {
+      if (!value.trim()) {
+        setSynopsisError('Vui lòng nhập tóm tắt nội dung');
+      } else if (value.length < 50) {
+        setSynopsisError('Tóm tắt nội dung phải có ít nhất 50 ký tự');
+      } else {
+        setSynopsisError('');
+      }
+    }
+    if (field === 'Trailer_Link') {
+      if (!value.trim()) {
+        setTrailerError('Vui lòng nhập link trailer');
+      } else if (!YOUTUBE_VIDEO_REGEX.test(value)) {
+        setTrailerError('Link trailer phải là link video YouTube hợp lệ (có id video)');
+      } else {
+        setTrailerError('');
+      }
+    }
     setNewMovie(prev => ({
       ...prev,
-      [field]: event.target.value
+      [field]: field === 'Duration' ? Number(value) : value
     }));
   };
 
@@ -727,9 +889,17 @@ const ManageMoviePage: React.FC = () => {
     event: React.ChangeEvent<{ value: unknown }> | any,
     child: React.ReactNode
   ) => {
+    const value = event.target.value as string;
+    
+    // Kiểm tra nếu đang edit và cố gắng thay đổi status
+    if (field === 'Status' && isEditMode && originalStatus === 'Now Showing' && value === 'Coming Soon') {
+      showError('Không thể chuyển trạng thái từ "Now Showing" sang "Coming Soon"');
+      return;
+    }
+
     setNewMovie(prev => ({
       ...prev,
-      [field]: event.target.value
+      [field]: value
     }));
   };
 
@@ -737,23 +907,35 @@ const ManageMoviePage: React.FC = () => {
     switch (step) {
       case 0:
         return Boolean(
-          newMovie.Movie_Name && 
-          newMovie.Release_Date && 
+          newMovie.Movie_Name.trim() &&
+          validateMovieName(newMovie.Movie_Name) &&
+          newMovie.Movie_Name.length >= 2 &&
+          newMovie.Release_Date &&
+          newMovie.Premiere_Date &&
           newMovie.End_Date &&
-          newMovie.Director &&
-          (!newMovie.Release_Date || !newMovie.End_Date || new Date(newMovie.End_Date) > new Date(newMovie.Release_Date))
+          validateDates(newMovie.Release_Date, newMovie.Premiere_Date, newMovie.End_Date) &&
+          newMovie.Director.trim() &&
+          newMovie.Director.length >= 2
         );
       case 1:
         return Boolean(
-          newMovie.Duration > 0 &&
+          newMovie.Duration > 60 &&
           newMovie.Genre.length > 0 &&
-          newMovie.Rating
+          newMovie.Rating &&
+          newMovie.Language &&
+          newMovie.Country &&
+          newMovie.Synopsis.trim() &&
+          newMovie.Synopsis.length >= 50 &&
+          !durationError &&
+          !synopsisError
         );
       case 2:
         return Boolean(
-          (selectedFile || newMovie.Poster_URL) &&
-          newMovie.Trailer_Link &&
-          newMovie.Status
+          ((selectedFile && previewUrl) || (newMovie.Poster_URL && newMovie.Poster_URL.trim() !== '')) &&
+          newMovie.Trailer_Link.trim() &&
+          newMovie.Production_Company.trim() &&
+          newMovie.Status &&
+          !trailerError
         );
       default:
         return false;
@@ -771,8 +953,8 @@ const ManageMoviePage: React.FC = () => {
               onChange={handleInputChange('Movie_Name')}
               fullWidth
               required
-              error={showErrors && !newMovie.Movie_Name}
-              helperText={showErrors && !newMovie.Movie_Name ? "Tên phim là bắt buộc" : ""}
+              error={showErrors && (!newMovie.Movie_Name || !!movieNameError)}
+              helperText={showErrors ? (!newMovie.Movie_Name ? "Tên phim là bắt buộc" : movieNameError) : movieNameError}
               sx={formFieldStyles}
             />
             <LocalizationProvider dateAdapter={AdapterDateFns} adapterLocale={vi}>
@@ -780,10 +962,14 @@ const ManageMoviePage: React.FC = () => {
                 <DatePicker
                   label="Ngày phát hành"
                   value={newMovie.Release_Date ? new Date(newMovie.Release_Date) : null}
-                  onChange={(date) => setNewMovie(prev => ({
-                    ...prev,
-                    Release_Date: date ? date.toISOString().split('T')[0] : ''
-                  }))}
+                  onChange={(date) => {
+                    if (date) {
+                      setNewMovie(prev => ({
+                        ...prev,
+                        Release_Date: formatDate(date)
+                      }));
+                    }
+                  }}
                   sx={{ flex: 1, ...formFieldStyles }}
                   slotProps={{
                     textField: {
@@ -794,24 +980,52 @@ const ManageMoviePage: React.FC = () => {
                   }}
                 />
                 <DatePicker
-                  label="Ngày kết thúc"
-                  value={newMovie.End_Date ? new Date(newMovie.End_Date) : null}
-                  onChange={(date) => setNewMovie(prev => ({
-                    ...prev,
-                    End_Date: date ? date.toISOString().split('T')[0] : ''
-                  }))}
+                  label="Ngày công chiếu"
+                  value={newMovie.Premiere_Date ? new Date(newMovie.Premiere_Date) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setNewMovie(prev => ({
+                        ...prev,
+                        Premiere_Date: formatDate(date)
+                      }));
+                    }
+                  }}
                   sx={{ flex: 1, ...formFieldStyles }}
                   slotProps={{
                     textField: {
                       required: true,
-                      error: showErrors && (!newMovie.End_Date || (newMovie.Release_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Release_Date))),
+                      error: showErrors && (!newMovie.Premiere_Date || (newMovie.Release_Date && new Date(newMovie.Premiere_Date) < new Date(newMovie.Release_Date))),
                       helperText: showErrors ? 
-                        !newMovie.End_Date ? "Ngày kết thúc là bắt buộc" : 
-                        (newMovie.Release_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Release_Date)) ? "Ngày kết thúc phải sau ngày phát hành" : 
+                        !newMovie.Premiere_Date ? "Ngày công chiếu là bắt buộc" : 
+                        (newMovie.Release_Date && new Date(newMovie.Premiere_Date) < new Date(newMovie.Release_Date)) ? "Ngày công chiếu phải sau ngày phát hành" : 
                         "" : ""
                     }
                   }}
                   minDate={newMovie.Release_Date ? new Date(newMovie.Release_Date) : undefined}
+                />
+                <DatePicker
+                  label="Ngày kết thúc"
+                  value={newMovie.End_Date ? new Date(newMovie.End_Date) : null}
+                  onChange={(date) => {
+                    if (date) {
+                      setNewMovie(prev => ({
+                        ...prev,
+                        End_Date: formatDate(date)
+                      }));
+                    }
+                  }}
+                  sx={{ flex: 1, ...formFieldStyles }}
+                  slotProps={{
+                    textField: {
+                      required: true,
+                      error: showErrors && (!newMovie.End_Date || (newMovie.Premiere_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Premiere_Date))),
+                      helperText: showErrors ? 
+                        !newMovie.End_Date ? "Ngày kết thúc là bắt buộc" : 
+                        (newMovie.Premiere_Date && new Date(newMovie.End_Date) <= new Date(newMovie.Premiere_Date)) ? "Ngày kết thúc phải sau ngày công chiếu" : 
+                        "" : ""
+                    }
+                  }}
+                  minDate={newMovie.Premiere_Date ? new Date(newMovie.Premiere_Date) : undefined}
                 />
               </Box>
             </LocalizationProvider>
@@ -826,14 +1040,14 @@ const ManageMoviePage: React.FC = () => {
               sx={formFieldStyles}
             />
             <TextField
-              label="Diễn viên"
+              label={<span>Diễn viên <span style={{color: 'red'}}>*</span></span>}
               value={newMovie.Cast}
               onChange={handleInputChange('Cast')}
               fullWidth
               sx={formFieldStyles}
             />
             <TextField
-              label="Công ty sản xuất"
+              label={<span>Công ty sản xuất <span style={{color: 'red'}}>*</span></span>}
               value={newMovie.Production_Company}
               onChange={handleInputChange('Production_Company')}
               fullWidth
@@ -851,8 +1065,8 @@ const ManageMoviePage: React.FC = () => {
               onChange={handleInputChange('Duration')}
               fullWidth
               required
-              error={showErrors && (!newMovie.Duration || newMovie.Duration <= 0)}
-              helperText={showErrors && (!newMovie.Duration || newMovie.Duration <= 0) ? "Thời lượng phim phải lớn hơn 0" : ""}
+              error={!!durationError}
+              helperText={durationError}
               sx={formFieldStyles}
             />
             <FormControl 
@@ -893,8 +1107,8 @@ const ManageMoviePage: React.FC = () => {
                 <FormHelperText>Vui lòng chọn xếp hạng độ tuổi</FormHelperText>
               )}
             </FormControl>
-            <FormControl fullWidth sx={formFieldStyles}>
-              <InputLabel>Ngôn ngữ</InputLabel>
+            <FormControl fullWidth required sx={formFieldStyles}>
+              <InputLabel required>Ngôn ngữ</InputLabel>
               <Select
                 value={newMovie.Language}
                 label="Ngôn ngữ"
@@ -905,8 +1119,8 @@ const ManageMoviePage: React.FC = () => {
                 ))}
               </Select>
             </FormControl>
-            <FormControl fullWidth sx={formFieldStyles}>
-              <InputLabel>Quốc gia</InputLabel>
+            <FormControl fullWidth required sx={formFieldStyles}>
+              <InputLabel required>Quốc gia</InputLabel>
               <Select
                 value={newMovie.Country}
                 label="Quốc gia"
@@ -919,11 +1133,14 @@ const ManageMoviePage: React.FC = () => {
             </FormControl>
             <TextField
               label="Tóm tắt nội dung"
+              required
               value={newMovie.Synopsis}
               onChange={handleInputChange('Synopsis')}
               multiline
               rows={4}
               fullWidth
+              error={!!synopsisError}
+              helperText={synopsisError}
               sx={formFieldStyles}
             />
           </Box>
@@ -1018,8 +1235,8 @@ const ManageMoviePage: React.FC = () => {
               onChange={handleInputChange('Trailer_Link')}
               fullWidth
               required
-              error={showErrors && !newMovie.Trailer_Link}
-              helperText={showErrors && !newMovie.Trailer_Link ? "URL Trailer là bắt buộc" : ""}
+              error={!!trailerError}
+              helperText={trailerError}
               placeholder="https://youtube.com/watch?v=..."
               sx={formFieldStyles}
             />
@@ -1029,8 +1246,15 @@ const ManageMoviePage: React.FC = () => {
                 value={newMovie.Status}
                 label="Trạng thái phim"
                 onChange={handleSelectChange('Status')}
+                disabled={isEditMode && originalStatus === 'Now Showing'}
               >
-                {STATUSES.filter(status => status !== 'Tất cả').map(status => (
+                {STATUSES.filter(status => {
+                  // Nếu đang edit và status ban đầu là Now Showing, chỉ cho phép chọn Now Showing
+                  if (isEditMode && originalStatus === 'Now Showing') {
+                    return status === 'Now Showing';
+                  }
+                  return status !== 'Tất cả';
+                }).map(status => (
                   <MenuItem key={status} value={status}>{status}</MenuItem>
                 ))}
               </Select>
