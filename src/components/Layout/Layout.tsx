@@ -5,6 +5,7 @@ import HeaderLoginUser from "../../components/Header-Login/Header-Login-User";
 import HeaderLoginStaff from "../Header-Login/Header-Login-Staff";
 import Footer from "../../components/Footer/Footer";
 import { Outlet } from "react-router-dom";
+import { ToastContainer } from "react-toastify";
 
 interface LayoutProps {
   children?: React.ReactNode;
@@ -52,6 +53,22 @@ const Layout: React.FC<LayoutProps> = ({ children, showNavbar = true }) => {
         <Outlet />
         {children}
       </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop={true}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+        style={{ zIndex: 9999 }}
+        toastStyle={{
+          fontFamily: '"Segoe UI", Tahoma, Geneva, Verdana, sans-serif',
+        }}
+      />
       <Footer />
     </div>
   );

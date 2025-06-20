@@ -92,7 +92,8 @@ const updateUserProfile = async (profileData: any) => {
   }
 };
 
-const registerStaffUser = async (userData: any) => {
+// Register a user by staff
+const registerUserByStaff = async (userData: any) => {
   try {
     const response = await api.post("user/staff-register", userData);
     return response.data;
@@ -142,7 +143,7 @@ export {
   updateUserStatus,
   resetUserPassword,
   updateUserProfile,
-  registerStaffUser,
+  registerUserByStaff,
   getAllManagers,
   assignManager,
   removeManagerAssignment,
