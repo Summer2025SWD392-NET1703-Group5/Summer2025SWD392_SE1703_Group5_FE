@@ -14,6 +14,7 @@ import {
   FiGrid,
   FiLayout,
   FiInfo,
+  FiSettings,
 } from "react-icons/fi";
 import "./ManageCinemaBranch.css";
 
@@ -250,6 +251,14 @@ const ManageCinemaBranch: React.FC = () => {
   const handleManageRooms = (cinemaId: number) => {
     setCurrentCinemaId(cinemaId);
     setIsManagingRooms(true); // Chỉ mở modal, fetchRooms sẽ được gọi qua useEffect
+  };
+
+  // Chuyển đến trang quản lý phòng chiếu chi tiết
+  const handleNavigateToRoomManagement = (cinemaId: number) => {
+    // Lưu cinema ID vào localStorage để trang Admin-Manage-CinemaRoom có thể đọc
+    localStorage.setItem("selectedCinemaId", cinemaId.toString());
+    // Chuyển đến trang quản lý phòng chiếu
+    navigate("/admin/cinemas/rooms");
   };
 
   // Đóng modal
@@ -1100,6 +1109,20 @@ const ManageCinemaBranch: React.FC = () => {
             Quản Lý Phòng Chiếu - Rạp {currentCinemaId} (Tổng {rooms.length}{" "}
             phòng)
           </h2>
+          
+          {/* Thêm nút chuyển đến trang quản lý chi tiết */}
+          <div className="room-management-actions">
+            <button
+              type="button"
+              onClick={() => currentCinemaId && handleNavigateToRoomManagement(currentCinemaId)}
+              className="manage-detail-button"
+              title="Chuyển đến trang quản lý phòng chiếu chi tiết"
+            >
+              <FiSettings className="manage-detail-icon" />
+              Quản Lý Chi Tiết
+            </button>
+          </div>
+          
           <div className="room-table-container" style={{
             scrollbarWidth: 'auto',
             scrollbarColor: '#FFFFFFrgb(255, 255, 255)'
