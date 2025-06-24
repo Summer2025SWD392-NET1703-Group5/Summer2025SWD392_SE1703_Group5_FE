@@ -20,6 +20,7 @@ import QRCodeScanner from "../pages/QRCodeScan/QRCodeScan";
 import ManagerDashboard from "../pages/ManagerDashboard/ManagerDashboard";
 import ShowtimesPage from "../pages/ShowtimesPage/ShowtimesPage";
 import StaffBooking from "../pages/StaffBooking/StaffBooking";
+import AdminManageCinemaRoom from "../pages/Admin-Manage-CinemaRoom/Admin-Manage-CinemaRoom";
 
 const AppRoutes = () => {
   const location = useLocation();
@@ -53,6 +54,7 @@ const AppRoutes = () => {
         <Route path="movies/genres" element={<div>Genres</div>} />
         <Route path="movies/ratings" element={<div>Ratings</div>} />
         <Route path="cinemas" element={<ManageCinemaBranch />} />
+        <Route path="cinemas/rooms" element={<AdminManageCinemaRoom />} />
         <Route path="promotions" element={<ManagePromotion />} />
       </Route>
 

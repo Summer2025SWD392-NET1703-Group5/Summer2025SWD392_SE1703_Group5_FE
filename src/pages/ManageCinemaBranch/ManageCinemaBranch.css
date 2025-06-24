@@ -893,3 +893,45 @@ select option {
   border-top-right-radius: 8px;
   border-bottom-right-radius: 8px;
 }
+
+/* Room Management Actions */
+.room-management-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 20px;
+  padding: 16px;
+  background-color: #f8fafc;
+  border-radius: 8px;
+  border: 1px solid #e2e8f0;
+}
+
+.manage-detail-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  background-color: #10b981;
+  color: #ffffff;
+  font-weight: 500;
+  font-size: 14px;
+  border: none;
+  border-radius: 8px;
+  transition: background-color 0.3s, transform 0.1s, box-shadow 0.3s;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  cursor: pointer;
+}
+
+.manage-detail-button:hover {
+  background-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
+
+.manage-detail-button:active {
+  transform: translateY(0);
+}
+
+.manage-detail-icon {
+  width: 18px;
+  height: 18px;
+}

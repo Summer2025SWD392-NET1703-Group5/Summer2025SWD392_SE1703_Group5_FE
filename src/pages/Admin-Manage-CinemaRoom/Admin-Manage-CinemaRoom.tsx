@@ -19,11 +19,24 @@ import {
   FiCheckSquare,
   FiSquare,
   FiEye,
+  FiMapPin,
 } from "react-icons/fi";
 import { motion } from "framer-motion";
-import "./ManageCinemaRoom.css";
+import "./Admin-Manage-CinemaRoom.css";
 
 // Interface definitions
+interface Cinema {
+  Cinema_ID: number;
+  Cinema_Name: string;
+  Address: string;
+  City: string;
+  Province: string;
+  Phone_Number: string;
+  Email: string;
+  Description: string;
+  Status: string;
+}
+
 interface CinemaRoomResponse {
   Cinema_Room_ID: number;
   Room_Name: string;
@@ -42,6 +55,7 @@ interface CinemaRoomRequest {
   RoomType: string;
   Description: string;
   Status: string;
+  CinemaID: number;
 }
 
 interface Seat {
@@ -77,17 +91,12 @@ interface SeatLayout {
 
 interface CinemaResponse {
   success: boolean;
-  data: {
-    Cinema_Name: string;
-    Address: string;
-    City: string;
-    Province: string;
-    Phone_Number: string;
-    Email: string;
-    Description: string;
-    Status: string;
-    rooms?: CinemaRoomResponse[];
-  };
+  data: Cinema[];
+}
+
+interface CinemaRoomsResponse {
+  success: boolean;
+  data: CinemaRoomResponse[];
 }
 
 interface ModalProps {
@@ -107,17 +116,17 @@ const Modal: React.FC<ModalProps> = ({
   if (!isOpen) return null;
 
   const sizeClasses = {
-    sm: "modal-sm",
-    md: "modal-md",
-    lg: "modal-lg",
-    xl: "modal-xl",
+    sm: "ads-modal-sm",
+    md: "ads-modal-md",
+    lg: "ads-modal-lg",
+    xl: "ads-modal-xl",
   };
 
   return (
-    <div className="modal-overlay">
-      <div className={`modal-content ${sizeClasses[size]}`}>
-        <button onClick={onClose} className="modal-close-button">
-          <FiX className="modal-close-icon" />
+    <div className="ads-modal-overlay">
+      <div className={`ads-modal-content ${sizeClasses[size]}`}>
+        <button onClick={onClose} className="ads-modal-close-button">
+          <FiX className="ads-modal-close-icon" />
         </button>
         {children}
       </div>
@@ -126,7 +135,9 @@ const Modal: React.FC<ModalProps> = ({
 };
 
 // Main Component
-const ManageCinemaRoom: React.FC = () => {
+const AdminManageCinemaRoom: React.FC = () => {
+  const [cinemas, setCinemas] = useState<Cinema[]>([]);
+  const [selectedCinemaId, setSelectedCinemaId] = useState<number | null>(null);
   const [cinemaRooms, setCinemaRooms] = useState<CinemaRoomResponse[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
@@ -157,20 +168,11 @@ const ManageCinemaRoom: React.FC = () => {
     RoomType: "",
     Description: "",
     Status: "Active",
+    CinemaID: 0,
   });
   const [roomSeatLayoutStatus, setRoomSeatLayoutStatus] = useState<{
     [roomId: number]: boolean;
   }>({});
-  const [cinemaInfo, setCinemaInfo] = useState<{
-    Cinema_Name: string;
-    Address: string;
-    City: string;
-    Province: string;
-    Phone_Number: string;
-    Email: string;
-    Description: string;
-    Status: string;
-  } | null>(null);
 
   const navigate = useNavigate();
 
@@ -186,14 +188,45 @@ const ManageCinemaRoom: React.FC = () => {
   // Check access rights
   useEffect(() => {
     const role = getRole();
-    if (role !== "Admin" && role !== "Staff" && role !== "Manager") {
+    if (role !== "Admin") {
       toast.error("Bạn không có quyền truy cập trang này.");
       navigate("/");
     }
   }, [navigate]);
 
+  // Fetch cinemas
+  const fetchCinemas = async () => {
+    const token = getToken();
+    if (!token) {
+      setError("Không tìm thấy token. Vui lòng đăng nhập!");
+      toast.error("Không tìm thấy token. Vui lòng đăng nhập lại!");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const response = await api.get<CinemaResponse>("/cinemas", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (response.data.success && response.data.data) {
+        setCinemas(response.data.data);
+      } else {
+        setError("Không tìm thấy danh sách rạp chiếu.");
+        toast.error("Không tìm thấy danh sách rạp chiếu!");
+      }
+    } catch (err: any) {
+      const errorMessage =
+        err.response?.data?.message || err.message || "Đã xảy ra lỗi khi tải dữ liệu.";
+      setError(errorMessage);
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Fetch cinema rooms
-  const fetchCinemaRooms = async () => {
+  const fetchCinemaRooms = async (cinemaId: number) => {
     setLoading(true);
     setError(null);
     const token = getToken();
@@ -205,67 +238,48 @@ const ManageCinemaRoom: React.FC = () => {
     }
 
     try {
-      const response = await api.get<CinemaResponse>(
-        "/cinemas/manager/my-cinema",
+      const response = await api.get<CinemaRoomsResponse>(
+        `/cinemas/${cinemaId}/rooms`,
         {
           headers: { Authorization: `Bearer ${token}` },
         }
       );
 
       if (response.data.success && response.data.data) {
-        // Store cinema information
-        setCinemaInfo({
-          Cinema_Name: response.data.data.Cinema_Name,
-          Address: response.data.data.Address,
-          City: response.data.data.City,
-          Province: response.data.data.Province,
-          Phone_Number: response.data.data.Phone_Number,
-          Email: response.data.data.Email,
-          Description: response.data.data.Description,
-          Status: response.data.data.Status,
-        });
+        const sortedRooms = response.data.data.sort(
+          (a, b) => b.Cinema_Room_ID - a.Cinema_Room_ID
+        );
+        setCinemaRooms(sortedRooms);
 
-        if (response.data.data.rooms) {
-          const sortedRooms = response.data.data.rooms.sort(
-            (a, b) => b.Cinema_Room_ID - a.Cinema_Room_ID
-          );
-          setCinemaRooms(sortedRooms);
+        const seatLayoutStatus: { [roomId: number]: boolean } = {};
+        await Promise.all(
+          sortedRooms.map(async (room) => {
+            try {
+              const layoutResponse = await api.get(
+                `/seat-layouts/room/${room.Cinema_Room_ID}`,
+                {
+                  headers: { Authorization: `Bearer ${token}` },
+                }
+              );
+              seatLayoutStatus[room.Cinema_Room_ID] =
+                layoutResponse.data &&
+                layoutResponse.data.data &&
+                layoutResponse.data.data.rows &&
+                layoutResponse.data.data.rows.length > 0;
+            } catch {
+              seatLayoutStatus[room.Cinema_Room_ID] = false;
+            }
+          })
+        );
 
-          const seatLayoutStatus: { [roomId: number]: boolean } = {};
-          await Promise.all(
-            sortedRooms.map(async (room) => {
-              try {
-                const layoutResponse = await api.get(
-                  `/seat-layouts/room/${room.Cinema_Room_ID}`,
-                  {
-                    headers: { Authorization: `Bearer ${token}` },
-                  }
-                );
-                seatLayoutStatus[room.Cinema_Room_ID] =
-                  layoutResponse.data &&
-                  layoutResponse.data.data &&
-                  layoutResponse.data.data.rows &&
-                  layoutResponse.data.data.rows.length > 0;
-              } catch (error) {
-                seatLayoutStatus[room.Cinema_Room_ID] = false;
-              }
-            })
-          );
-
-          setRoomSeatLayoutStatus(seatLayoutStatus);
-        } else {
-          setCinemaRooms([]);
-          setRoomSeatLayoutStatus({});
-        }
+        setRoomSeatLayoutStatus(seatLayoutStatus);
       } else {
-        setError("Không tìm thấy thông tin rạp chiếu.");
-        toast.error("Không tìm thấy thông tin rạp chiếu!");
+        setError("Không tìm thấy danh sách phòng chiếu.");
+        toast.error("Không tìm thấy danh sách phòng chiếu!");
       }
     } catch (err: any) {
       const errorMessage =
-        err.response?.data?.message ||
-        err.message ||
-        "Đã xảy ra lỗi khi tải dữ liệu.";
+        err.response?.data?.message || err.message || "Đã xảy ra lỗi khi tải dữ liệu.";
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -301,9 +315,7 @@ const ManageCinemaRoom: React.FC = () => {
       }
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể tải bố cục ghế.";
+        error.response?.data?.message || error.message || "Không thể tải bố cục ghế.";
       toast.error(`Lỗi: ${errorMessage}`);
       setSeatLayout(null);
       setIsViewingSeatLayout(false);
@@ -393,9 +405,7 @@ const ManageCinemaRoom: React.FC = () => {
       }));
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể tạo bố cục ghế.";
+        error.response?.data?.message || error.message || "Không thể tạo bố cục ghế.";
       toast.error(errorMessage);
     }
   };
@@ -444,9 +454,7 @@ const ManageCinemaRoom: React.FC = () => {
       }
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể xóa bố cục ghế.";
+        error.response?.data?.message || error.message || "Không thể xóa bố cục ghế.";
       toast.error(errorMessage);
     }
   };
@@ -500,9 +508,7 @@ const ManageCinemaRoom: React.FC = () => {
       );
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể cập nhật trạng thái ghế.";
+        error.response?.data?.message || error.message || "Không thể cập nhật trạng thái ghế.";
       toast.error(errorMessage);
     }
   };
@@ -558,9 +564,7 @@ const ManageCinemaRoom: React.FC = () => {
       }
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể cập nhật ghế.";
+        error.response?.data?.message || error.message || "Không thể cập nhật ghế.";
       toast.error(errorMessage);
     }
   };
@@ -642,14 +646,23 @@ const ManageCinemaRoom: React.FC = () => {
       toast.error("Loại phòng là bắt buộc.");
       return;
     }
+    if (!selectedCinemaId) {
+      toast.error("Vui lòng chọn rạp chiếu.");
+      return;
+    }
 
     try {
-      const response = await api.post("/cinema-rooms", newRoom, {
+      const payload = {
+        ...newRoom,
+        CinemaID: selectedCinemaId,
+      };
+
+      const response = await api.post("/cinema-rooms", payload, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
       if (response.data) {
-        await fetchCinemaRooms();
+        await fetchCinemaRooms(selectedCinemaId);
         toast.success(
           `Phòng chiếu '${newRoom.RoomName}' đã được tạo thành công!`
         );
@@ -659,9 +672,7 @@ const ManageCinemaRoom: React.FC = () => {
       }
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể tạo phòng chiếu.";
+        error.response?.data?.message || error.message || "Không thể tạo phòng chiếu.";
       toast.error(`Lỗi: ${errorMessage}`);
     }
   };
@@ -699,7 +710,7 @@ const ManageCinemaRoom: React.FC = () => {
       });
 
       if (response.data) {
-        await fetchCinemaRooms();
+        await fetchCinemaRooms(selectedCinemaId!);
         toast.success(
           `Phòng chiếu '${newRoom.RoomName}' đã được cập nhật thành công!`
         );
@@ -709,9 +720,7 @@ const ManageCinemaRoom: React.FC = () => {
       }
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể cập nhật phòng chiếu.";
+        error.response?.data?.message || error.message || "Không thể cập nhật phòng chiếu.";
       toast.error(`Lỗi: ${errorMessage}`);
     }
   };
@@ -729,14 +738,12 @@ const ManageCinemaRoom: React.FC = () => {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      await fetchCinemaRooms();
+      await fetchCinemaRooms(selectedCinemaId!);
       toast.success("Phòng chiếu đã được xóa thành công!");
       setConfirmDeleteId(null);
     } catch (error: any) {
       const errorMessage =
-        error.response?.data?.message ||
-        error.message ||
-        "Không thể xóa phòng chiếu.";
+        error.response?.data?.message || error.message || "Không thể xóa phòng chiếu.";
       toast.error(`Lỗi: ${errorMessage}`);
       setConfirmDeleteId(null);
     }
@@ -744,12 +751,17 @@ const ManageCinemaRoom: React.FC = () => {
 
   // Open add room modal
   const handleAddRoom = () => {
+    if (!selectedCinemaId) {
+      toast.error("Vui lòng chọn rạp chiếu trước khi thêm phòng!");
+      return;
+    }
     setNewRoom({
       RoomName: "",
       Capacity: 0,
       RoomType: "",
       Description: "",
       Status: "Active",
+      CinemaID: selectedCinemaId,
     });
     setIsUpdatingRoom(false);
     setIsAddingRoom(true);
@@ -764,6 +776,7 @@ const ManageCinemaRoom: React.FC = () => {
       RoomType: room.Room_Type,
       Description: room.Notes || "",
       Status: room.Status,
+      CinemaID: selectedCinemaId!,
     });
     setIsAddingRoom(false);
     setIsUpdatingRoom(true);
@@ -791,6 +804,7 @@ const ManageCinemaRoom: React.FC = () => {
       RoomType: selectedRoom.Room_Type,
       Description: selectedRoom.Notes || "",
       Status: selectedRoom.Status,
+      CinemaID: selectedCinemaId!,
     });
     setRowsInput("");
     setColumnsPerRow(0);
@@ -817,6 +831,7 @@ const ManageCinemaRoom: React.FC = () => {
       RoomType: "",
       Description: "",
       Status: "Active",
+      CinemaID: 0,
     });
   };
 
@@ -839,8 +854,35 @@ const ManageCinemaRoom: React.FC = () => {
 
   // Initial fetch
   useEffect(() => {
-    fetchCinemaRooms();
+    fetchCinemas();
   }, []);
+
+  // Auto-select cinema from localStorage if available
+  useEffect(() => {
+    const savedCinemaId = localStorage.getItem("selectedCinemaId");
+    if (savedCinemaId && cinemas.length > 0) {
+      const cinemaId = parseInt(savedCinemaId);
+      const cinemaExists = cinemas.find(cinema => cinema.Cinema_ID === cinemaId);
+      if (cinemaExists) {
+        handleCinemaChange(cinemaId);
+        // Clear the localStorage after using it
+        localStorage.removeItem("selectedCinemaId");
+      }
+    }
+  }, [cinemas]);
+
+  // Handle cinema selection
+  const handleCinemaChange = (cinemaId: number) => {
+    setSelectedCinemaId(cinemaId);
+    setCinemaRooms([]);
+    setRoomSeatLayoutStatus({});
+    setError(null);
+    if (cinemaId) {
+      fetchCinemaRooms(cinemaId);
+    } else {
+      setCinemaRooms([]);
+    }
+  };
 
   // Seat layout info display
   const SeatLayoutInfoDisplay = () => {
@@ -902,382 +944,411 @@ const ManageCinemaRoom: React.FC = () => {
     return matchesSearch && matchesStatus;
   });
 
+  const selectedCinema = cinemas.find(
+    (cinema) => cinema.Cinema_ID === selectedCinemaId
+  );
+
   return (
-    <div className="manage-cinema-room">
+    <div className="ads-manage-cinema-room">
       <ToastContainer position="top-right" autoClose={5000} />
 
       {/* Page Header */}
-      <div className="page-header">
+      <div className="ads-page-header">
         <div>
-          <h1 className="page-title">Quản Lý Phòng Chiếu</h1>
-          <p className="page-subtitle">
-            Quản lý các phòng chiếu và bố cục ghế của chúng
+          <h1 className="ads-page-title">Quản Lý Phòng Chiếu - Admin</h1>
+          <p className="ads-page-subtitle">
+            Quản lý các phòng chiếu của tất cả rạp trong hệ thống
           </p>
         </div>
-        <button onClick={handleAddRoom} className="add-room-button">
-          <FiPlus className="add-room-icon" />
-          Thêm Phòng Chiếu Mới
-        </button>
+        {selectedCinemaId && (
+          <button onClick={handleAddRoom} className="ads-add-room-button">
+            <FiPlus className="ads-add-room-icon" />
+            Thêm Phòng Chiếu Mới
+          </button>
+        )}
       </div>
 
-      {/* Cinema Details */}
-      {cinemaInfo && (
+      {/* Cinema Selection */}
+      <div className="ads-cinema-select-wrapper">
+        <label className="ads-cinema-select-label">Chọn Rạp Chiếu:</label>
+        <div className="ads-cinema-select-container">
+          <select
+            value={selectedCinemaId || ""}
+            onChange={(e) => handleCinemaChange(Number(e.target.value))}
+            className="ads-cinema-select"
+          >
+            <option value="">-- Chọn rạp chiếu --</option>
+            {cinemas.map((cinema) => (
+              <option key={cinema.Cinema_ID} value={cinema.Cinema_ID}>
+                {cinema.Cinema_Name} - {cinema.City}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
+      {/* Selected Cinema Info */}
+      {selectedCinema && (
         <div className="selected-cinema-info">
           <div className="cinema-info-card">
-            <h3 className="cinema-info-title">{cinemaInfo.Cinema_Name}</h3>
+            <h3 className="cinema-info-title">{selectedCinema.Cinema_Name}</h3>
             <div className="cinema-info-details">
-              <div className="cinema-info-address">
-                <FiInfo className="cinema-info-icon" />
-                {cinemaInfo.Address}, {cinemaInfo.City}, {cinemaInfo.Province}
-              </div>
-              <div className="cinema-info-phone">
-                <FiInfo className="cinema-info-icon" />
-                {cinemaInfo.Phone_Number}
-              </div>
-              <div className="cinema-info-email">
-                <FiInfo className="cinema-info-icon" />
-                {cinemaInfo.Email}
-              </div>
+              <p className="cinema-info-address">
+                <FiMapPin className="cinema-info-icon" />
+                {selectedCinema.Address}, {selectedCinema.City}, {selectedCinema.Province}
+              </p>
+              <p className="cinema-info-phone">📞 {selectedCinema.Phone_Number}</p>
+              <p className="cinema-info-email">✉️ {selectedCinema.Email}</p>
             </div>
           </div>
         </div>
       )}
 
-      {/* Filters and Controls */}
-      <div className="filters-container">
-        <div className="filters-left">
-          <div className="search-wrapper">
-            <div className="search-container">
-              <input
-                type="text"
-                placeholder="Tìm kiếm phòng chiếu..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="search-input"
-              />
-              <FiSearch className="search-icon" />
-              {searchTerm && (
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="clear-search-button"
-                >
-                  <FiX className="clear-search-icon" />
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div className="filters-center">
-          <div className="view-mode-toggle">
-            <button
-              onClick={() => setViewMode("table")}
-              className={`view-mode-button ${
-                viewMode === "table" ? "view-mode-button-active" : ""
-              }`}
-              title="Chế Độ Bảng"
-            >
-              <FiLayout className="view-mode-icon" />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`view-mode-button ${
-                viewMode === "grid" ? "view-mode-button-active" : ""
-              }`}
-              title="Chế Độ Lưới"
-            >
-              <FiGrid className="view-mode-icon" />
-            </button>
-          </div>
-        </div>
-
-        <div className="filters-right">
-          <div className="status-filter-wrapper">
-            <div className="status-filter-container">
-              <select
-                value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
-                className="status-filter-select"
-              >
-                <option value="all">Tất Cả Trạng Thái</option>
-                <option value="Active">Hoạt Động</option>
-                <option value="Inactive">Không Hoạt Động</option>
-              </select>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Error Display */}
-      {error && (
-        <div className="error-message">
-          <div className="error-content">
-            <FiAlertCircle className="error-icon" />
-            <p className="error-text">{error}</p>
-          </div>
-          <button onClick={fetchCinemaRooms} className="error-retry-button">
-            <FiRefreshCw className="error-retry-icon" /> Thử Lại
-          </button>
-        </div>
-      )}
-
-      {/* Loading State */}
-      {loading ? (
-        <div className="loading-container">
-          <div className="loading-spinner"></div>
-          <p className="loading-text">Đang tải danh sách phòng chiếu...</p>
-        </div>
-      ) : (
+      {/* Content Area */}
+      {selectedCinemaId ? (
         <>
-          {/* Table View */}
-          {viewMode === "table" && (
-            <div className="table-view">
-              {filteredRooms.length > 0 ? (
-                <div className="table-scroll-container">
-                  <table className="cinema-room-table">
-                    <thead className="table-header">
-                      <tr>
-                        <th className="table-header-cell">ID</th>
-                        <th className="table-header-cell">Tên Phòng</th>
-                        <th className="table-header-cell">Loại Phòng</th>
-                        <th className="table-header-cell">Số Ghế</th>
-                        <th className="table-header-cell">Trạng Thái</th>
-                        <th className="table-header-cell">
-                          Có Suất Chiếu Sắp Tới
-                        </th>
-                        <th className="table-header-cell text-right">
-                          Hành Động
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="table-body">
-                      {filteredRooms.map((room) => (
-                        <tr key={room.Cinema_Room_ID} className="table-row">
-                          <td className="table-cell">
-                            <div className="cell-content-bold">
-                              {room.Cinema_Room_ID}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content-bold">
+          {/* Filters and Controls */}
+          <div className="ads-filters-container">
+            <div className="ads-filters-left">
+              <div className="ads-search-wrapper">
+                <div className="ads-search-container">
+                  <input
+                    type="text"
+                    placeholder="Tìm kiếm phòng chiếu..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="ads-search-input"
+                  />
+                  <FiSearch className="ads-search-icon" />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm("")}
+                      className="ads-clear-search-button"
+                    >
+                      <FiX className="ads-clear-search-icon" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="ads-filters-center">
+              <div className="ads-view-mode-toggle">
+                <button
+                  onClick={() => setViewMode("table")}
+                  className={`ads-view-mode-button ${
+                    viewMode === "table" ? "ads-view-mode-button-active" : ""
+                  }`}
+                  title="Chế Độ Bảng"
+                >
+                  <FiLayout className="ads-view-mode-icon" />
+                </button>
+                <button
+                  onClick={() => setViewMode("grid")}
+                  className={`ads-view-mode-button ${
+                    viewMode === "grid" ? "ads-view-mode-button-active" : ""
+                  }`}
+                  title="Chế Độ Lưới"
+                >
+                  <FiGrid className="ads-view-mode-icon" />
+                </button>
+              </div>
+            </div>
+
+            <div className="ads-filters-right">
+              <div className="ads-status-filter-wrapper">
+                <div className="ads-status-filter-container">
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="ads-status-filter-select"
+                  >
+                    <option value="all">Tất Cả Trạng Thái</option>
+                    <option value="Active">Hoạt Động</option>
+                    <option value="Inactive">Không Hoạt Động</option>
+                  </select>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Error Display */}
+          {error && (
+            <div className="ads-error-message">
+              <div className="ads-error-content">
+                <FiAlertCircle className="ads-error-icon" />
+                <p className="ads-error-text">{error}</p>
+              </div>
+              <button
+                onClick={() => fetchCinemaRooms(selectedCinemaId!)}
+                className="ads-error-retry-button"
+              >
+                <FiRefreshCw className="ads-error-retry-icon" /> Thử Lại
+              </button>
+            </div>
+          )}
+
+          {/* Loading State */}
+          {loading ? (
+            <div className="ads-loading-container">
+              <div className="ads-loading-spinner"></div>
+              <p className="ads-loading-text">Đang tải danh sách phòng chiếu...</p>
+            </div>
+          ) : (
+            <>
+              {/* Table View */}
+              {viewMode === "table" && (
+                <div className="ads-table-view">
+                  {filteredRooms.length > 0 ? (
+                    <div className="ads-table-scroll-container">
+                      <table className="ads-cinema-room-table">
+                        <thead className="ads-table-header">
+                          <tr>
+                            <th className="ads-table-header-cell">ID</th>
+                            <th className="ads-table-header-cell">Tên Phòng</th>
+                            <th className="ads-table-header-cell">Loại Phòng</th>
+                            <th className="ads-table-header-cell">Số Ghế</th>
+                            <th className="ads-table-header-cell">Trạng Thái</th>
+                            <th className="ads-table-header-cell">
+                              Có Suất Chiếu Sắp Tới
+                            </th>
+                            <th className="ads-table-header-cell ads-text-right">
+                              Hành Động
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody className="ads-table-body">
+                          {filteredRooms.map((room) => (
+                            <tr key={room.Cinema_Room_ID} className="ads-table-row">
+                              <td className="ads-table-cell">
+                                <div className="ads-cell-content-bold">
+                                  {room.Cinema_Room_ID}
+                                </div>
+                              </td>
+                              <td className="ads-table-cell">
+                                <div className="ads-cell-content-bold">
+                                  {room.Room_Name}
+                                </div>
+                              </td>
+                              <td className="ads-table-cell">
+                                <div className="ads-cell-content">{room.Room_Type}</div>
+                              </td>
+                              <td className="ads-table-cell">
+                                <div className="ads-cell-content">
+                                  {room.Seat_Quantity}
+                                </div>
+                              </td>
+                              <td className="ads-table-cell">
+                                <span
+                                  className={`ads-status-label ${
+                                    room.Status === "Active"
+                                      ? "ads-status-active"
+                                      : "ads-status-inactive-red"
+                                  }`}
+                                >
+                                  {room.Status}
+                                </span>
+                              </td>
+                              <td className="ads-table-cell">
+                                <div className="ads-cell-content">
+                                  {room.HasUpcomingShowtimes ? "Có" : "Không"}
+                                </div>
+                              </td>
+                              <td className="ads-table-cell ads-text-right">
+                                <div className="ads-action-buttons">
+                                  <button
+                                    onClick={() => fetchSeatLayout(room.Cinema_Room_ID)}
+                                    className="ads-view-layout-button"
+                                    title="Xem Bố Cục Ghế"
+                                  >
+                                    <FiEye className="ads-action-icon" />
+                                  </button>
+                                  <button
+                                    onClick={() =>
+                                      handleOpenCreateSeatLayout(room.Cinema_Room_ID)
+                                    }
+                                    className={`ads-create-layout-button ${
+                                      roomSeatLayoutStatus[room.Cinema_Room_ID]
+                                        ? "ads-disabled-button"
+                                        : ""
+                                    }`}
+                                    disabled={roomSeatLayoutStatus[room.Cinema_Room_ID]}
+                                    title={
+                                      roomSeatLayoutStatus[room.Cinema_Room_ID]
+                                        ? "Phòng đã có bố cục ghế, không thể tạo mới!"
+                                        : "Tạo/Chỉnh Sửa Bố Cục Ghế"
+                                    }
+                                  >
+                                    <FiLayout className="ads-action-icon" />
+                                  </button>
+                                  <button
+                                    onClick={() => handleEditRoom(room)}
+                                    className="ads-edit-button"
+                                    title="Chỉnh Sửa Phòng Chiếu"
+                                  >
+                                    <FiEdit2 className="ads-action-icon" />
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmDeleteId(room.Cinema_Room_ID)}
+                                    className={`ads-delete-button ${
+                                      room.HasUpcomingShowtimes
+                                        ? "ads-delete-button-disabled"
+                                        : ""
+                                    }`}
+                                    disabled={room.HasUpcomingShowtimes}
+                                    title={
+                                      room.HasUpcomingShowtimes
+                                        ? "Không thể xóa: Phòng có suất chiếu sắp tới"
+                                        : "Xóa Phòng Chiếu"
+                                    }
+                                  >
+                                    <FiTrash2 className="ads-action-icon" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="ads-no-data-message">
+                      <FiInfo className="ads-no-data-icon" />
+                      <h3 className="no-data-title">Không tìm thấy phòng chiếu</h3>
+                      <p className="no-data-text">
+                        {searchTerm || statusFilter !== "all"
+                          ? "Thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn"
+                          : "Rạp này chưa có phòng chiếu nào"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Grid View */}
+              {viewMode === "grid" && (
+                <div className="ads-grid-view">
+                  {filteredRooms.length > 0 ? (
+                    filteredRooms.map((room) => (
+                      <div key={room.Cinema_Room_ID} className="ads-grid-card">
+                        <div className="ads-grid-card-content">
+                          <div className="ads-grid-card-header">
+                            <h3 className="ads-grid-card-title" title={room.Room_Name}>
                               {room.Room_Name}
-                            </div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">{room.Room_Type}</div>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {room.Seat_Quantity}
-                            </div>
-                          </td>
-                          <td className="table-cell">
+                            </h3>
                             <span
-                              className={`status-label ${
+                              className={`ads-status-label ${
                                 room.Status === "Active"
-                                  ? "status-active"
-                                  : "status-inactive-red"
+                                  ? "ads-status-active"
+                                  : "ads-status-inactive-red"
                               }`}
                             >
                               {room.Status}
                             </span>
-                          </td>
-                          <td className="table-cell">
-                            <div className="cell-content">
-                              {room.HasUpcomingShowtimes ? "Có" : "Không"}
+                          </div>
+
+                          <div className="ads-grid-card-details">
+                            <div className="ads-grid-card-detail">
+                              <span className="ads-detail-label">ID:</span>
+                              <span className="ads-detail-value">
+                                {room.Cinema_Room_ID}
+                              </span>
                             </div>
-                          </td>
-                          <td className="table-cell text-right">
-                            <div className="action-buttons">
-                              <button
-                                onClick={() =>
-                                  fetchSeatLayout(room.Cinema_Room_ID)
-                                }
-                                className="view-layout-button"
-                                title="Xem Bố Cục Ghế"
-                              >
-                                <FiEye className="action-icon" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  handleOpenCreateSeatLayout(room.Cinema_Room_ID)
-                                }
-                                className={`create-layout-button ${
-                                  roomSeatLayoutStatus[room.Cinema_Room_ID]
-                                    ? "disabled-button"
-                                    : ""
-                                }`}
-                                disabled={
-                                  roomSeatLayoutStatus[room.Cinema_Room_ID]
-                                }
-                                title={
-                                  roomSeatLayoutStatus[room.Cinema_Room_ID]
-                                    ? "Phòng đã có bố cục ghế, không thể tạo mới!"
-                                    : "Tạo/Chỉnh Sửa Bố Cục Ghế"
-                                }
-                              >
-                                <FiLayout className="action-icon" />
-                              </button>
-                              <button
-                                onClick={() => handleEditRoom(room)}
-                                className="edit-button"
-                                title="Chỉnh Sửa Phòng Chiếu"
-                              >
-                                <FiEdit2 className="action-icon" />
-                              </button>
-                              <button
-                                onClick={() =>
-                                  setConfirmDeleteId(room.Cinema_Room_ID)
-                                }
-                                className={`delete-button ${
-                                  room.HasUpcomingShowtimes
-                                    ? "delete-button-disabled"
-                                    : ""
-                                }`}
-                                disabled={room.HasUpcomingShowtimes}
-                                title={
-                                  room.HasUpcomingShowtimes
-                                    ? "Không thể xóa: Phòng có suất chiếu sắp tới"
-                                    : "Xóa Phòng Chiếu"
-                                }
-                              >
-                                <FiTrash2 className="action-icon" />
-                              </button>
+                            <div className="ads-grid-card-detail">
+                              <span className="ads-detail-label">Loại Phòng:</span>
+                              <span className="ads-detail-value">{room.Room_Type}</span>
                             </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div className="no-data-message">
-                  <FiInfo className="no-data-icon" />
-                  <h3 className="no-data-title">Không tìm thấy phòng chiếu</h3>
-                  <p className="no-data-text">
-                    {searchTerm || statusFilter !== "all"
-                      ? "Thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn"
-                      : "Thêm một phòng chiếu mới để bắt đầu"}
-                  </p>
-                </div>
-              )}
-            </div>
-          )}
+                            <div className="ads-grid-card-detail">
+                              <span className="ads-detail-label">Số Ghế:</span>
+                              <span className="ads-detail-value">
+                                {room.Seat_Quantity}
+                              </span>
+                            </div>
+                            <div className="ads-grid-card-detail">
+                              <span className="ads-detail-label">Suất Chiếu Sắp Tới:</span>
+                              <span className="ads-detail-value">
+                                {room.HasUpcomingShowtimes ? "Có" : "Không"}
+                              </span>
+                            </div>
+                          </div>
 
-          {/* Grid View */}
-          {viewMode === "grid" && (
-            <div className="grid-view">
-              {filteredRooms.length > 0 ? (
-                filteredRooms.map((room) => (
-                  <div key={room.Cinema_Room_ID} className="grid-card">
-                    <div className="grid-card-content">
-                      <div className="grid-card-header">
-                        <h3 className="grid-card-title" title={room.Room_Name}>
-                          {room.Room_Name}
-                        </h3>
-                        <span
-                          className={`status-label ${
-                            room.Status === "Active"
-                              ? "status-active"
-                              : "status-inactive-red"
-                          }`}
-                        >
-                          {room.Status}
-                        </span>
+                          <div className="ads-grid-card-actions">
+                            <button
+                              onClick={() => fetchSeatLayout(room.Cinema_Room_ID)}
+                              className="ads-view-layout-button"
+                              title="Xem Bố Cục Ghế"
+                            >
+                              <FiEye className="ads-action-icon" />
+                            </button>
+                            <button
+                              onClick={() =>
+                                handleOpenCreateSeatLayout(room.Cinema_Room_ID)
+                              }
+                              className={`ads-create-layout-button ${
+                                roomSeatLayoutStatus[room.Cinema_Room_ID]
+                                  ? "ads-disabled-button"
+                                  : ""
+                              }`}
+                              disabled={roomSeatLayoutStatus[room.Cinema_Room_ID]}
+                              title={
+                                roomSeatLayoutStatus[room.Cinema_Room_ID]
+                                  ? "Phòng đã có bố cục ghế, không thể tạo mới!"
+                                  : "Tạo/Chỉnh Sửa Bố Cục Ghế"
+                              }
+                            >
+                              <FiLayout className="ads-action-icon" />
+                            </button>
+                            <button
+                              onClick={() => handleEditRoom(room)}
+                              className="ads-edit-button"
+                              title="Chỉnh Sửa Phòng Chiếu"
+                            >
+                              <FiEdit2 className="ads-action-icon" />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDeleteId(room.Cinema_Room_ID)}
+                              className={`ads-delete-button ${
+                                room.HasUpcomingShowtimes
+                                  ? "ads-delete-button-disabled"
+                                  : ""
+                              }`}
+                              disabled={room.HasUpcomingShowtimes}
+                              title={
+                                room.HasUpcomingShowtimes
+                                  ? "Không thể xóa: Phòng có suất chiếu sắp tới"
+                                  : "Xóa Phòng Chiếu"
+                              }
+                            >
+                              <FiTrash2 className="ads-action-icon" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
-
-                      <div className="grid-card-details">
-                        <div className="grid-card-detail">
-                          <span className="detail-label">ID:</span>
-                          <span className="detail-value">
-                            {room.Cinema_Room_ID}
-                          </span>
-                        </div>
-                        <div className="grid-card-detail">
-                          <span className="detail-label">Loại Phòng:</span>
-                          <span className="detail-value">{room.Room_Type}</span>
-                        </div>
-                        <div className="grid-card-detail">
-                          <span className="detail-label">Số Ghế:</span>
-                          <span className="detail-value">
-                            {room.Seat_Quantity}
-                          </span>
-                        </div>
-                        <div className="grid-card-detail">
-                          <span className="detail-label">Suất Chiếu Sắp Tới:</span>
-                          <span className="detail-value">
-                            {room.HasUpcomingShowtimes ? "Có" : "Không"}
-                          </span>
-                        </div>
-                      </div>
-
-                      <div className="grid-card-actions">
-                        <button
-                          onClick={() => fetchSeatLayout(room.Cinema_Room_ID)}
-                          className="view-layout-button"
-                          title="Xem Bố Cục Ghế"
-                        >
-                          <FiEye className="action-icon" />
-                        </button>
-                        <button
-                          onClick={() =>
-                            handleOpenCreateSeatLayout(room.Cinema_Room_ID)
-                          }
-                          className={`create-layout-button ${
-                            roomSeatLayoutStatus[room.Cinema_Room_ID]
-                              ? "disabled-button"
-                              : ""
-                          }`}
-                          disabled={roomSeatLayoutStatus[room.Cinema_Room_ID]}
-                          title={
-                            roomSeatLayoutStatus[room.Cinema_Room_ID]
-                              ? "Phòng đã có bố cục ghế, không thể tạo mới!"
-                              : "Tạo/Chỉnh Sửa Bố Cục Ghế"
-                          }
-                        >
-                          <FiLayout className="action-icon" />
-                        </button>
-                        <button
-                          onClick={() => handleEditRoom(room)}
-                          className="edit-button"
-                          title="Chỉnh Sửa Phòng Chiếu"
-                        >
-                          <FiEdit2 className="action-icon" />
-                        </button>
-                        <button
-                          onClick={() => setConfirmDeleteId(room.Cinema_Room_ID)}
-                          className={`delete-button ${
-                            room.HasUpcomingShowtimes
-                              ? "delete-button-disabled"
-                              : ""
-                          }`}
-                          disabled={room.HasUpcomingShowtimes}
-                          title={
-                            room.HasUpcomingShowtimes
-                              ? "Không thể xóa: Phòng có suất chiếu sắp tới"
-                              : "Xóa Phòng Chiếu"
-                          }
-                        >
-                          <FiTrash2 className="action-icon" />
-                        </button>
-                      </div>
+                    ))
+                  ) : (
+                    <div className="ads-no-data-message ads-grid-no-data">
+                      <FiInfo className="ads-no-data-icon" />
+                      <h3 className="no-data-title">Không tìm thấy phòng chiếu</h3>
+                      <p className="no-data-text">
+                        {searchTerm || statusFilter !== "all"
+                          ? "Thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn"
+                          : "Rạp này chưa có phòng chiếu nào"}
+                      </p>
                     </div>
-                  </div>
-                ))
-              ) : (
-                <div className="no-data-message grid-no-data">
-                  <FiInfo className="no-data-icon" />
-                  <h3 className="no-data-title">Không tìm thấy phòng chiếu</h3>
-                  <p className="no-data-text">
-                    {searchTerm || statusFilter !== "all"
-                      ? "Thử điều chỉnh tiêu chí tìm kiếm hoặc bộ lọc của bạn"
-                      : "Thêm một phòng chiếu mới để bắt đầu"}
-                  </p>
+                  )}
                 </div>
               )}
-            </div>
+            </>
           )}
         </>
+      ) : (
+        <div className="ads-no-data-message">
+          <FiMapPin className="ads-no-data-icon ads-warning-icon" />
+          <h3 className="no-data-title">Vui lòng chọn rạp chiếu</h3>
+          <p className="no-data-text">
+            Chọn một rạp chiếu từ danh sách ở trên để xem và quản lý các phòng chiếu
+          </p>
+        </div>
       )}
 
       {/* Add/Edit Room Modal */}
@@ -1286,17 +1357,17 @@ const ManageCinemaRoom: React.FC = () => {
         onClose={handleCloseModal}
         size="md"
       >
-        <div className="modal-body">
-          <h2 className="modal-title">
+        <div className="ads-modal-body">
+          <h2 className="ads-modal-title">
             {isUpdatingRoom ? "Cập Nhật Phòng Chiếu" : "Thêm Phòng Chiếu Mới"}
           </h2>
           <form
             onSubmit={isUpdatingRoom ? handleUpdateRoom : handleCreateRoom}
-            className="modal-form"
+            className="ads-modal-form"
           >
-            <div className="form-group">
-              <label className="form-label">
-                Tên Phòng <span className="required">*</span>
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Tên Phòng <span className="ads-required">*</span>
               </label>
               <input
                 type="text"
@@ -1304,15 +1375,15 @@ const ManageCinemaRoom: React.FC = () => {
                 onChange={(e) =>
                   setNewRoom({ ...newRoom, RoomName: e.target.value })
                 }
-                className="form-input"
+                className="ads-form-input"
                 placeholder="Nhập tên phòng"
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Số Ghế <span className="required">*</span>
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Số Ghế <span className="ads-required">*</span>
               </label>
               <input
                 type="number"
@@ -1320,23 +1391,23 @@ const ManageCinemaRoom: React.FC = () => {
                 onChange={(e) =>
                   setNewRoom({ ...newRoom, Capacity: parseInt(e.target.value) })
                 }
-                className="form-input"
+                className="ads-form-input"
                 placeholder="Nhập số ghế"
                 required
                 min="1"
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Loại Phòng <span className="required">*</span>
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Loại Phòng <span className="ads-required">*</span>
               </label>
               <select
                 value={newRoom.RoomType || ""}
                 onChange={(e) =>
                   setNewRoom({ ...newRoom, RoomType: e.target.value })
                 }
-                className="form-select"
+                className="ads-form-select"
                 required
               >
                 <option value="">Chọn loại phòng</option>
@@ -1346,29 +1417,29 @@ const ManageCinemaRoom: React.FC = () => {
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Ghi Chú</label>
+            <div className="ads-form-group">
+              <label className="ads-form-label">Ghi Chú</label>
               <textarea
                 value={newRoom.Description || ""}
                 onChange={(e) =>
                   setNewRoom({ ...newRoom, Description: e.target.value })
                 }
-                className="form-textarea"
+                className="ads-form-textarea"
                 rows={4}
                 placeholder="Ghi chú (Tùy Chọn)"
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Trạng Thái <span className="required">*</span>
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Trạng Thái <span className="ads-required">*</span>
               </label>
               <select
                 value={newRoom.Status || "Active"}
                 onChange={(e) =>
                   setNewRoom({ ...newRoom, Status: e.target.value })
                 }
-                className="form-select"
+                className="ads-form-select"
                 required
               >
                 <option value="Active">Hoạt Động</option>
@@ -1376,15 +1447,15 @@ const ManageCinemaRoom: React.FC = () => {
               </select>
             </div>
 
-            <div className="modal-actions">
+            <div className="ads-modal-actions">
               <button
                 type="button"
                 onClick={handleCloseModal}
-                className="modal-cancel-button"
+                className="ads-modal-cancel-button"
               >
                 Hủy
               </button>
-              <button type="submit" className="modal-submit-button">
+              <button type="submit" className="ads-modal-submit-button">
                 {isUpdatingRoom ? "Cập Nhật Phòng" : "Thêm Phòng"}
               </button>
             </div>
@@ -1398,29 +1469,29 @@ const ManageCinemaRoom: React.FC = () => {
         onClose={() => setIsCreatingSeatLayout(false)}
         size="md"
       >
-        <div className="modal-body">
-          <h2 className="modal-title">Tạo Bố Cục Ghế</h2>
-          <form onSubmit={handleCreateSeatLayout} className="modal-form">
-            <div className="form-group">
-              <label className="form-label">
-                Nhãn Hàng (VD: A-Z) <span className="required">*</span>
+        <div className="ads-modal-body">
+          <h2 className="ads-modal-title">Tạo Bố Cục Ghế</h2>
+          <form onSubmit={handleCreateSeatLayout} className="ads-modal-form">
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Nhãn Hàng (VD: A-Z) <span className="ads-required">*</span>
               </label>
               <input
                 type="text"
                 value={rowsInput}
                 onChange={(e) => setRowsInput(e.target.value)}
-                className="form-input"
+                className="ads-form-input"
                 placeholder="Nhập dãy ký tự (VD: A-Z)"
                 required
               />
-              <p className="form-help-text">
+              <p className="ads-form-help-text">
                 Nhập dãy hàng ở định dạng "A-Z".
               </p>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">
-                Số Cột Mỗi Hàng <span className="required">*</span>
+            <div className="ads-form-group">
+              <label className="ads-form-label">
+                Số Cột Mỗi Hàng <span className="ads-required">*</span>
               </label>
               <input
                 type="number"
@@ -1428,51 +1499,51 @@ const ManageCinemaRoom: React.FC = () => {
                 onChange={(e) =>
                   setColumnsPerRow(parseInt(e.target.value) || 0)
                 }
-                className="form-input"
+                className="ads-form-input"
                 placeholder="Nhập số cột"
                 min="1"
                 required
               />
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Loại Ghế Mặc Định</label>
+            <div className="ads-form-group">
+              <label className="ads-form-label">Loại Ghế Mặc Định</label>
               <select
                 value={seatType}
                 onChange={(e) => setSeatType(e.target.value)}
-                className="form-select"
+                className="ads-form-select"
               >
                 <option value="Regular">Thường</option>
                 <option value="VIP">VIP</option>
               </select>
             </div>
 
-            <div className="form-group">
-              <label className="form-label">Cột Trống (Tùy Chọn)</label>
+            <div className="ads-form-group">
+              <label className="ads-form-label">Cột Trống (Tùy Chọn)</label>
               <input
                 type="text"
                 value={emptyColumnsInput}
                 onChange={(e) => setEmptyColumnsInput(e.target.value)}
-                className="form-input"
+                className="ads-form-input"
                 placeholder="VD: 0,2,5"
               />
-              <p className="form-help-text">
+              <p className="ads-form-help-text">
                 Nhập các số cột để bỏ trống, ngăn cách bằng dấu phẩy "VD: 0,2,5"
               </p>
             </div>
 
             <SeatLayoutInfoDisplay />
 
-            <div className="modal-actions">
+            <div className="ads-modal-actions">
               <button
                 type="button"
                 onClick={() => setIsCreatingSeatLayout(false)}
-                className="modal-cancel-button"
+                className="ads-modal-cancel-button"
               >
                 <FiX className="action-icon inline-block mr-2" />
                 Hủy
               </button>
-              <button type="submit" className="modal-submit-button">
+              <button type="submit" className="ads-modal-submit-button">
                 <FiCheck className="action-icon inline-block mr-2" />
                 Tạo Bố Cục
               </button>
@@ -1487,19 +1558,19 @@ const ManageCinemaRoom: React.FC = () => {
         onClose={() => setConfirmDeleteId(null)}
         size="sm"
       >
-        <div className="modal-body">
-          <div className="delete-confirmation">
-            <FiAlertTriangle className="delete-icon" />
+        <div className="ads-modal-body">
+          <div className="ads-delete-confirmation">
+            <FiAlertTriangle className="ads-delete-icon" />
           </div>
-          <h2 className="modal-title text-center">Xác Nhận Xóa</h2>
-          <p className="modal-message text-center">
+          <h2 className="ads-modal-title ads-text-center">Xác Nhận Xóa</h2>
+          <p className="ads-modal-message ads-text-center">
             Bạn có chắc chắn muốn xóa phòng chiếu này không? Hành động này không
             thể hoàn tác.
           </p>
-          <div className="modal-actions justify-center">
+          <div className="ads-modal-actions ads-justify-center">
             <button
               onClick={() => setConfirmDeleteId(null)}
-              className="modal-cancel-button"
+              className="ads-modal-cancel-button"
             >
               Hủy
             </button>
@@ -1507,7 +1578,7 @@ const ManageCinemaRoom: React.FC = () => {
               onClick={() =>
                 confirmDeleteId && handleDeleteRoom(confirmDeleteId)
               }
-              className="modal-delete-button"
+              className="ads-modal-delete-button"
             >
               Xóa
             </button>
@@ -1517,9 +1588,9 @@ const ManageCinemaRoom: React.FC = () => {
 
       {/* Seat Layout Viewing Modal */}
       <Modal isOpen={isViewingSeatLayout} onClose={handleCloseModal} size="xl">
-        <div className="modal-body seat-layout-modal">
+        <div className="ads-modal-body seat-layout-modal">
           <div className="seat-layout-header">
-            <h2 className="modal-title">
+            <h2 className="ads-modal-title">
               {seatLayout?.cinema_room.Room_Name} - Bố Cục Ghế
             </h2>
             <div className="seat-layout-actions">
@@ -1548,36 +1619,36 @@ const ManageCinemaRoom: React.FC = () => {
                 <FiTrash2 className="action-icon inline-block mr-2" />
                 Xóa Bố Cục
               </button>
-              <button onClick={handleCloseModal} className="modal-close-action">
+              <button onClick={handleCloseModal} className="ads-modal-close-action">
                 <FiX className="action-icon" />
               </button>
             </div>
           </div>
 
           {/* Thêm thông tin chi tiết phòng */}
-          {cinemaInfo && seatLayout && (
+          {selectedCinema && seatLayout && (
             <div className="room-detail-info">
               <div className="room-detail-card">
                 <h3 className="room-detail-title">Thông Tin Phòng Chiếu</h3>
                 <div className="room-detail-content">
                   <div className="room-detail-item">
                     <span className="room-detail-label">Tên Phòng:</span>
-                    <span className="room-detail-value">{seatLayout?.cinema_room.Room_Name}</span>
+                    <span className="room-detail-value">{seatLayout.cinema_room.Room_Name}</span>
                   </div>
                   <div className="room-detail-item">
                     <span className="room-detail-label">Loại Phòng:</span>
-                    <span className="room-detail-value">{seatLayout?.cinema_room.Room_Type}</span>
+                    <span className="room-detail-value">{seatLayout.cinema_room.Room_Type}</span>
                   </div>
                   <div className="room-detail-item">
                     <span className="room-detail-label">Rạp Chiếu:</span>
-                    <span className="room-detail-value">{cinemaInfo.Cinema_Name}</span>
+                    <span className="room-detail-value">{selectedCinema.Cinema_Name}</span>
                   </div>
                   <div className="room-detail-item">
                     <span className="room-detail-label">Địa Chỉ:</span>
-                    <span className="room-detail-value">{cinemaInfo.Address}, {cinemaInfo.City}</span>
+                    <span className="room-detail-value">{selectedCinema.Address}, {selectedCinema.City}</span>
                   </div>
                   {(() => {
-                    const currentRoom = cinemaRooms.find(room => room.Cinema_Room_ID === seatLayout?.cinema_room.Cinema_Room_ID);
+                    const currentRoom = cinemaRooms.find(room => room.Cinema_Room_ID === seatLayout.cinema_room.Cinema_Room_ID);
                     return currentRoom?.Notes ? (
                       <div className="room-detail-item">
                         <span className="room-detail-label">Ghi Chú:</span>
@@ -1591,9 +1662,9 @@ const ManageCinemaRoom: React.FC = () => {
           )}
 
           {isLoadingSeatLayout ? (
-            <div className="loading-container">
-              <div className="loading-spinner"></div>
-              <p className="loading-text">Đang tải bố cục ghế...</p>
+            <div className="ads-loading-container">
+              <div className="ads-loading-spinner"></div>
+              <p className="ads-loading-text">Đang tải bố cục ghế...</p>
             </div>
           ) : seatLayout ? (
             <>
@@ -1649,11 +1720,11 @@ const ManageCinemaRoom: React.FC = () => {
                     <div
                       className="column-header"
                       style={{
-                        gridTemplateColumns: `repeat(${seatLayout.dimensions.columns}, 40px)`,
+                        gridTemplateColumns: `repeat(${seatLayout?.dimensions.columns || 0}, 40px)`,
                       }}
                     >
                       {Array.from(
-                        { length: seatLayout.dimensions.columns },
+                        { length: seatLayout?.dimensions.columns || 0 },
                         (_, i) => i + 1
                       ).map((col) => (
                         <div
@@ -1661,7 +1732,7 @@ const ManageCinemaRoom: React.FC = () => {
                           onClick={() => handleColumnSelect(col)}
                           className={`column-label ${
                             isBulkSelecting &&
-                            seatLayout.rows
+                            seatLayout?.rows
                               .flatMap((row) =>
                                 row.Seats.filter(
                                   (seat) => seat.Column_Number === col
@@ -1671,7 +1742,7 @@ const ManageCinemaRoom: React.FC = () => {
                                 selectedSeats.includes(seat.Layout_ID)
                               )
                               ? "column-label-selected"
-                              : seatLayout.rows
+                              : seatLayout?.rows
                                   .flatMap((row) =>
                                     row.Seats.filter(
                                       (seat) => seat.Column_Number === col
@@ -1690,7 +1761,7 @@ const ManageCinemaRoom: React.FC = () => {
                     </div>
                     <div></div>
 
-                    {seatLayout.rows.map((row, rowIndex) => (
+                    {seatLayout?.rows.map((row, rowIndex) => (
                       <motion.div
                         key={`row-${row.Row}`}
                         className="row-container"
@@ -1719,11 +1790,11 @@ const ManageCinemaRoom: React.FC = () => {
                         <div
                           className="seats-section"
                           style={{
-                            gridTemplateColumns: `repeat(${seatLayout.dimensions.columns}, 40px)`,
+                            gridTemplateColumns: `repeat(${seatLayout?.dimensions.columns || 0}, 40px)`,
                           }}
                         >
                           {Array.from(
-                            { length: seatLayout.dimensions.columns },
+                            { length: seatLayout?.dimensions.columns || 0 },
                             (_, i) => i + 1
                           ).map((col) => {
                             const seat = row.Seats.find(
@@ -1797,11 +1868,11 @@ const ManageCinemaRoom: React.FC = () => {
                     <div
                       className="column-footer"
                       style={{
-                        gridTemplateColumns: `repeat(${seatLayout.dimensions.columns}, 40px)`,
+                        gridTemplateColumns: `repeat(${seatLayout?.dimensions.columns || 0}, 40px)`,
                       }}
                     >
                       {Array.from(
-                        { length: seatLayout.dimensions.columns },
+                        { length: seatLayout?.dimensions.columns || 0 },
                         (_, i) => i + 1
                       ).map((col) => (
                         <div
@@ -1809,7 +1880,7 @@ const ManageCinemaRoom: React.FC = () => {
                           onClick={() => handleColumnSelect(col)}
                           className={`column-label ${
                             isBulkSelecting &&
-                            seatLayout.rows
+                            seatLayout?.rows
                               .flatMap((row) =>
                                 row.Seats.filter(
                                   (seat) => seat.Column_Number === col
@@ -1819,7 +1890,7 @@ const ManageCinemaRoom: React.FC = () => {
                                 selectedSeats.includes(seat.Layout_ID)
                               )
                               ? "column-label-selected"
-                              : seatLayout.rows
+                              : seatLayout?.rows
                                   .flatMap((row) =>
                                     row.Seats.filter(
                                       (seat) => seat.Column_Number === col
@@ -1867,17 +1938,17 @@ const ManageCinemaRoom: React.FC = () => {
                     <div className="room-stats-item">
                       <p className="room-stats-label">Tổng Số Ghế</p>
                       <p className="room-stats-value">
-                        {seatLayout.stats.total_seats}
+                        {seatLayout?.stats.total_seats}
                       </p>
                     </div>
                     <div className="room-stats-item">
                       <p className="room-stats-label">Kích Thước</p>
                       <p className="room-stats-value">
-                        {seatLayout.dimensions.rows} ×{" "}
-                        {seatLayout.dimensions.columns}
+                        {seatLayout?.dimensions.rows} ×{" "}
+                        {seatLayout?.dimensions.columns}
                       </p>
                     </div>
-                    {seatLayout.stats.seat_types.map((type) => (
+                    {seatLayout?.stats.seat_types.map((type) => (
                       <div key={type.SeatType} className="room-stats-item">
                         <p className="room-stats-label">Ghế {type.SeatType}</p>
                         <p className="room-stats-value">{type.Count}</p>
@@ -1888,8 +1959,8 @@ const ManageCinemaRoom: React.FC = () => {
               </div>
             </>
           ) : (
-            <div className="no-data-message">
-              <FiAlertCircle className="no-data-icon warning-icon" />
+            <div className="ads-no-data-message">
+              <FiAlertCircle className="ads-no-data-icon ads-warning-icon" />
               <h3 className="no-data-title">Chưa có bố cục ghế</h3>
               <p className="no-data-text">
                 Phòng chiếu này chưa có bố cục ghế. Tạo một bố cục để bắt đầu.
@@ -1902,4 +1973,4 @@ const ManageCinemaRoom: React.FC = () => {
   );
 };
 
-export default ManageCinemaRoom;
+export default AdminManageCinemaRoom;

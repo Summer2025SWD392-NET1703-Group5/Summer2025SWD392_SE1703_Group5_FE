@@ -47,6 +47,20 @@ const AdminSidebar: React.FC = () => {
       label: "Quản Lý Chi Nhánh Rạp",
       icon: "🏢",
       path: "/admin/cinemas",
+      subItems: [
+        {
+          id: "cinema-branches",
+          label: "Quản Lý Chi Nhánh",
+          icon: "🏢",
+          path: "/admin/cinemas",
+        },
+        {
+          id: "cinema-rooms",
+          label: "Quản Lý Phòng Chiếu",
+          icon: "🎬",
+          path: "/admin/cinemas/rooms",
+        },
+      ],
     },
    
     {

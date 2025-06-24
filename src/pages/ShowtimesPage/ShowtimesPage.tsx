@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Heart, Plus, Share2, MessageCircle } from 'lucide-react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import api from '../../config/axios';
 
 // Styles object moved to the top level
@@ -371,6 +371,7 @@ const formatShowtime = (timeString: string) => {
 
 const ShowtimesPage: React.FC = () => {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   const movieId = searchParams.get('movieId');
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [activeTab, setActiveTab] = useState<string>('schedule');
@@ -422,8 +423,8 @@ const ShowtimesPage: React.FC = () => {
     setSelectedDate(date);
   };
 
-  const handleBookTicket = (cinemaId: string, time: string): void => {
-    alert(`Đặt vé cho:\nRạp: ${cinemaId}\nGiờ chiếu: ${time}`);
+  const handleBookTicket = (showtimeId: number): void => {
+    navigate(`/booking?showtimeId=${showtimeId}`);
   };
 
   const handleMouseEnter = (elementId: string) => {
@@ -722,7 +723,7 @@ const ShowtimesPage: React.FC = () => {
                                               fontWeight: 'bold'
                                             } : {})
                                           }}
-                                          onClick={() => handleBookTicket(cinema.Cinema_Name, formatShowtime(showtime.Start_Time))}
+                                          onClick={() => handleBookTicket(showtime.Showtime_ID)}
                                           onMouseEnter={() => handleMouseEnter(`showtime-${showtime.Showtime_ID}`)}
                                           onMouseLeave={() => handleMouseLeave(`showtime-${showtime.Showtime_ID}`)}
                                         >

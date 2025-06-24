@@ -420,8 +420,17 @@ const MyTicket: React.FC = () => {
   };
 
   const formatDateTime = (date: string, time: string) => {
-    const showDate = format(new Date(date), "EEEE, dd/MM/yyyy", { locale: vi });
-    const showTime = format(new Date(time), "HH:mm");
+    if (!date) return "Không xác định";
+    // Nếu time không hợp lệ, chỉ trả về ngày
+    let dateTimeString = date;
+    if (time) {
+      // Ghép ngày và giờ thành chuỗi ISO
+      dateTimeString = `${date}T${time}`;
+    }
+    const dateObj = new Date(dateTimeString);
+    if (isNaN(dateObj.getTime())) return "Không xác định";
+    const showDate = format(dateObj, "EEEE, dd/MM/yyyy", { locale: vi });
+    const showTime = format(dateObj, "HH:mm");
     return `${showDate} - ${showTime}`;
   };
 
