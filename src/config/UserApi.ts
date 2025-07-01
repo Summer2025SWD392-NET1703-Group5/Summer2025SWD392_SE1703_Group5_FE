@@ -31,13 +31,120 @@ const registerUserByAdmin = async (userData: any) => {
 };
 
 const getUserProfile = async () => {
-    try {
-        const response = await api.get("user/profile");
-        return response.data;
-    } catch (error) {
-        console.error("Error fetching user profile:", error);
-        throw error;
-    }
-    }
+  try {
+    const response = await api.get("user/profile");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    throw error;
+  }
+};
 
-export { getAllUsers, getUserById, registerUserByAdmin, getUserProfile };
+const deleteUserById = async (id: string) => {
+  try {
+    const response = await api.delete(`user/${id}`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error deleting user with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+const restoreUser = async (id: string) => {
+  try {
+    const response = await api.put(`user/${id}/restore`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error restoring user with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+const updateUserStatus = async (id: string, status: string) => {
+  try {
+    const response = await api.put(`user/${id}/status`, {
+      Status: status, // Based on the image, the backend expects "Status" field
+    });
+    return response.data;
+  } catch (error) {
+    console.error(`Error updating user status with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+const resetUserPassword = async (id: string, passwordData: any) => {
+  try {
+    const response = await api.post(`user/${id}/reset-password`, passwordData);
+    return response.data;
+  } catch (error) {
+    console.error(`Error resetting password for user with ID ${id}:`, error);
+    throw error;
+  }
+};
+
+const updateUserProfile = async (profileData: any) => {
+  try {
+    const response = await api.put("user/profile", profileData);
+    return response.data;
+  } catch (error) {
+    console.error("Error updating user profile:", error);
+    throw error;
+  }
+};
+
+// Register a user by staff
+const registerUserByStaff = async (userData: any) => {
+  try {
+    const response = await api.post("user/staff-register", userData);
+    return response.data;
+  } catch (error) {
+    console.error("Error registering staff user:", error);
+    throw error;
+  }
+};
+
+const getAllManagers = async () => {
+  try {
+    const response = await api.get("user/managers");
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching managers:", error);
+    throw error;
+  }
+};
+
+const assignManager = async (assignmentData: any) => {
+  try {
+    const response = await api.post("user/managers/assign", assignmentData);
+    return response.data;
+  } catch (error) {
+    console.error("Error assigning manager:", error);
+    throw error;
+  }
+};
+
+const removeManagerAssignment = async (managerId: string) => {
+  try {
+    const response = await api.delete(`user/managers/${managerId}/remove-assignment`);
+    return response.data;
+  } catch (error) {
+    console.error(`Error removing manager assignment with ID ${managerId}:`, error);
+    throw error;
+  }
+};
+
+export {
+  getAllUsers,
+  getUserById,
+  registerUserByAdmin,
+  getUserProfile,
+  deleteUserById,
+  restoreUser,
+  updateUserStatus,
+  resetUserPassword,
+  updateUserProfile,
+  registerUserByStaff,
+  getAllManagers,
+  assignManager,
+  removeManagerAssignment,
+};

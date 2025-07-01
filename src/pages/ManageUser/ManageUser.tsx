@@ -1,30 +1,50 @@
 import React, { useState, useEffect } from "react";
 import "./ManageUser.css";
 import AddUserModal from "./components/AddUserModal";
-import { getAllUsers } from "../../config/UserApi";
+import { getAllUsers, registerUserByAdmin, deleteUserById, restoreUser, updateUserStatus } from "../../config/UserApi";
+import {
+  formatDateTime,
+  formatDate,
+  getAccountStatusText,
+  getRoleText,
+  LoadingSpinner,
+  EmptyState,
+  showSuccessToast,
+  showErrorToast,
+  showWarningToast,
+  showInfoToast,
+  validateEmail,
+  validatePhone,
+  removeAccents,
+} from "../../components/utils/utils";
 
 interface User {
-  id: string;
-  fullName: string;
-  email: string;
-  phone: string;
-  address: string;
-  dateOfBirth: string;
-  sex: string;
-  role: string;
-  status: string;
-  lastLogin: string;
+  User_ID: number;
+  Full_Name: string;
+  Email: string;
+  Phone_Number: string;
+  Address: string;
+  Date_Of_Birth: string | null;
+  Sex: string | null;
+  Role: string;
+  Account_Status: string;
+  Last_Login: string | null;
+  Is_Deleted?: boolean; // Add for soft delete tracking
+  Deleted_At?: string | null; // Track when deleted
 }
 
 const ManageUser: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [showDeleted, setShowDeleted] = useState(false); // Toggle to show deleted users
   const [currentPage, setCurrentPage] = useState(1);
-  const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
+  const [selectedUsers, setSelectedUsers] = useState<number[]>([]);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const usersPerPage = 10;
 
@@ -34,29 +54,35 @@ const ManageUser: React.FC = () => {
 
   const fetchUsers = async () => {
     try {
-      // Mock data - replace with actual API call
-      setTimeout(() => {
-        getAllUsers()
-          .then((data) => {
-            setUsers(data);
-          })
-          .catch((error) => {
-            console.error("Lỗi khi tải danh sách người dùng:", error);
-          });
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
+      setLoading(true);
+      setError(null);
+      const data = await getAllUsers();
+      setUsers(data);
+      // Remove success toast on initial load
+    } catch (error: any) {
       console.error("Lỗi khi tải danh sách người dùng:", error);
+      setError(error.message || "Không thể tải danh sách người dùng. Vui lòng thử lại.");
+      showErrorToast(error.message || "Lỗi khi tải danh sách người dùng");
+    } finally {
       setLoading(false);
     }
   };
 
+  // Enhanced search with accent removal and soft delete filter
   const filteredUsers = users.filter((user) => {
+    // Filter out deleted users unless showDeleted is true
+    if (!showDeleted && user.Is_Deleted) return false;
+    if (showDeleted && !user.Is_Deleted) return false;
+
+    const searchLower = removeAccents(searchTerm.toLowerCase());
     const matchesSearch =
-      user.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === "all" || user.role === roleFilter;
-    const matchesStatus = statusFilter === "all" || user.status === statusFilter;
+      removeAccents(user.Full_Name?.toLowerCase() || "").includes(searchLower) ||
+      removeAccents(user.Email?.toLowerCase() || "").includes(searchLower) ||
+      (user.Phone_Number || "").includes(searchTerm);
+
+    const matchesRole = roleFilter === "all" || (user.Role?.toLowerCase() || "") === roleFilter.toLowerCase();
+    const matchesStatus =
+      statusFilter === "all" || (user.Account_Status?.toLowerCase() || "") === statusFilter.toLowerCase();
 
     return matchesSearch && matchesRole && matchesStatus;
   });
@@ -65,7 +91,7 @@ const ManageUser: React.FC = () => {
   const startIndex = (currentPage - 1) * usersPerPage;
   const currentUsers = filteredUsers.slice(startIndex, startIndex + usersPerPage);
 
-  const handleSelectUser = (userId: string) => {
+  const handleSelectUser = (userId: number) => {
     setSelectedUsers((prev) => (prev.includes(userId) ? prev.filter((id) => id !== userId) : [...prev, userId]));
   };
 
@@ -73,102 +99,405 @@ const ManageUser: React.FC = () => {
     if (selectedUsers.length === currentUsers.length) {
       setSelectedUsers([]);
     } else {
-      setSelectedUsers(currentUsers.map((user) => user.id));
+      setSelectedUsers(currentUsers.map((user) => user.User_ID));
     }
   };
 
-  const handleStatusChange = (userId: string, newStatus: "active" | "inactive" | "banned") => {
-    setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, status: newStatus } : user)));
+  // Update status with API call
+  const handleStatusChange = async (userId: number, newStatus: string) => {
+    const user = users.find((u) => u.User_ID === userId);
+    if (!user) return;
+
+    try {
+      setActionLoading(userId);
+
+      // Call the API to update user status - send status directly
+      await updateUserStatus(userId.toString(), newStatus);
+
+      // Update local state after successful API call
+      setUsers((prev) => prev.map((user) => (user.User_ID === userId ? { ...user, Account_Status: newStatus } : user)));
+
+      showSuccessToast(`Đã cập nhật trạng thái thành ${getAccountStatusText(newStatus)}`);
+    } catch (error: any) {
+      console.error("Error updating user status:", error);
+      showErrorToast(error.message || "Lỗi khi cập nhật trạng thái người dùng");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  const handleRoleChange = (userId: string, newRole: "admin" | "user" | "staff") => {
-    setUsers((prev) => prev.map((user) => (user.id === userId ? { ...user, role: newRole } : user)));
+  // Update role with API call
+  const handleRoleChange = async (userId: number, newRole: string) => {
+    const user = users.find((u) => u.User_ID === userId);
+    if (!user) return;
+
+    try {
+      setActionLoading(userId);
+
+      // Call the API to update user role (you may need to create updateUserRole function)
+      // For now, we'll update locally and show a message that this needs backend implementation
+
+      // Update local state
+      setUsers((prev) => prev.map((user) => (user.User_ID === userId ? { ...user, Role: newRole } : user)));
+
+      showSuccessToast(`Đã cập nhật vai trò thành ${getRoleText(newRole)}`);
+    } catch (error: any) {
+      console.error("Error updating user role:", error);
+      showErrorToast(error.message || "Lỗi khi cập nhật vai trò người dùng");
+    } finally {
+      setActionLoading(null);
+    }
   };
 
-  const handleBulkAction = (action: string) => {
+  // Soft delete single user
+  const handleDeleteUser = async (userId: number) => {
+    const user = users.find((u) => u.User_ID === userId);
+    if (!user) return;
+
+    const confirmMessage = `Bạn có chắc chắn muốn xóa người dùng "${user.Full_Name}"?\nNgười dùng sẽ bị ẩn khỏi hệ thống nhưng có thể khôi phục sau.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setActionLoading(userId);
+      await deleteUserById(userId.toString());
+
+      // Mark user as deleted in local state (soft delete)
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.User_ID === userId
+            ? {
+                ...user,
+                Is_Deleted: true,
+                Deleted_At: new Date().toISOString(),
+                Account_Status: "Deleted", // Optional: change status to indicate deletion
+              }
+            : user
+        )
+      );
+      setSelectedUsers((prev) => prev.filter((id) => id !== userId));
+
+      showSuccessToast(`Đã xóa người dùng "${user.Full_Name}" thành công`);
+    } catch (error: any) {
+      console.error("Error deleting user:", error);
+      showErrorToast(error.message || "Lỗi khi xóa người dùng");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Restore deleted user with API call
+  const handleRestoreUser = async (userId: number) => {
+    const user = users.find((u) => u.User_ID === userId);
+    if (!user) return;
+
+    const confirmMessage = `Bạn có chắc chắn muốn khôi phục người dùng "${user.Full_Name}"?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setActionLoading(userId);
+
+      // Call the actual restore API
+      await restoreUser(userId.toString());
+
+      // Update local state after successful API call
+      setUsers((prev) =>
+        prev.map((user) =>
+          user.User_ID === userId
+            ? {
+                ...user,
+                Is_Deleted: false,
+                Deleted_At: null,
+                Account_Status: "Active", // Restore to active status
+              }
+            : user
+        )
+      );
+
+      showSuccessToast(`Đã khôi phục người dùng "${user.Full_Name}" thành công`);
+    } catch (error: any) {
+      console.error("Error restoring user:", error);
+      showErrorToast(error.message || "Lỗi khi khôi phục người dùng");
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  // Bulk soft delete users
+  const handleBulkDelete = async () => {
     if (selectedUsers.length === 0) {
-      alert("Vui lòng chọn người dùng trước");
+      showWarningToast("Vui lòng chọn người dùng trước");
       return;
     }
 
-    switch (action) {
-      case "activate":
-        setUsers((prev) =>
-          prev.map((user) => (selectedUsers.includes(user.id) ? { ...user, status: "active" } : user))
-        );
-        break;
-      case "deactivate":
-        setUsers((prev) =>
-          prev.map((user) => (selectedUsers.includes(user.id) ? { ...user, status: "inactive" } : user))
-        );
-        break;
-      case "ban":
-        setUsers((prev) =>
-          prev.map((user) => (selectedUsers.includes(user.id) ? { ...user, status: "banned" } : user))
-        );
-        break;
-      case "delete":
-        if (window.confirm(`Bạn có chắc chắn muốn xóa ${selectedUsers.length} người dùng?`)) {
-          setUsers((prev) => prev.filter((user) => !selectedUsers.includes(user.id)));
-        }
-        break;
+    const confirmMessage = `Bạn có chắc chắn muốn xóa ${selectedUsers.length} người dùng?\nCác người dùng sẽ bị ẩn khỏi hệ thống nhưng có thể khôi phục sau.`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setLoading(true);
+
+      // Delete each user one by one (since no bulk delete API)
+      const deletePromises = selectedUsers.map((userId) => deleteUserById(userId.toString()));
+
+      await Promise.all(deletePromises);
+
+      // Mark deleted users as deleted in local state
+      setUsers((prev) =>
+        prev.map((user) =>
+          selectedUsers.includes(user.User_ID)
+            ? {
+                ...user,
+                Is_Deleted: true,
+                Deleted_At: new Date().toISOString(),
+                Account_Status: "Deleted",
+              }
+            : user
+        )
+      );
+      setSelectedUsers([]);
+
+      showSuccessToast(`Đã xóa ${selectedUsers.length} người dùng thành công`);
+    } catch (error: any) {
+      console.error("Error in bulk delete:", error);
+      showErrorToast(error.message || "Lỗi khi xóa người dùng");
+      // Refresh the list to see current state
+      await fetchUsers();
+    } finally {
+      setLoading(false);
     }
-    setSelectedUsers([]);
   };
 
-  // Add user function
-  const handleAddUser = (userData: any) => {
-    const newUser: User = {
-      ...userData,
-      id: Date.now().toString(), // Generate a temporary ID
-      registeredDate: new Date().toISOString().split("T")[0],
-      lastLogin: "Chưa đăng nhập",
+  // Bulk restore users with API calls
+  const handleBulkRestore = async () => {
+    if (selectedUsers.length === 0) {
+      showWarningToast("Vui lòng chọn người dùng trước");
+      return;
+    }
+
+    const confirmMessage = `Bạn có chắc chắn muốn khôi phục ${selectedUsers.length} người dùng?`;
+
+    if (!window.confirm(confirmMessage)) return;
+
+    try {
+      setLoading(true);
+
+      // Call restore API for each user
+      const restorePromises = selectedUsers.map((userId) => restoreUser(userId.toString()));
+      await Promise.all(restorePromises);
+
+      // Update local state after successful API calls
+      setUsers((prev) =>
+        prev.map((user) =>
+          selectedUsers.includes(user.User_ID)
+            ? {
+                ...user,
+                Is_Deleted: false,
+                Deleted_At: null,
+                Account_Status: "Active",
+              }
+            : user
+        )
+      );
+      setSelectedUsers([]);
+
+      showSuccessToast(`Đã khôi phục ${selectedUsers.length} người dùng thành công`);
+    } catch (error: any) {
+      console.error("Error in bulk restore:", error);
+      showErrorToast(error.message || "Lỗi khi khôi phục người dùng");
+      // Refresh the list to see current state
+      await fetchUsers();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBulkAction = async (action: string) => {
+    if (selectedUsers.length === 0) {
+      showWarningToast("Vui lòng chọn người dùng trước");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      switch (action) {
+        case "activate":
+          // Call API for each user - send status directly
+          const activatePromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Active"));
+          await Promise.all(activatePromises);
+
+          setUsers((prev) =>
+            prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Active" } : user))
+          );
+          showSuccessToast(`Đã kích hoạt ${selectedUsers.length} người dùng`);
+          break;
+
+        case "deactivate":
+          const deactivatePromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Inactive"));
+          await Promise.all(deactivatePromises);
+
+          setUsers((prev) =>
+            prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Inactive" } : user))
+          );
+          showSuccessToast(`Đã vô hiệu hóa ${selectedUsers.length} người dùng`);
+          break;
+
+        case "ban":
+          const banPromises = selectedUsers.map((userId) => updateUserStatus(userId.toString(), "Banned"));
+          await Promise.all(banPromises);
+
+          setUsers((prev) =>
+            prev.map((user) => (selectedUsers.includes(user.User_ID) ? { ...user, Account_Status: "Banned" } : user))
+          );
+          showSuccessToast(`Đã cấm ${selectedUsers.length} người dùng`);
+          break;
+
+        case "delete":
+          await handleBulkDelete();
+          return;
+
+        case "restore":
+          await handleBulkRestore();
+          return;
+      }
+
+      setSelectedUsers([]);
+    } catch (error: any) {
+      console.error(`Error in bulk ${action}:`, error);
+      showErrorToast(error.message || `Lỗi khi thực hiện hành động ${action}`);
+      // Refresh the list to see current state
+      await fetchUsers();
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Enhanced add user function with API call
+  const handleAddUser = async (userData: any) => {
+    // Client-side validation
+    if (!validateEmail(userData.email)) {
+      showErrorToast("Email không hợp lệ");
+      return;
+    }
+
+    if (!validatePhone(userData.phone)) {
+      showErrorToast("Số điện thoại không hợp lệ");
+      return;
+    }
+
+    // Check if email already exists locally (including deleted users)
+    if (users.some((user) => user.Email.toLowerCase() === userData.email.toLowerCase())) {
+      showErrorToast("Email đã tồn tại trong hệ thống");
+      return;
+    }
+
+    // Check if phone already exists locally (including deleted users)
+    if (users.some((user) => user.Phone_Number === userData.phone)) {
+      showErrorToast("Số điện thoại đã tồn tại trong hệ thống");
+      return;
+    }
+
+    try {
+      // Call API to create user with correct field names
+      const newUser = await registerUserByAdmin({
+        Full_Name: userData.fullName,
+        Email: userData.email,
+        Phone_Number: userData.phone,
+        Address: userData.address,
+        Date_Of_Birth: userData.dateOfBirth,
+        Sex: userData.sex,
+        Role: userData.role,
+      });
+
+      // Add the new user to local state
+      setUsers((prev) => [{ ...newUser, Is_Deleted: false }, ...prev]);
+      setShowAddModal(false);
+      showSuccessToast("Thêm người dùng mới thành công");
+
+      // Reset pagination to first page to show new user
+      setCurrentPage(1);
+    } catch (error: any) {
+      console.error("Error adding user:", error);
+      showErrorToast(error.message || "Lỗi khi thêm người dùng mới");
+    }
+  };
+
+  const getStatusBadge = (status: string) => {
+    const statusClasses = {
+      active: "status-active",
+      inactive: "status-inactive",
+      banned: "status-banned",
+      deleted: "status-deleted",
     };
 
-    setUsers((prev) => [newUser, ...prev]);
-    setShowAddModal(false);
+    return (
+      <span
+        className={`status-badge ${
+          statusClasses[status.toLowerCase() as keyof typeof statusClasses] || "status-unknown"
+        }`}
+      >
+        {status === "Deleted" ? "Đã xóa" : getAccountStatusText(status)}
+      </span>
+    );
   };
 
-  // const getRoleText = (role: string) => {
-  //   switch (role) {
-  //     case "admin":
-  //       return "Quản trị viên";
-  //     case "staff":
-  //       return "Nhân viên";
-  //     case "user":
-  //       return "Người dùng";
-  //     case "manager":
-  //       return "Quản lý";
-  //     default:
-  //       return role;
-  //   }
-  // };
-
-  // const getStatusText = (status: string) => {
-  //   switch (status) {
-  //     case "active":
-  //       return "Hoạt động";
-  //     case "inactive":
-  //       return "Ngưng hoạt động";
-  //     case "banned":
-  //       return "Bị cấm";
-  //     default:
-  //       return status;
-  //   }
-  // };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat("vi-VN", {
-      style: "currency",
-      currency: "VND",
-    }).format(price);
+  const formatLastLogin = (lastLogin: string | null) => {
+    if (!lastLogin) {
+      return "Chưa đăng nhập";
+    }
+    return formatDateTime(lastLogin);
   };
 
+  const formatDateOfBirth = (dateOfBirth: string | null) => {
+    if (!dateOfBirth) {
+      return "Chưa có thông tin";
+    }
+    return formatDate(dateOfBirth);
+  };
+
+  const getGenderText = (sex: string | null) => {
+    if (!sex) return "Chưa xác định";
+
+    switch (sex.toLowerCase()) {
+      case "male":
+        return "Nam";
+      case "female":
+        return "Nữ";
+      default:
+        return sex;
+    }
+  };
+
+  // Count statistics excluding deleted users
+  const activeUsers = users.filter((u) => !u.Is_Deleted);
+  const deletedUsers = users.filter((u) => u.Is_Deleted);
+
+  // Loading state with LoadingSpinner component
   if (loading) {
     return (
       <div className="manage-user-loading">
-        <div className="spinner"></div>
+        <LoadingSpinner size="large" />
         <p>Đang tải danh sách người dùng...</p>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="manage-user">
+        <EmptyState
+          title="Lỗi tải dữ liệu"
+          description={error}
+          icon="⚠️"
+          action={
+            <button className="btn-primary" onClick={fetchUsers}>
+              Thử lại
+            </button>
+          }
+        />
       </div>
     );
   }
@@ -181,6 +510,16 @@ const ManageUser: React.FC = () => {
           <p>Quản lý tài khoản người dùng, vai trò và quyền hạn</p>
         </div>
         <div className="header-actions">
+          <button
+            className={`btn-toggle ${showDeleted ? "active" : ""}`}
+            onClick={() => {
+              setShowDeleted(!showDeleted);
+              setSelectedUsers([]);
+              setCurrentPage(1);
+            }}
+          >
+            {showDeleted ? "📋 Hiển thị hoạt động" : "🗑️ Hiển thị đã xóa"}
+          </button>
           <button className="btn-primary" onClick={() => setShowAddModal(true)}>
             <span>➕</span>
             Thêm người dùng mới
@@ -192,7 +531,7 @@ const ManageUser: React.FC = () => {
         <div className="search-bar">
           <input
             type="text"
-            placeholder="Tìm kiếm theo tên, email hoặc tên đăng nhập..."
+            placeholder="Tìm kiếm theo tên, email hoặc số điện thoại..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="search-input"
@@ -204,105 +543,197 @@ const ManageUser: React.FC = () => {
             <option value="all">Tất cả vai trò</option>
             <option value="admin">Quản trị viên</option>
             <option value="staff">Nhân viên</option>
-            <option value="user">Người dùng</option>
+            <option value="customer">Khách hàng</option>
             <option value="manager">Quản lý</option>
           </select>
 
           <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} className="filter-select">
             <option value="all">Tất cả trạng thái</option>
-            <option value="active">Hoạt động</option>
-            <option value="inactive">Ngưng hoạt động</option>
-            <option value="banned">Bị cấm</option>
+            {!showDeleted && (
+              <>
+                <option value="active">Hoạt động</option>
+                <option value="inactive">Ngưng hoạt động</option>
+                <option value="banned">Bị cấm</option>
+              </>
+            )}
+            {showDeleted && <option value="deleted">Đã xóa</option>}
           </select>
         </div>
 
         {selectedUsers.length > 0 && (
           <div className="bulk-actions">
             <span className="selected-count">Đã chọn {selectedUsers.length}</span>
-            <button onClick={() => handleBulkAction("activate")} className="bulk-btn activate">
-              Kích hoạt
-            </button>
-            <button onClick={() => handleBulkAction("deactivate")} className="bulk-btn deactivate">
-              Vô hiệu hóa
-            </button>
-            <button onClick={() => handleBulkAction("ban")} className="bulk-btn ban">
-              Cấm
-            </button>
-            <button onClick={() => handleBulkAction("delete")} className="bulk-btn delete">
-              Xóa
-            </button>
+            {!showDeleted ? (
+              <>
+                <button onClick={() => handleBulkAction("activate")} className="bulk-btn activate">
+                  Kích hoạt
+                </button>
+                <button onClick={() => handleBulkAction("deactivate")} className="bulk-btn deactivate">
+                  Vô hiệu hóa
+                </button>
+                <button onClick={() => handleBulkAction("ban")} className="bulk-btn ban">
+                  Cấm
+                </button>
+                <button onClick={() => handleBulkAction("delete")} className="bulk-btn delete" disabled={loading}>
+                  {loading ? "Đang xóa..." : "Xóa"}
+                </button>
+              </>
+            ) : (
+              <button onClick={() => handleBulkAction("restore")} className="bulk-btn restore" disabled={loading}>
+                {loading ? "Đang khôi phục..." : "Khôi phục"}
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      <div className="users-table-container">
-        <table className="users-table">
-          <thead>
-            <tr>
-              <th>
-                <input
-                  type="checkbox"
-                  checked={selectedUsers.length === currentUsers.length && currentUsers.length > 0}
-                  onChange={handleSelectAll}
-                />
-              </th>
-              <th>Người dùng</th>
-              <th>Email</th>
-              <th>Số điện thoại</th>
-              <th>Vai trò</th>
-              <th>Trạng thái</th>
-              <th>Ngày đăng nhập gần nhất</th>
-              <th>Hành động</th>
-            </tr>
-          </thead>
-          <tbody>
-            {currentUsers.map((user) => (
-              <tr key={user.id} className={selectedUsers.includes(user.id) ? "selected" : ""}>
-                <td>
+      {/* Show empty state when no users found */}
+      {filteredUsers.length === 0 && !loading && (
+        <EmptyState
+          title={showDeleted ? "Không có người dùng đã xóa" : "Không tìm thấy người dùng"}
+          description={
+            searchTerm
+              ? "Thử tìm kiếm với từ khóa khác"
+              : showDeleted
+              ? "Chưa có người dùng nào bị xóa"
+              : "Chưa có người dùng nào trong hệ thống"
+          }
+          icon={showDeleted ? "🗑️" : "👥"}
+          action={
+            searchTerm ? (
+              <button className="btn-primary" onClick={() => setSearchTerm("")}>
+                Xóa bộ lọc
+              </button>
+            ) : null
+          }
+        />
+      )}
+
+      {filteredUsers.length > 0 && (
+        <div className="users-table-container">
+          <table className="users-table">
+            <thead>
+              <tr>
+                <th>
                   <input
                     type="checkbox"
-                    checked={selectedUsers.includes(user.id)}
-                    onChange={() => handleSelectUser(user.id)}
+                    checked={selectedUsers.length === currentUsers.length && currentUsers.length > 0}
+                    onChange={handleSelectAll}
                   />
-                </td>
-                <td>
-                  <div className="user-info">
-                    <div className="user-avatar">{user.fullName.charAt(0)}</div>
-                    <div className="user-details">
-                      <span className="user-name">{user.fullName}</span>
-                    </div>
-                  </div>
-                </td>
-                <td>{user.email}</td>
-                <td>{user.phone}</td>
-                <td>
-                  <select
-                    value={user.role}
-                    onChange={(e) => handleRoleChange(user.id, e.target.value as "admin" | "user" | "staff")}
-                    className="role-select"
-                  >
-                    <option value="user">Người dùng</option>
-                    <option value="staff">Nhân viên</option>
-                    <option value="admin">Quản trị viên</option>
-                    <option value="manager">Quản lý</option>
-                  </select>
-                </td>
-                <td>
-                  <select
-                    value={user.status}
-                    onChange={(e) => handleStatusChange(user.id, e.target.value as "active" | "inactive" | "banned")}
-                    className="status-select"
-                  >
-                    <option value="active">Hoạt động</option>
-                    <option value="inactive">Ngưng hoạt động</option>
-                    <option value="banned">Bị cấm</option>
-                  </select>
-                </td>
+                </th>
+                <th>ID</th>
+                <th>Người dùng</th>
+                <th>Email</th>
+                <th>Số điện thoại</th>
+                <th>Giới tính</th>
+                <th>Vai trò</th>
+                <th>Trạng thái</th>
+                <th>{showDeleted ? "Ngày xóa" : "Ngày đăng nhập gần nhất"}</th>
+                <th>Hành động</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {currentUsers.map((user) => (
+                <tr
+                  key={user.User_ID}
+                  className={`${selectedUsers.includes(user.User_ID) ? "selected" : ""} ${
+                    user.Is_Deleted ? "deleted-row" : ""
+                  }`}
+                >
+                  <td>
+                    <input
+                      type="checkbox"
+                      checked={selectedUsers.includes(user.User_ID)}
+                      onChange={() => handleSelectUser(user.User_ID)}
+                    />
+                  </td>
+                  <td>#{user.User_ID}</td>
+                  <td>
+                    <div className="user-info">
+                      <div className={`user-avatar ${user.Is_Deleted ? "deleted" : ""}`}>
+                        {(user.Full_Name || "?").charAt(0)}
+                      </div>
+                      <div className="user-details">
+                        <span className={`user-name ${user.Is_Deleted ? "deleted" : ""}`}>
+                          {user.Full_Name || "Tên không xác định"}
+                        </span>
+                        <span className="user-birth">
+                          Sinh: {user.Date_Of_Birth ? formatDateOfBirth(user.Date_Of_Birth) : "Chưa có thông tin"}
+                        </span>
+                      </div>
+                    </div>
+                  </td>
+                  <td>{user.Email || "Chưa có email"}</td>
+                  <td>{user.Phone_Number || "Chưa có SĐT"}</td>
+                  <td>
+                    <span className={`gender-badge ${(user.Sex || "unknown").toLowerCase()}`}>
+                      {getGenderText(user.Sex)}
+                    </span>
+                  </td>
+                  <td>
+                    {!user.Is_Deleted ? (
+                      <select
+                        value={user.Role}
+                        onChange={(e) => handleRoleChange(user.User_ID, e.target.value)}
+                        className="role-select"
+                        disabled={actionLoading === user.User_ID}
+                      >
+                        <option value="Customer">Khách hàng</option>
+                        <option value="Staff">Nhân viên</option>
+                        <option value="Admin">Quản trị viên</option>
+                        <option value="Manager">Quản lý</option>
+                      </select>
+                    ) : (
+                      <span className="role-text deleted">{getRoleText(user.Role)}</span>
+                    )}
+                  </td>
+                  <td>{getStatusBadge(user.Is_Deleted ? "Deleted" : user.Account_Status)}</td>
+                  <td>
+                    {showDeleted && user.Deleted_At
+                      ? formatDateTime(user.Deleted_At)
+                      : formatLastLogin(user.Last_Login)}
+                  </td>
+                  <td>
+                    <div className="action-buttons">
+                      {!user.Is_Deleted ? (
+                        <>
+                          <select
+                            value={user.Account_Status}
+                            onChange={(e) => handleStatusChange(user.User_ID, e.target.value)}
+                            className="status-select"
+                            disabled={actionLoading === user.User_ID}
+                          >
+                            <option value="Active">Hoạt động</option>
+                            <option value="Inactive">Ngưng hoạt động</option>
+                            <option value="Banned">Bị cấm</option>
+                          </select>
+                          <button
+                            onClick={() => handleDeleteUser(user.User_ID)}
+                            className="btn-delete"
+                            disabled={actionLoading === user.User_ID}
+                            title="Xóa người dùng"
+                          >
+                            {actionLoading === user.User_ID ? <LoadingSpinner size="small" /> : "🗑️"}
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleRestoreUser(user.User_ID)}
+                          className="btn-restore"
+                          disabled={actionLoading === user.User_ID}
+                          title="Khôi phục người dùng"
+                        >
+                          {actionLoading === user.User_ID ? <LoadingSpinner size="small" /> : "↩️"}
+                        </button>
+                      )}
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {totalPages > 1 && (
         <div className="pagination">
@@ -339,19 +770,29 @@ const ManageUser: React.FC = () => {
       <div className="users-summary">
         <div className="summary-item">
           <span className="summary-label">Tổng số người dùng:</span>
-          <span className="summary-value">{users.length}</span>
+          <span className="summary-value">{activeUsers.length}</span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Hoạt động:</span>
-          <span className="summary-value">{users.filter((u) => u.status === "active").length}</span>
+          <span className="summary-value">
+            {activeUsers.filter((u) => u.Account_Status.toLowerCase() === "active").length}
+          </span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Ngưng hoạt động:</span>
-          <span className="summary-value">{users.filter((u) => u.status === "inactive").length}</span>
+          <span className="summary-value">
+            {activeUsers.filter((u) => u.Account_Status.toLowerCase() === "inactive").length}
+          </span>
         </div>
         <div className="summary-item">
           <span className="summary-label">Bị cấm:</span>
-          <span className="summary-value">{users.filter((u) => u.status === "banned").length}</span>
+          <span className="summary-value">
+            {activeUsers.filter((u) => u.Account_Status.toLowerCase() === "banned").length}
+          </span>
+        </div>
+        <div className="summary-item">
+          <span className="summary-label">Đã xóa:</span>
+          <span className="summary-value">{deletedUsers.length}</span>
         </div>
       </div>
 

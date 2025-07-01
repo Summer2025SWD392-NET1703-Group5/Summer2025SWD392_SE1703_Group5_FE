@@ -1,0 +1,36 @@
+.manager-layout {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+}
+
+.manager-main-content {
+  flex: 1;
+  margin-left: 280px;
+  overflow-y: auto;
+  background-color: #f5f7fa;
+  transition: margin-left 0.3s ease;
+  width: calc(100vw - 280px);
+  max-width: calc(100vw - 280px);
+}
+
+.manager-layout:has(.manager-sidebar.collapsed) .manager-main-content {
+  margin-left: 70px;
+  width: calc(100vw - 70px);
+  max-width: calc(100vw - 70px);
+}
+
+@media (max-width: 768px) {
+  .manager-main-content {
+    margin-left: 0;
+    width: 100vw;
+    max-width: 100vw;
+  }
+
+  .manager-layout:has(.manager-sidebar.mobile-open) .manager-main-content {
+    margin-left: 280px;
+    width: calc(100vw - 280px);
+    max-width: calc(100vw - 280px);
+  }
+} 
