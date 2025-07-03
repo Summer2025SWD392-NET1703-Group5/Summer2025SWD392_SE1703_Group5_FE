@@ -1,0 +1,315 @@
+/* src/components/admin/cinema-rooms/SeatMap.css */
+
+.seat-grid {
+  display: grid;
+  gap: 12px;
+  place-items: center;
+  margin: 0 auto;
+  width: fit-content;
+}
+
+.seat-row-label,
+.seat-col-label {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+  font-size: 14px;
+  color: #9CA3AF;
+  background-color: #1E293B;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.seat-row-label:hover,
+.seat-col-label:hover {
+  background-color: rgba(255, 216, 117, 0.2);
+  color: #FFD875;
+  transform: scale(1.1);
+  box-shadow: 0 0 15px rgba(255, 216, 117, 0.4);
+}
+
+.seat-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.seat {
+  width: 48px;
+  height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 500;
+  border-radius: 10px 10px 6px 6px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+  border: none;
+}
+
+/* Ghế thường */
+.seat-standard.seat-available {
+  background-color: #10B981;
+  color: white;
+}
+
+.seat-standard.seat-available:hover {
+  background-color: #059669;
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 20px rgba(16, 185, 129, 0.4);
+}
+
+/* Ghế VIP */
+.seat-vip.seat-available {
+  background-color: #8B5CF6;
+  color: white;
+}
+
+.seat-vip.seat-available:hover {
+  background-color: #7C3AED;
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 20px rgba(139, 92, 246, 0.5);
+}
+
+/* Ghế đôi */
+.seat-couple.seat-available {
+  background-color: #EC4899;
+  color: white;
+  width: 96px;
+}
+
+.seat-couple.seat-available:hover {
+  background-color: #db2777;
+  transform: scale(1.1) translateY(-2px);
+  box-shadow: 0 8px 20px rgba(236, 72, 153, 0.5);
+}
+
+/* Ghế cho người khuyết tật */
+.seat-disabled {
+  background-color: #374151;
+  color: #6B7280;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Ghế đang chọn */
+.seat-selected {
+  background-color: #FFD875 !important;
+  color: #000 !important;
+  animation: pulse 2s ease-in-out infinite;
+  transform: scale(1.05);
+  box-shadow: 0 0 0 4px rgba(255, 216, 117, 0.3), 0 8px 25px rgba(255, 216, 117, 0.6);
+}
+
+.seat-selected::before {
+  content: '✓';
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font-size: 14px;
+  font-weight: bold;
+  color: #000;
+}
+
+/* Ghế đã bán */
+.seat-occupied {
+  background-color: #EF4444;
+  color: white;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.seat-aisle {
+  background-color: transparent;
+  cursor: default;
+  width: 48px;
+  height: 48px;
+}
+
+/* Label ghế */
+.seat-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #9CA3AF;
+  text-align: center;
+  height: 16px;
+}
+
+/* Hiệu ứng animation */
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 4px rgba(255, 216, 117, 0.3), 0 8px 25px rgba(255, 216, 117, 0.6);
+  }
+
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 216, 117, 0.2), 0 8px 30px rgba(255, 216, 117, 0.8);
+  }
+
+  100% {
+    box-shadow: 0 0 0 4px rgba(255, 216, 117, 0.3), 0 8px 25px rgba(255, 216, 117, 0.6);
+  }
+}
+
+@keyframes screenGlow {
+
+  0%,
+  100% {
+    box-shadow: 0 20px 80px 20px rgba(255, 216, 117, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 20px 100px 30px rgba(255, 216, 117, 0.6);
+  }
+}
+
+.material-symbols-outlined {
+  font-variation-settings:
+    'FILL' 1,
+    'wght' 400,
+    'GRAD' 0,
+    'opsz' 24;
+}
+
+@media (max-width: 768px) {
+  .seat {
+    width: 36px;
+    height: 36px;
+    font-size: 16px;
+  }
+
+  .seat-couple.seat-available {
+    width: 72px;
+  }
+
+  .seat-aisle {
+    width: 36px;
+    height: 36px;
+  }
+
+  .seat-row-label,
+  .seat-col-label {
+    width: 32px;
+    height: 32px;
+    font-size: 12px;
+  }
+
+  .material-symbols-outlined {
+    font-size: 20px !important;
+  }
+
+  .seat-label {
+    font-size: 10px;
+  }
+}
+
+/* Button glow effects */
+.btn-glow {
+  box-shadow: 0 0 15px rgba(255, 216, 117, 0.5);
+  transition: all 0.3s ease;
+}
+
+.btn-glow:hover {
+  box-shadow: 0 0 20px rgba(255, 216, 117, 0.8);
+}
+
+.btn-glow:active {
+  transform: translateY(2px);
+  box-shadow: 0 0 8px #FFD875;
+}
+
+/* Yellow buttons with glow effect */
+.btn-yellow {
+  background-color: #FFD875;
+  color: #000;
+  border: none;
+  font-weight: 600;
+}
+
+.btn-yellow:hover {
+  background-color: #f5c94e;
+}
+
+/* Status badges */
+.status-active {
+  background-color: rgba(16, 185, 129, 0.2);
+  color: rgb(16, 185, 129);
+}
+
+.status-inactive {
+  background-color: rgba(107, 114, 128, 0.2);
+  color: rgb(107, 114, 128);
+}
+
+.status-maintenance {
+  background-color: rgba(245, 158, 11, 0.2);
+  color: rgb(245, 158, 11);
+}
+
+/* Fix cho bg-FFD875 không hoạt động */
+.bg-FFD875 {
+  background-color: #FFD875 !important;
+}
+
+.text-FFD875 {
+  color: #FFD875 !important;
+}
+
+.border-FFD875 {
+  border-color: #FFD875 !important;
+}
+
+.focus\:border-FFD875:focus {
+  border-color: #FFD875 !important;
+}
+
+.focus\:ring-FFD875:focus {
+  --tw-ring-color: #FFD875 !important;
+}
+
+.hover\:bg-FFD875:hover {
+  background-color: #FFD875 !important;
+}
+
+.hover\:text-FFD875:hover {
+  color: #FFD875 !important;
+}
+
+.hover\:border-FFD875:hover {
+  border-color: #FFD875 !important;
+}
+
+/* Form validation */
+.input-error {
+  border-color: #ef4444 !important;
+}
+
+.input-error:focus {
+  border-color: #ef4444 !important;
+  --tw-ring-color: rgba(239, 68, 68, 0.5) !important;
+}
+
+.error-message {
+  color: #ef4444;
+  font-size: 0.75rem;
+  margin-top: 0.25rem;
+}
+
+.required-field::after {
+  content: " *";
+  color: #ef4444;
+}
+
+/* Input focus styles */
+.input-focus {
+  border-color: #FFD875 !important;
+  --tw-ring-color: rgba(255, 216, 117, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(255, 216, 117, 0.3);
+}
