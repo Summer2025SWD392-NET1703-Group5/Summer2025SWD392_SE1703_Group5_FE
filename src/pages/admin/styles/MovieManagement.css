@@ -1,0 +1,138 @@
+.btn-glow {
+    box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+    }
+
+    50% {
+        box-shadow: 0 0 20px 5px rgba(255, 216, 117, 0.6);
+    }
+
+    100% {
+        box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+    }
+}
+
+.hover-glow:hover {
+    box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+    transition: box-shadow 0.3s ease;
+}
+
+.fade-in {
+    animation: fadeIn 0.5s ease-in;
+}
+
+@keyframes fadeIn {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.movie-card {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.movie-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+}
+
+/* Hiệu ứng glowing cho poster */
+.poster-glow {
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.poster-glow::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: transparent;
+    transition: all 0.3s ease;
+}
+
+.poster-glow:hover::before {
+    inset: -3px;
+    border-radius: 8px;
+    background: rgba(255, 216, 117, 0.15);
+    box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+}
+
+.poster-glow img {
+    transition: all 0.3s ease;
+    border: 2px solid transparent;
+}
+
+.poster-glow:hover img {
+    border: 2px solid rgba(255, 216, 117, 0.6);
+    box-shadow: 0 0 10px 0 rgba(255, 216, 117, 0.3);
+}
+
+/* New styles */
+.shadow-glow {
+    box-shadow: 0 0 15px 2px rgba(255, 216, 117, 0.4);
+}
+
+.shadow-glow:hover {
+    box-shadow: 0 0 20px 5px rgba(255, 216, 117, 0.6);
+    transition: box-shadow 0.3s ease;
+}
+
+.slide-up {
+    animation: slideUp 0.5s ease-out;
+}
+
+@keyframes slideUp {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.slide-right {
+    animation: slideRight 0.5s ease-out;
+}
+
+@keyframes slideRight {
+    0% {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+
+    100% {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.scale-in {
+    animation: scaleIn 0.3s ease-out;
+}
+
+@keyframes scaleIn {
+    0% {
+        opacity: 0;
+        transform: scale(0.9);
+    }
+
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
