@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
-import { useAuth } from '../../contexts/SimpleAuthContext';
-import AdminSidebar from './AdminSidebar';
-import AdminHeader from './AdminHeader';
-import LoadingSpinner from '../LoadingSpinner';
+import React, { useState, useEffect } from "react";
+import { Outlet } from "react-router-dom";
+import { useAuth } from "../../contexts/SimpleAuthContext";
+import AdminSidebar from "./AdminSidebar";
+import AdminHeader from "./AdminHeader";
+import FullScreenLoader from "../FullScreenLoader";
 
 const AdminLayout: React.FC = () => {
   const { user } = useAuth();
@@ -22,7 +22,7 @@ const AdminLayout: React.FC = () => {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-slate-900 flex items-center justify-center">
-        <LoadingSpinner size="lg" />
+        <FullScreenLoader variant="inline" size="large" />
       </div>
     );
   }
@@ -33,12 +33,9 @@ const AdminLayout: React.FC = () => {
       <AdminSidebar collapsed={sidebarCollapsed} onToggle={setSidebarCollapsed} />
 
       {/* Main Content */}
-      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? 'ml-16' : 'ml-64'}`}>
+      <div className={`flex-1 transition-all duration-300 ${sidebarCollapsed ? "ml-16" : "ml-64"}`}>
         {/* Header */}
-        <AdminHeader
-          user={user}
-          onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)}
-        />
+        <AdminHeader user={user} onToggleSidebar={() => setSidebarCollapsed(!sidebarCollapsed)} />
 
         {/* Main Content Area */}
         <main className="p-6">

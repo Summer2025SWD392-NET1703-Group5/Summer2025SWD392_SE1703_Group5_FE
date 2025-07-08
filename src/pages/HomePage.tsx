@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   PlayIcon,
   StarIcon,
@@ -17,23 +17,29 @@ import {
   MagnifyingGlassIcon,
   BuildingOfficeIcon,
   SparklesIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import {
   PlayIcon as PlayIconSolid,
   StarIcon as StarIconSolid,
-  HeartIcon as HeartIconSolid
-} from '@heroicons/react/24/solid';
-import { movieService } from '../services/movieService';
-import { promotionService } from '../services/promotionService';
-import { cinemaService } from '../services/cinemaService';
-import { getMoviesByCinema, getShowDatesForMovieAtCinema, getShowtimesForMovieAtCinemaOnDate, getCinemas, getShowtimeSeatsInfo } from '../services/showtimeService';
-import type { Cinema } from '../types/cinema';
-import LoadingSpinner from '../components/LoadingSpinner';
-import { toast } from 'react-hot-toast';
-import { ChevronLeftIcon } from '@heroicons/react/24/outline';
-import PromoDetailsModal from '../components/PromoDetailsModal';
-import type { Promotion } from '../types/promotion';
+  HeartIcon as HeartIconSolid,
+} from "@heroicons/react/24/solid";
+import { movieService } from "../services/movieService";
+import { promotionService } from "../services/promotionService";
+import { cinemaService } from "../services/cinemaService";
+import {
+  getMoviesByCinema,
+  getShowDatesForMovieAtCinema,
+  getShowtimesForMovieAtCinemaOnDate,
+  getCinemas,
+  getShowtimeSeatsInfo,
+} from "../services/showtimeService";
+import type { Cinema } from "../types/cinema";
+import FullScreenLoader from "../components/FullScreenLoader";
+import { toast } from "react-hot-toast";
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
+import PromoDetailsModal from "../components/PromoDetailsModal";
+import type { Promotion } from "../types/promotion";
 
 // Định nghĩa kiểu dữ liệu cho Movie trong HomePage
 interface HomePageMovie {
@@ -101,7 +107,7 @@ interface ApiShowtimeData {
 
 const HomePage: React.FC = () => {
   const navigate = useNavigate();
-  
+
   // States
   const [nowShowingMovies, setNowShowingMovies] = useState<HomePageMovie[]>([]);
   const [comingSoonMovies, setComingSoonMovies] = useState<HomePageMovie[]>([]);
@@ -109,7 +115,7 @@ const HomePage: React.FC = () => {
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [loading, setLoading] = useState(true);
   const [heroMovieIndex, setHeroMovieIndex] = useState(0);
-  
+
   // Carousel states
   const [nowShowingCurrentIndex, setNowShowingCurrentIndex] = useState(0);
   const [comingSoonCurrentIndex, setComingSoonCurrentIndex] = useState(0);
@@ -118,82 +124,81 @@ const HomePage: React.FC = () => {
   // Promotion modal states
   const [selectedPromotion, setSelectedPromotion] = useState<Promotion | null>(null);
   const [isPromotionModalOpen, setIsPromotionModalOpen] = useState(false);
-  
+
   // Quick booking states
-  const [selectedCinemaId, setSelectedCinemaId] = useState('');
-  const [selectedMovieId, setSelectedMovieId] = useState('');
-  const [selectedDate, setSelectedDate] = useState('');
-  const [selectedShowtimeId, setSelectedShowtimeId] = useState('');
-  
+  const [selectedCinemaId, setSelectedCinemaId] = useState("");
+  const [selectedMovieId, setSelectedMovieId] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [selectedShowtimeId, setSelectedShowtimeId] = useState("");
+
   // Dynamic data for quick booking
-  const [availableMovies, setAvailableMovies] = useState<{id: string; title: string; poster: string}[]>([]);
-  const [availableDates, setAvailableDates] = useState<{date: string; displayDate: string}[]>([]);
-  const [availableShowtimes, setAvailableShowtimes] = useState<{
-    id: string;
-    startTime: string;
-    endTime: string;
-    roomName: string;
-    roomType: string;
-    availableSeats: number;
-    totalSeats: number;
-    price: number;
-    seatStatus: string;
-    isSoldOut: boolean;
-  }[]>([]);
+  const [availableMovies, setAvailableMovies] = useState<{ id: string; title: string; poster: string }[]>([]);
+  const [availableDates, setAvailableDates] = useState<{ date: string; displayDate: string }[]>([]);
+  const [availableShowtimes, setAvailableShowtimes] = useState<
+    {
+      id: string;
+      startTime: string;
+      endTime: string;
+      roomName: string;
+      roomType: string;
+      availableSeats: number;
+      totalSeats: number;
+      price: number;
+      seatStatus: string;
+      isSoldOut: boolean;
+    }[]
+  >([]);
 
   // Modal booking states
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [bookingMovie, setBookingMovie] = useState<HomePageMovie | null>(null);
-  const [modalSelectedCinemaId, setModalSelectedCinemaId] = useState('');
-  const [modalSelectedDate, setModalSelectedDate] = useState('');
-  const [modalSelectedShowtimeId, setModalSelectedShowtimeId] = useState('');
-  const [modalAvailableDates, setModalAvailableDates] = useState<{date: string; displayDate: string}[]>([]);
-  const [modalAvailableShowtimes, setModalAvailableShowtimes] = useState<{
-    id: string;
-    startTime: string;
-    endTime: string;
-    roomName: string;
-    roomType: string;
-    availableSeats: number;
-    totalSeats: number;
-    price: number;
-    seatStatus: string;
-    isSoldOut: boolean;
-  }[]>([]);
+  const [modalSelectedCinemaId, setModalSelectedCinemaId] = useState("");
+  const [modalSelectedDate, setModalSelectedDate] = useState("");
+  const [modalSelectedShowtimeId, setModalSelectedShowtimeId] = useState("");
+  const [modalAvailableDates, setModalAvailableDates] = useState<{ date: string; displayDate: string }[]>([]);
+  const [modalAvailableShowtimes, setModalAvailableShowtimes] = useState<
+    {
+      id: string;
+      startTime: string;
+      endTime: string;
+      roomName: string;
+      roomType: string;
+      availableSeats: number;
+      totalSeats: number;
+      price: number;
+      seatStatus: string;
+      isSoldOut: boolean;
+    }[]
+  >([]);
 
   // Fetch data
   useEffect(() => {
     const fetchData = async () => {
       try {
         setLoading(true);
-        
-        const [
-          nowShowingResponse,
-          comingSoonResponse,
-          availablePromotions,
-          activeCinemas
-        ] = await Promise.all([
+
+        const [nowShowingResponse, comingSoonResponse, availablePromotions, activeCinemas] = await Promise.all([
           movieService.getNowShowingMovies(),
           movieService.getComingSoonMovies(),
           promotionService.getAvailablePromotions(),
-          cinemaService.getAllCinemas()
+          cinemaService.getAllCinemas(),
         ]);
 
         // Chuyển đổi dữ liệu phim sang định dạng HomePageMovie
         const mapToHomePageMovie = (movie: any): HomePageMovie => ({
-          id: typeof movie.id === 'string' ? parseInt(movie.id) : (movie.id || 0),
-          title: movie.title || '',
-          poster: movie.poster || '',
-          backdrop: movie.backdrop || movie.poster || '',
-          description: movie.synopsis || movie.description || '',
-          rating: typeof movie.rating === 'string' ? parseFloat(movie.rating) || 4.5 : (movie.rating || 4.5),
-          duration: typeof movie.duration === 'number' ? `${movie.duration} phút` : (movie.duration || '120 phút'),
-          genre: movie.genre || '',
+          id: typeof movie.id === "string" ? parseInt(movie.id) : movie.id || 0,
+          title: movie.title || "",
+          poster: movie.poster || "",
+          backdrop: movie.backdrop || movie.poster || "",
+          description: movie.synopsis || movie.description || "",
+          rating: typeof movie.rating === "string" ? parseFloat(movie.rating) || 4.5 : movie.rating || 4.5,
+          duration: typeof movie.duration === "number" ? `${movie.duration} phút` : movie.duration || "120 phút",
+          genre: movie.genre || "",
           releaseDate: movie.releaseDate || new Date().toISOString(),
-          trailer: movie.trailerLink || '',
-          ageRating: movie.rating || 'P',
+          trailer: movie.trailerLink || "",
+          ageRating: movie.rating || "P",
           isHot: Math.random() > 0.5,
-          isNew: new Date(movie.releaseDate || Date.now()).getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000
+          isNew: new Date(movie.releaseDate || Date.now()).getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000,
         });
 
         const nowShowingMoviesData = nowShowingResponse.map(mapToHomePageMovie);
@@ -201,27 +206,44 @@ const HomePage: React.FC = () => {
 
         setNowShowingMovies(nowShowingMoviesData.slice(0, 12));
         setComingSoonMovies(comingSoonMoviesData.slice(0, 8));
-        
+
         // Chuyển đổi dữ liệu khuyến mãi
         const formattedPromotions = availablePromotions.map((promo: any) => ({
           id: promo.id || promo.Promotion_ID || 0,
-          title: promo.title || promo.Promotion_Name || '',
-          description: promo.description || promo.Description || '',
-          discount: promo.discount || promo.Discount_Amount + '%' || '10%',
-          image: promo.image || promo.Image_URL || '/promotion-placeholder.jpg',
-          endDate: promo.endDate || promo.End_Date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
+          title: promo.title || promo.Promotion_Name || "",
+          description: promo.description || promo.Description || "",
+          discount: promo.discount || promo.Discount_Amount + "%" || "10%",
+          image: promo.image || promo.Image_URL || "/promotion-placeholder.jpg",
+          endDate: promo.endDate || promo.End_Date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
         }));
-        
+
         setPromotions(formattedPromotions.slice(0, 6));
         setCinemas(activeCinemas);
-        
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu trang chủ:", error);
         // Fallback data nếu API lỗi
         setCinemas([
-          { Cinema_ID: 1, Cinema_Name: 'Galaxy Nguyễn Du', Address: 'Quận 1, TP.HCM', City: 'TP.HCM', Status: 'Active' },
-          { Cinema_ID: 2, Cinema_Name: 'Galaxy Tân Bình', Address: 'Quận Tân Bình, TP.HCM', City: 'TP.HCM', Status: 'Active' },
-          { Cinema_ID: 3, Cinema_Name: 'Galaxy Bảo Lộc', Address: 'Bảo Lộc, Lâm Đồng', City: 'Lâm Đồng', Status: 'Active' }
+          {
+            Cinema_ID: 1,
+            Cinema_Name: "Galaxy Nguyễn Du",
+            Address: "Quận 1, TP.HCM",
+            City: "TP.HCM",
+            Status: "Active",
+          },
+          {
+            Cinema_ID: 2,
+            Cinema_Name: "Galaxy Tân Bình",
+            Address: "Quận Tân Bình, TP.HCM",
+            City: "TP.HCM",
+            Status: "Active",
+          },
+          {
+            Cinema_ID: 3,
+            Cinema_Name: "Galaxy Bảo Lộc",
+            Address: "Bảo Lộc, Lâm Đồng",
+            City: "Lâm Đồng",
+            Status: "Active",
+          },
         ]);
       } finally {
         setLoading(false);
@@ -244,26 +266,26 @@ const HomePage: React.FC = () => {
   // Quick booking handlers
   const handleCinemaChange = async (cinemaId: string) => {
     setSelectedCinemaId(cinemaId);
-    setSelectedMovieId('');
-    setSelectedDate('');
-    setSelectedShowtimeId('');
+    setSelectedMovieId("");
+    setSelectedDate("");
+    setSelectedShowtimeId("");
     setAvailableMovies([]);
     setAvailableDates([]);
     setAvailableShowtimes([]);
-    
+
     if (cinemaId) {
       try {
         // Sử dụng cinemaService.getMoviesByCinema thay vì getMoviesByCinema từ showtimeService
         const movies = await cinemaService.getMoviesByCinema(cinemaId);
         console.log("Phim đang chiếu tại rạp:", movies);
-        
+
         // Chuyển đổi định dạng dữ liệu từ API sang định dạng cần thiết
         const formattedMovies = movies.map((movie: ApiMovie) => ({
-          id: String(movie.Movie_ID || movie.id || movie.movie_id || ''),
-          title: String(movie.Movie_Name || movie.title || movie.movie_name || 'Phim không tên'),
-          poster: String(movie.Poster_URL || movie.poster || movie.poster_url || '')
+          id: String(movie.Movie_ID || movie.id || movie.movie_id || ""),
+          title: String(movie.Movie_Name || movie.title || movie.movie_name || "Phim không tên"),
+          poster: String(movie.Poster_URL || movie.poster || movie.poster_url || ""),
         }));
-        
+
         setAvailableMovies(formattedMovies);
       } catch (error) {
         console.error("Lỗi khi lấy danh sách phim:", error);
@@ -271,51 +293,52 @@ const HomePage: React.FC = () => {
       }
     }
   };
-  
+
   const handleMovieChange = async (movieId: string) => {
     setSelectedMovieId(movieId);
-    setSelectedDate('');
-    setSelectedShowtimeId('');
+    setSelectedDate("");
+    setSelectedShowtimeId("");
     setAvailableDates([]);
     setAvailableShowtimes([]);
-    
+
     if (movieId && selectedCinemaId) {
       try {
         // Gọi API lấy danh sách ngày chiếu
         const response = await cinemaService.getCinemaShowtimesByDate(selectedCinemaId, "");
         console.log("Dữ liệu suất chiếu:", response);
-        
+
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = response.filter(
           (showtime: ApiShowtimeData) => String(showtime.Movie_ID) === movieId || String(showtime.movie_id) === movieId
         );
-        
+
         // Trích xuất các ngày chiếu duy nhất
         const uniqueDates = new Set<string>();
         filteredShowtimes.forEach((showtime: ApiShowtimeData) => {
-          const showDate = showtime.Show_Date || 
-                          (showtime.Start_Time ? new Date(showtime.Start_Time).toISOString().split('T')[0] : null) ||
-                          (showtime.start_time ? new Date(showtime.start_time).toISOString().split('T')[0] : null);
+          const showDate =
+            showtime.Show_Date ||
+            (showtime.Start_Time ? new Date(showtime.Start_Time).toISOString().split("T")[0] : null) ||
+            (showtime.start_time ? new Date(showtime.start_time).toISOString().split("T")[0] : null);
           if (showDate) uniqueDates.add(showDate);
         });
-        
+
         // Định dạng ngày để hiển thị từ API
-        const formattedDates = Array.from(uniqueDates).map(date => {
+        const formattedDates = Array.from(uniqueDates).map((date) => {
           const dateObj = new Date(date);
           return {
             date: date,
-            displayDate: dateObj.toLocaleDateString('vi-VN', {
-              weekday: 'long',
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            })
+            displayDate: dateObj.toLocaleDateString("vi-VN", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }),
           };
         });
-        
+
         // Sắp xếp ngày theo thứ tự tăng dần
         formattedDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
+
         setAvailableDates(formattedDates);
       } catch (error) {
         console.error("Lỗi khi lấy ngày chiếu:", error);
@@ -324,106 +347,109 @@ const HomePage: React.FC = () => {
       }
     }
   };
-  
+
   const handleDateChange = async (date: string) => {
     setSelectedDate(date);
-    setSelectedShowtimeId('');
+    setSelectedShowtimeId("");
     setAvailableShowtimes([]);
-    
+
     if (date && selectedMovieId && selectedCinemaId) {
       try {
         // Gọi API lấy suất chiếu theo rạp, ngày
         const allShowtimes = await cinemaService.getCinemaShowtimesByDate(selectedCinemaId, date);
         console.log("Suất chiếu theo ngày:", allShowtimes);
-        
+
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = allShowtimes.filter(
-          (showtime: ApiShowtimeData) => String(showtime.Movie_ID) === selectedMovieId || String(showtime.movie_id) === selectedMovieId
+          (showtime: ApiShowtimeData) =>
+            String(showtime.Movie_ID) === selectedMovieId || String(showtime.movie_id) === selectedMovieId
         );
-        
+
         // Lấy thông tin ghế cho mỗi suất chiếu
         const showtimesWithSeatsInfo = await Promise.all(
           filteredShowtimes.map(async (showtime: ApiShowtimeData) => {
             try {
               const showtimeId = showtime.Showtime_ID || showtime.showtime_id;
-              
+
               if (showtimeId === undefined) return null;
-              
+
               // Gọi API lấy thông tin ghế
               const seatsInfoResponse = await cinemaService.getSeatInfoByShowtime(showtimeId);
-              
-              const startTime = showtime.Start_Time || showtime.start_time || '';
-              const endTime = showtime.End_Time || showtime.end_time || '';
+
+              const startTime = showtime.Start_Time || showtime.start_time || "";
+              const endTime = showtime.End_Time || showtime.end_time || "";
 
               // Format thời gian một cách an toàn
-              let formattedStartTime = '';
-              let formattedEndTime = '';
-              
+              let formattedStartTime = "";
+              let formattedEndTime = "";
+
               try {
                 // Kiểm tra nếu startTime có dạng HH:MM thì không cần parse với new Date()
-                if (startTime && startTime.includes(':') && startTime.length <= 8) {
+                if (startTime && startTime.includes(":") && startTime.length <= 8) {
                   formattedStartTime = startTime;
                 } else if (startTime) {
                   const startDate = new Date(startTime);
                   // Kiểm tra xem date có hợp lệ không
                   if (!isNaN(startDate.getTime())) {
-                    formattedStartTime = startDate.toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
+                    formattedStartTime = startDate.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
                     });
                   }
                 }
-                
-                if (endTime && endTime.includes(':') && endTime.length <= 8) {
+
+                if (endTime && endTime.includes(":") && endTime.length <= 8) {
                   formattedEndTime = endTime;
                 } else if (endTime) {
                   const endDate = new Date(endTime);
                   if (!isNaN(endDate.getTime())) {
-                    formattedEndTime = endDate.toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
+                    formattedEndTime = endDate.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
                     });
                   }
                 }
               } catch (error) {
                 console.error("Lỗi khi format thời gian:", error);
                 // Fallback to raw values in case of error
-                formattedStartTime = typeof startTime === 'string' ? startTime.substring(0, 5) : '';
-                formattedEndTime = typeof endTime === 'string' ? endTime.substring(0, 5) : '';
+                formattedStartTime = typeof startTime === "string" ? startTime.substring(0, 5) : "";
+                formattedEndTime = typeof endTime === "string" ? endTime.substring(0, 5) : "";
               }
-              
+
               // Nếu có thông tin ghế, sử dụng thông tin đó
               if (seatsInfoResponse && seatsInfoResponse.summary) {
                 const { total, available, booked } = seatsInfoResponse.summary;
-                
+
                 return {
-                  id: String(showtimeId || ''),
+                  id: String(showtimeId || ""),
                   startTime: formattedStartTime,
                   endTime: formattedEndTime,
-                  roomName: String(showtime.Room_Name || showtime.room_name || 'Phòng chiếu'),
-                  roomType: showtime.Room?.Room_Type || '2D',
+                  roomName: String(showtime.Room_Name || showtime.room_name || "Phòng chiếu"),
+                  roomType: showtime.Room?.Room_Type || "2D",
                   availableSeats: available || 0,
                   totalSeats: total || 0,
                   price: Number(showtime.Price || 0),
                   seatStatus: `${booked || 0}/${total || 0}`,
-                  isSoldOut: available === 0
+                  isSoldOut: available === 0,
                 };
               }
-              
+
               // Nếu không có thông tin ghế, sử dụng thông tin từ showtime
               return {
-                id: String(showtimeId || ''),
+                id: String(showtimeId || ""),
                 startTime: formattedStartTime,
                 endTime: formattedEndTime,
-                roomName: String(showtime.Room_Name || showtime.room_name || 'Phòng chiếu'),
-                roomType: showtime.Room?.Room_Type || '2D',
+                roomName: String(showtime.Room_Name || showtime.room_name || "Phòng chiếu"),
+                roomType: showtime.Room?.Room_Type || "2D",
                 availableSeats: Number(showtime.Capacity_Available || showtime.capacity_available || 0),
                 totalSeats: Number(showtime.Capacity_Total || showtime.capacity_total || 0),
                 price: Number(showtime.Price || 0),
-                seatStatus: `${Number(showtime.Capacity_Total || 0) - Number(showtime.Capacity_Available || 0)}/${Number(showtime.Capacity_Total || 0)}`,
-                isSoldOut: Number(showtime.Capacity_Available || 0) === 0
+                seatStatus: `${
+                  Number(showtime.Capacity_Total || 0) - Number(showtime.Capacity_Available || 0)
+                }/${Number(showtime.Capacity_Total || 0)}`,
+                isSoldOut: Number(showtime.Capacity_Available || 0) === 0,
               };
             } catch (error) {
               console.error(`Lỗi khi lấy thông tin ghế cho suất chiếu:`, error);
@@ -431,9 +457,9 @@ const HomePage: React.FC = () => {
             }
           })
         );
-        
+
         // Lọc bỏ các suất chiếu null (lỗi)
-        const validShowtimes = showtimesWithSeatsInfo.filter(showtime => showtime !== null) as {
+        const validShowtimes = showtimesWithSeatsInfo.filter((showtime) => showtime !== null) as {
           id: string;
           startTime: string;
           endTime: string;
@@ -445,19 +471,19 @@ const HomePage: React.FC = () => {
           seatStatus: string;
           isSoldOut: boolean;
         }[];
-        
+
         // Sắp xếp suất chiếu theo thời gian
         validShowtimes.sort((a, b) => {
           if (!a || !b || !a.startTime || !b.startTime) return 0;
-          const timeA = a.startTime.split(':').map(Number);
-          const timeB = b.startTime.split(':').map(Number);
-          return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+          const timeA = a.startTime.split(":").map(Number);
+          const timeB = b.startTime.split(":").map(Number);
+          return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
         });
-        
+
         // Nếu không có suất chiếu hợp lệ hoặc validShowtimes rỗng, sử dụng dữ liệu mẫu
         if (validShowtimes.length === 0) {
           console.log("Không có suất chiếu hợp lệ, sử dụng dữ liệu mẫu");
-          
+
           // Tạo dữ liệu suất chiếu mẫu dựa trên ngày đã chọn
           const sampleShowtimes = [
             {
@@ -470,7 +496,7 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 90000,
               seatStatus: "5/50",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_2",
@@ -482,7 +508,7 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 120000,
               seatStatus: "20/50",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_3",
@@ -494,7 +520,7 @@ const HomePage: React.FC = () => {
               totalSeats: 30,
               price: 150000,
               seatStatus: "20/30",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_4",
@@ -506,10 +532,10 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 90000,
               seatStatus: "50/50",
-              isSoldOut: true
-            }
+              isSoldOut: true,
+            },
           ];
-          
+
           setAvailableShowtimes(sampleShowtimes);
         } else {
           setAvailableShowtimes(validShowtimes);
@@ -517,7 +543,7 @@ const HomePage: React.FC = () => {
       } catch (error) {
         console.error("Lỗi khi lấy suất chiếu:", error);
         toast.error("Không thể tải suất chiếu. Vui lòng thử lại sau.");
-        
+
         // Khi có lỗi, cũng sử dụng dữ liệu mẫu
         const sampleShowtimes = [
           {
@@ -530,7 +556,7 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 90000,
             seatStatus: "5/50",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_2",
@@ -542,7 +568,7 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 120000,
             seatStatus: "20/50",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_3",
@@ -554,7 +580,7 @@ const HomePage: React.FC = () => {
             totalSeats: 30,
             price: 150000,
             seatStatus: "20/30",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_4",
@@ -566,63 +592,51 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 90000,
             seatStatus: "50/50",
-            isSoldOut: true
-          }
+            isSoldOut: true,
+          },
         ];
-        
+
         setAvailableShowtimes(sampleShowtimes);
       }
     }
   };
-  
+
   const handleShowtimeChange = (showtimeId: string) => {
     setSelectedShowtimeId(showtimeId);
   };
-  
+
   const handleQuickBooking = () => {
     if (selectedShowtimeId) {
       navigate(`/booking/${selectedShowtimeId}`);
     }
   };
-  
+
   // Carousel navigation
   const handleNowShowingNext = () => {
-    setNowShowingCurrentIndex(prev => 
-      prev + 4 >= nowShowingMovies.length ? 0 : prev + 4
-    );
+    setNowShowingCurrentIndex((prev) => (prev + 4 >= nowShowingMovies.length ? 0 : prev + 4));
   };
-  
+
   const handleNowShowingPrev = () => {
-    setNowShowingCurrentIndex(prev => 
-      prev === 0 ? Math.max(0, nowShowingMovies.length - 4) : prev - 4
-    );
+    setNowShowingCurrentIndex((prev) => (prev === 0 ? Math.max(0, nowShowingMovies.length - 4) : prev - 4));
   };
-  
+
   const handleComingSoonNext = () => {
-    setComingSoonCurrentIndex(prev => 
-      prev + 4 >= comingSoonMovies.length ? 0 : prev + 4
-    );
+    setComingSoonCurrentIndex((prev) => (prev + 4 >= comingSoonMovies.length ? 0 : prev + 4));
   };
-  
+
   const handleComingSoonPrev = () => {
-    setComingSoonCurrentIndex(prev =>
-      prev === 0 ? Math.max(0, comingSoonMovies.length - 4) : prev - 4
-    );
+    setComingSoonCurrentIndex((prev) => (prev === 0 ? Math.max(0, comingSoonMovies.length - 4) : prev - 4));
   };
 
   // Promotion carousel navigation
   const handlePromotionNext = () => {
-    console.log('Chuyển đến promotion tiếp theo');
-    setCurrentPromotionIndex(prev =>
-      prev + 1 >= promotions.length ? 0 : prev + 1
-    );
+    console.log("Chuyển đến promotion tiếp theo");
+    setCurrentPromotionIndex((prev) => (prev + 1 >= promotions.length ? 0 : prev + 1));
   };
 
   const handlePromotionPrev = () => {
-    console.log('Chuyển đến promotion trước đó');
-    setCurrentPromotionIndex(prev =>
-      prev === 0 ? promotions.length - 1 : prev - 1
-    );
+    console.log("Chuyển đến promotion trước đó");
+    setCurrentPromotionIndex((prev) => (prev === 0 ? promotions.length - 1 : prev - 1));
   };
 
   // Calculate promotion card width for responsive design
@@ -639,33 +653,33 @@ const HomePage: React.FC = () => {
       image: homePromotion.image,
       originalPrice: 100000, // Default values
       discountedPrice: 80000,
-      discountPercentage: parseInt(homePromotion.discount.replace('%', '')) || 20,
+      discountPercentage: parseInt(homePromotion.discount.replace("%", "")) || 20,
       validUntil: homePromotion.endDate,
-      category: 'special' as const,
-      badge: 'HOT' as const,
+      category: "special" as const,
+      badge: "HOT" as const,
       isActive: true,
-      terms: ['Áp dụng theo điều kiện và điều khoản của rạp'],
+      terms: ["Áp dụng theo điều kiện và điều khoản của rạp"],
       code: `PROMO${homePromotion.id}`,
       usageLimit: 100,
       currentUsage: 10,
       remainingUsage: 90,
-      discountType: 'Percentage',
-      discountValue: parseInt(homePromotion.discount.replace('%', '')) || 20,
+      discountType: "Percentage",
+      discountValue: parseInt(homePromotion.discount.replace("%", "")) || 20,
       minimumPurchase: 50000,
-      isUsed: false
+      isUsed: false,
     };
   };
 
   // Promotion modal handlers
   const handlePromotionClick = (promotion: HomePagePromotion) => {
-    console.log('Mở chi tiết promotion:', promotion.title);
+    console.log("Mở chi tiết promotion:", promotion.title);
     const convertedPromotion = convertToPromotion(promotion);
     setSelectedPromotion(convertedPromotion);
     setIsPromotionModalOpen(true);
   };
 
   const handleClosePromotionModal = () => {
-    console.log('Đóng modal promotion');
+    console.log("Đóng modal promotion");
     setIsPromotionModalOpen(false);
     setSelectedPromotion(null);
   };
@@ -673,13 +687,13 @@ const HomePage: React.FC = () => {
   // Apply promotion code (for PromoDetailsModal)
   const handleApplyPromotionCode = async (code: string) => {
     try {
-      console.log('Áp dụng mã khuyến mãi:', code);
+      console.log("Áp dụng mã khuyến mãi:", code);
       toast.success(`Đã áp dụng mã khuyến mãi: ${code}`);
       // Here you can add logic to apply the promotion code
       // For now, we'll just show a success message
     } catch (error) {
-      console.error('Lỗi khi áp dụng mã khuyến mãi:', error);
-      toast.error('Không thể áp dụng mã khuyến mãi');
+      console.error("Lỗi khi áp dụng mã khuyến mãi:", error);
+      toast.error("Không thể áp dụng mã khuyến mãi");
     }
   };
 
@@ -687,9 +701,9 @@ const HomePage: React.FC = () => {
   const handleOpenBookingModal = (movie: HomePageMovie) => {
     setBookingMovie(movie);
     setIsBookingModalOpen(true);
-    setModalSelectedCinemaId('');
-    setModalSelectedDate('');
-    setModalSelectedShowtimeId('');
+    setModalSelectedCinemaId("");
+    setModalSelectedDate("");
+    setModalSelectedShowtimeId("");
     setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
   };
@@ -697,9 +711,9 @@ const HomePage: React.FC = () => {
   const handleCloseBookingModal = () => {
     setIsBookingModalOpen(false);
     setBookingMovie(null);
-    setModalSelectedCinemaId('');
-    setModalSelectedDate('');
-    setModalSelectedShowtimeId('');
+    setModalSelectedCinemaId("");
+    setModalSelectedDate("");
+    setModalSelectedShowtimeId("");
     setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
   };
@@ -707,60 +721,62 @@ const HomePage: React.FC = () => {
   // Escape key handler
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isBookingModalOpen) {
+      if (e.key === "Escape" && isBookingModalOpen) {
         handleCloseBookingModal();
       }
     };
 
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
+    document.addEventListener("keydown", handleEscape);
+    return () => document.removeEventListener("keydown", handleEscape);
   }, [isBookingModalOpen]);
 
   const handleModalCinemaChange = async (cinemaId: string) => {
     setModalSelectedCinemaId(cinemaId);
-    setModalSelectedDate('');
-    setModalSelectedShowtimeId('');
+    setModalSelectedDate("");
+    setModalSelectedShowtimeId("");
     setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
-    
+
     if (cinemaId && bookingMovie) {
       try {
         // Gọi API lấy danh sách ngày chiếu
         const response = await cinemaService.getCinemaShowtimesByDate(cinemaId, "");
         console.log("Dữ liệu suất chiếu modal:", response);
-        
+
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = response.filter(
-          (showtime: ApiShowtimeData) => String(showtime.Movie_ID) === bookingMovie.id.toString() || 
-                     String(showtime.movie_id) === bookingMovie.id.toString()
+          (showtime: ApiShowtimeData) =>
+            String(showtime.Movie_ID) === bookingMovie.id.toString() ||
+            String(showtime.movie_id) === bookingMovie.id.toString()
         );
-        
+
         // Trích xuất các ngày chiếu duy nhất
         const uniqueDates = new Set<string>();
         filteredShowtimes.forEach((showtime: ApiShowtimeData) => {
-          const showDate = showtime.Show_Date || 
-                          (showtime.Start_Time ? new Date(showtime.Start_Time).toISOString().split('T')[0] : null) ||
-                          (showtime.start_time ? new Date(showtime.start_time).toISOString().split('T')[0] : null);
+          const showDate =
+            showtime.Show_Date ||
+            (showtime.Start_Time ? new Date(showtime.Start_Time).toISOString().split("T")[0] : null) ||
+            (showtime.start_time ? new Date(showtime.start_time).toISOString().split("T")[0] : null);
           if (showDate) uniqueDates.add(showDate);
         });
-        
+
         // Định dạng ngày để hiển thị từ API
-        const formattedDates = Array.from(uniqueDates).map(date => {
+        const formattedDates = Array.from(uniqueDates).map((date) => {
           const dateObj = new Date(date);
           return {
             date: date,
-            displayDate: dateObj.toLocaleDateString('vi-VN', {
-              weekday: 'long',
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric'
-            })
+            displayDate: dateObj.toLocaleDateString("vi-VN", {
+              weekday: "long",
+              day: "2-digit",
+              month: "2-digit",
+              year: "numeric",
+            }),
           };
         });
-        
+
         // Sắp xếp ngày theo thứ tự tăng dần
         formattedDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-        
+
         setModalAvailableDates(formattedDates);
       } catch (error) {
         console.error("Lỗi khi lấy ngày chiếu cho modal:", error);
@@ -772,104 +788,107 @@ const HomePage: React.FC = () => {
 
   const handleModalDateChange = async (date: string) => {
     setModalSelectedDate(date);
-    setModalSelectedShowtimeId('');
+    setModalSelectedShowtimeId("");
     setModalAvailableShowtimes([]);
-    
+
     if (date && bookingMovie && modalSelectedCinemaId) {
       try {
         // Gọi API lấy suất chiếu theo rạp, ngày
         const allShowtimes = await cinemaService.getCinemaShowtimesByDate(modalSelectedCinemaId, date);
         console.log("Suất chiếu theo ngày modal:", allShowtimes);
-        
+
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = allShowtimes.filter(
-          (showtime: ApiShowtimeData) => String(showtime.Movie_ID) === bookingMovie.id.toString() || 
-                     String(showtime.movie_id) === bookingMovie.id.toString()
+          (showtime: ApiShowtimeData) =>
+            String(showtime.Movie_ID) === bookingMovie.id.toString() ||
+            String(showtime.movie_id) === bookingMovie.id.toString()
         );
-        
+
         // Lấy thông tin ghế cho mỗi suất chiếu
         const showtimesWithSeatsInfo = await Promise.all(
           filteredShowtimes.map(async (showtime: ApiShowtimeData) => {
             try {
               const showtimeId = showtime.Showtime_ID || showtime.showtime_id;
-              
+
               if (showtimeId === undefined) return null;
-              
+
               // Gọi API lấy thông tin ghế
               const seatsInfoResponse = await cinemaService.getSeatInfoByShowtime(showtimeId);
-              
-              const startTime = showtime.Start_Time || showtime.start_time || '';
-              const endTime = showtime.End_Time || showtime.end_time || '';
+
+              const startTime = showtime.Start_Time || showtime.start_time || "";
+              const endTime = showtime.End_Time || showtime.end_time || "";
 
               // Format thời gian một cách an toàn
-              let formattedStartTime = '';
-              let formattedEndTime = '';
-              
+              let formattedStartTime = "";
+              let formattedEndTime = "";
+
               try {
                 // Kiểm tra nếu startTime có dạng HH:MM thì không cần parse với new Date()
-                if (startTime && startTime.includes(':') && startTime.length <= 8) {
+                if (startTime && startTime.includes(":") && startTime.length <= 8) {
                   formattedStartTime = startTime;
                 } else if (startTime) {
                   const startDate = new Date(startTime);
                   // Kiểm tra xem date có hợp lệ không
                   if (!isNaN(startDate.getTime())) {
-                    formattedStartTime = startDate.toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
+                    formattedStartTime = startDate.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
                     });
                   }
                 }
-                
-                if (endTime && endTime.includes(':') && endTime.length <= 8) {
+
+                if (endTime && endTime.includes(":") && endTime.length <= 8) {
                   formattedEndTime = endTime;
                 } else if (endTime) {
                   const endDate = new Date(endTime);
                   if (!isNaN(endDate.getTime())) {
-                    formattedEndTime = endDate.toLocaleTimeString('vi-VN', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                      hour12: false
+                    formattedEndTime = endDate.toLocaleTimeString("vi-VN", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                      hour12: false,
                     });
                   }
                 }
               } catch (error) {
                 console.error("Lỗi khi format thời gian modal:", error);
                 // Fallback to raw values in case of error
-                formattedStartTime = typeof startTime === 'string' ? startTime.substring(0, 5) : '';
-                formattedEndTime = typeof endTime === 'string' ? endTime.substring(0, 5) : '';
+                formattedStartTime = typeof startTime === "string" ? startTime.substring(0, 5) : "";
+                formattedEndTime = typeof endTime === "string" ? endTime.substring(0, 5) : "";
               }
-              
+
               // Nếu có thông tin ghế, sử dụng thông tin đó
               if (seatsInfoResponse && seatsInfoResponse.summary) {
                 const { total, available, booked } = seatsInfoResponse.summary;
-                
+
                 return {
-                  id: String(showtimeId || ''),
+                  id: String(showtimeId || ""),
                   startTime: formattedStartTime,
                   endTime: formattedEndTime,
-                  roomName: String(showtime.Room_Name || showtime.room_name || 'Phòng chiếu'),
-                  roomType: showtime.Room?.Room_Type || '2D',
+                  roomName: String(showtime.Room_Name || showtime.room_name || "Phòng chiếu"),
+                  roomType: showtime.Room?.Room_Type || "2D",
                   availableSeats: available || 0,
                   totalSeats: total || 0,
                   price: Number(showtime.Price || 0),
                   seatStatus: `${booked || 0}/${total || 0}`,
-                  isSoldOut: available === 0
+                  isSoldOut: available === 0,
                 };
               }
-              
+
               // Nếu không có thông tin ghế, sử dụng thông tin từ showtime
               return {
-                id: String(showtimeId || ''),
+                id: String(showtimeId || ""),
                 startTime: formattedStartTime,
                 endTime: formattedEndTime,
-                roomName: String(showtime.Room_Name || showtime.room_name || 'Phòng chiếu'),
-                roomType: showtime.Room?.Room_Type || '2D',
+                roomName: String(showtime.Room_Name || showtime.room_name || "Phòng chiếu"),
+                roomType: showtime.Room?.Room_Type || "2D",
                 availableSeats: Number(showtime.Capacity_Available || showtime.capacity_available || 0),
                 totalSeats: Number(showtime.Capacity_Total || showtime.capacity_total || 0),
                 price: Number(showtime.Price || 0),
-                seatStatus: `${Number(showtime.Capacity_Total || 0) - Number(showtime.Capacity_Available || 0)}/${Number(showtime.Capacity_Total || 0)}`,
-                isSoldOut: Number(showtime.Capacity_Available || 0) === 0
+                seatStatus: `${
+                  Number(showtime.Capacity_Total || 0) - Number(showtime.Capacity_Available || 0)
+                }/${Number(showtime.Capacity_Total || 0)}`,
+                isSoldOut: Number(showtime.Capacity_Available || 0) === 0,
               };
             } catch (error) {
               console.error(`Lỗi khi lấy thông tin ghế cho suất chiếu modal:`, error);
@@ -877,9 +896,9 @@ const HomePage: React.FC = () => {
             }
           })
         );
-        
+
         // Lọc bỏ các suất chiếu null (lỗi)
-        const validShowtimes = showtimesWithSeatsInfo.filter(showtime => showtime !== null) as {
+        const validShowtimes = showtimesWithSeatsInfo.filter((showtime) => showtime !== null) as {
           id: string;
           startTime: string;
           endTime: string;
@@ -891,19 +910,19 @@ const HomePage: React.FC = () => {
           seatStatus: string;
           isSoldOut: boolean;
         }[];
-        
+
         // Sắp xếp suất chiếu theo thời gian
         validShowtimes.sort((a, b) => {
           if (!a || !b || !a.startTime || !b.startTime) return 0;
-          const timeA = a.startTime.split(':').map(Number);
-          const timeB = b.startTime.split(':').map(Number);
-          return (timeA[0] * 60 + timeA[1]) - (timeB[0] * 60 + timeB[1]);
+          const timeA = a.startTime.split(":").map(Number);
+          const timeB = b.startTime.split(":").map(Number);
+          return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
         });
-        
+
         // Nếu không có suất chiếu hợp lệ hoặc validShowtimes rỗng, sử dụng dữ liệu mẫu
         if (validShowtimes.length === 0) {
           console.log("Không có suất chiếu hợp lệ cho modal, sử dụng dữ liệu mẫu");
-          
+
           // Tạo dữ liệu suất chiếu mẫu dựa trên ngày đã chọn
           const sampleShowtimes = [
             {
@@ -916,7 +935,7 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 90000,
               seatStatus: "10/50",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_modal_2",
@@ -928,7 +947,7 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 120000,
               seatStatus: "25/50",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_modal_3",
@@ -940,7 +959,7 @@ const HomePage: React.FC = () => {
               totalSeats: 30,
               price: 150000,
               seatStatus: "25/30",
-              isSoldOut: false
+              isSoldOut: false,
             },
             {
               id: "sample_modal_4",
@@ -952,10 +971,10 @@ const HomePage: React.FC = () => {
               totalSeats: 50,
               price: 90000,
               seatStatus: "50/50",
-              isSoldOut: true
-            }
+              isSoldOut: true,
+            },
           ];
-          
+
           setModalAvailableShowtimes(sampleShowtimes);
         } else {
           setModalAvailableShowtimes(validShowtimes);
@@ -963,7 +982,7 @@ const HomePage: React.FC = () => {
       } catch (error) {
         console.error("Lỗi khi lấy suất chiếu modal:", error);
         toast.error("Không thể tải suất chiếu. Vui lòng thử lại sau.");
-        
+
         // Khi có lỗi, cũng sử dụng dữ liệu mẫu
         const sampleShowtimes = [
           {
@@ -976,7 +995,7 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 90000,
             seatStatus: "10/50",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_modal_2",
@@ -988,7 +1007,7 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 120000,
             seatStatus: "25/50",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_modal_3",
@@ -1000,7 +1019,7 @@ const HomePage: React.FC = () => {
             totalSeats: 30,
             price: 150000,
             seatStatus: "25/30",
-            isSoldOut: false
+            isSoldOut: false,
           },
           {
             id: "sample_modal_4",
@@ -1012,10 +1031,10 @@ const HomePage: React.FC = () => {
             totalSeats: 50,
             price: 90000,
             seatStatus: "50/50",
-            isSoldOut: true
-          }
+            isSoldOut: true,
+          },
         ];
-        
+
         setModalAvailableShowtimes(sampleShowtimes);
       }
     }
@@ -1033,7 +1052,7 @@ const HomePage: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <FullScreenLoader />;
   }
 
   const heroMovie = nowShowingMovies[heroMovieIndex];
@@ -1054,17 +1073,17 @@ const HomePage: React.FC = () => {
                 className="absolute inset-0"
               >
                 {/* Background Image */}
-                <div 
+                <div
                   className="absolute inset-0 bg-cover bg-center"
                   style={{
                     backgroundImage: `url(${heroMovie.backdrop || heroMovie.poster})`,
                   }}
                 />
-                
+
                 {/* Overlay Gradients */}
                 <div className="absolute inset-0 bg-gradient-to-r from-black/90 via-black/50 to-transparent" />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30" />
-                
+
                 {/* Content */}
                 <div className="relative z-10 h-full flex items-center">
                   <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
@@ -1116,9 +1135,7 @@ const HomePage: React.FC = () => {
                         </div>
 
                         {/* Description */}
-                        <p className="text-gray-300 text-lg leading-relaxed max-w-xl">
-                          {heroMovie.description}
-                        </p>
+                        <p className="text-gray-300 text-lg leading-relaxed max-w-xl">{heroMovie.description}</p>
 
                         {/* Action Buttons */}
                         <div className="flex flex-wrap items-center gap-4 pt-4">
@@ -1129,7 +1146,7 @@ const HomePage: React.FC = () => {
                             <TicketIcon className="w-6 h-6" />
                             ĐẶT VÉ NGAY
                           </button>
-                          
+
                           {heroMovie.trailer && (
                             <button className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transform hover:-translate-y-1 transition-all duration-300 flex items-center gap-3">
                               <PlayIconSolid className="w-6 h-6" />
@@ -1153,16 +1170,12 @@ const HomePage: React.FC = () => {
                       key={movie.id}
                       onClick={() => setHeroMovieIndex(index)}
                       className={`w-16 h-24 rounded-lg overflow-hidden border-2 transition-all duration-300 ${
-                        index === heroMovieIndex 
-                          ? 'border-[#FFD875] shadow-lg shadow-[#FFD875]/50' 
-                          : 'border-white/30 hover:border-white/60'
+                        index === heroMovieIndex
+                          ? "border-[#FFD875] shadow-lg shadow-[#FFD875]/50"
+                          : "border-white/30 hover:border-white/60"
                       }`}
                     >
-                      <img
-                        src={movie.poster}
-                        alt={movie.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={movie.poster} alt={movie.title} className="w-full h-full object-cover" />
                     </button>
                   ))}
                 </div>
@@ -1172,7 +1185,7 @@ const HomePage: React.FC = () => {
         </section>
 
         {/* Quick Booking Section - Enhanced UX */}
-        <section className="relative -mt-32 z-20">
+        <section className="relative py-16 sm:py-20 lg:py-24 bg-gradient-to-b from-slate-950 to-slate-900">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <motion.div
               initial={{ y: 100, opacity: 0 }}
@@ -1183,7 +1196,7 @@ const HomePage: React.FC = () => {
               {/* Background decorative elements */}
               <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-full blur-3xl -translate-y-48 translate-x-48"></div>
               <div className="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-[#FFD875]/10 to-[#FFA500]/10 rounded-full blur-3xl translate-y-32 -translate-x-32"></div>
-              
+
               <div className="relative z-10 p-6 sm:p-8 lg:p-12">
                 {/* Header */}
                 <div className="text-center mb-10">
@@ -1205,7 +1218,7 @@ const HomePage: React.FC = () => {
                 </div>
 
                 {/* Booking Steps */}
-                <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-4 items-end">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-6 lg:gap-4 items-end">
                   {/* Step 1: Chọn Rạp */}
                   <motion.div
                     initial={{ y: 20, opacity: 0 }}
@@ -1214,7 +1227,9 @@ const HomePage: React.FC = () => {
                     className="space-y-3"
                   >
                     <label className="block text-sm font-bold text-[#FFD875] ml-2 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">1</div>
+                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                        1
+                      </div>
                       <BuildingOfficeIcon className="w-4 h-4" />
                       Chọn Rạp
                     </label>
@@ -1223,9 +1238,13 @@ const HomePage: React.FC = () => {
                       onChange={(e) => handleCinemaChange(e.target.value)}
                       className="w-full px-4 py-4 bg-slate-700/80 border-2 border-yellow-400/20 rounded-2xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm hover:bg-slate-600/80"
                     >
-                      <option value="" className="bg-slate-800 text-gray-300">Chọn rạp chiếu</option>
+                      <option value="" className="bg-slate-800 text-gray-300">
+                        Chọn rạp chiếu
+                      </option>
                       {cinemas.map((cinema) => (
-                        <option key={cinema.Cinema_ID} value={cinema.Cinema_ID} className="bg-slate-800 text-gray-100">{cinema.Cinema_Name}</option>
+                        <option key={cinema.Cinema_ID} value={cinema.Cinema_ID} className="bg-slate-800 text-gray-100">
+                          {cinema.Cinema_Name}
+                        </option>
                       ))}
                     </select>
                   </motion.div>
@@ -1238,7 +1257,9 @@ const HomePage: React.FC = () => {
                     className="space-y-3"
                   >
                     <label className="block text-sm font-bold text-[#FFD875] ml-2 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">2</div>
+                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                        2
+                      </div>
                       <FilmIcon className="w-4 h-4" />
                       Chọn Phim
                     </label>
@@ -1248,9 +1269,13 @@ const HomePage: React.FC = () => {
                       disabled={!selectedCinemaId}
                       className="w-full px-4 py-4 bg-slate-700/80 border-2 border-yellow-400/20 rounded-2xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800/60 hover:bg-slate-600/80"
                     >
-                      <option value="" className="bg-slate-800 text-gray-300">Chọn phim</option>
+                      <option value="" className="bg-slate-800 text-gray-300">
+                        Chọn phim
+                      </option>
                       {availableMovies.map((movie) => (
-                        <option key={movie.id} value={movie.id} className="bg-slate-800 text-gray-100">{movie.title}</option>
+                        <option key={movie.id} value={movie.id} className="bg-slate-800 text-gray-100">
+                          {movie.title}
+                        </option>
                       ))}
                     </select>
                   </motion.div>
@@ -1263,7 +1288,9 @@ const HomePage: React.FC = () => {
                     className="space-y-3"
                   >
                     <label className="block text-sm font-bold text-[#FFD875] ml-2 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">3</div>
+                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                        3
+                      </div>
                       <CalendarDaysIcon className="w-4 h-4" />
                       Chọn Ngày
                     </label>
@@ -1273,7 +1300,9 @@ const HomePage: React.FC = () => {
                       disabled={!selectedMovieId}
                       className="w-full px-4 py-4 bg-slate-700/80 border-2 border-yellow-400/20 rounded-2xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800/60 hover:bg-slate-600/80"
                     >
-                      <option value="" className="bg-slate-800 text-gray-300">Chọn ngày</option>
+                      <option value="" className="bg-slate-800 text-gray-300">
+                        Chọn ngày
+                      </option>
                       {(() => {
                         // Tạo mảng 3 ngày: hôm nay, ngày mai, ngày mốt
                         const today = new Date();
@@ -1281,34 +1310,34 @@ const HomePage: React.FC = () => {
                         tomorrow.setDate(tomorrow.getDate() + 1);
                         const dayAfterTomorrow = new Date(today);
                         dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-                        
+
                         const fixedDates = [
                           {
-                            date: today.toISOString().split('T')[0],
-                            displayDate: `Hôm nay (${today.toLocaleDateString('vi-VN', {
-                              weekday: 'long',
-                              day: '2-digit',
-                              month: '2-digit'
-                            })})`
+                            date: today.toISOString().split("T")[0],
+                            displayDate: `Hôm nay (${today.toLocaleDateString("vi-VN", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                            })})`,
                           },
                           {
-                            date: tomorrow.toISOString().split('T')[0],
-                            displayDate: `Ngày mai (${tomorrow.toLocaleDateString('vi-VN', {
-                              weekday: 'long',
-                              day: '2-digit',
-                              month: '2-digit'
-                            })})`
+                            date: tomorrow.toISOString().split("T")[0],
+                            displayDate: `Ngày mai (${tomorrow.toLocaleDateString("vi-VN", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                            })})`,
                           },
                           {
-                            date: dayAfterTomorrow.toISOString().split('T')[0],
-                            displayDate: `Ngày mốt (${dayAfterTomorrow.toLocaleDateString('vi-VN', {
-                              weekday: 'long',
-                              day: '2-digit',
-                              month: '2-digit'
-                            })})`
-                          }
+                            date: dayAfterTomorrow.toISOString().split("T")[0],
+                            displayDate: `Ngày mốt (${dayAfterTomorrow.toLocaleDateString("vi-VN", {
+                              weekday: "long",
+                              day: "2-digit",
+                              month: "2-digit",
+                            })})`,
+                          },
                         ];
-                        
+
                         return fixedDates.map((dateItem) => (
                           <option key={dateItem.date} value={dateItem.date} className="bg-slate-800 text-gray-100">
                             {dateItem.displayDate}
@@ -1326,7 +1355,9 @@ const HomePage: React.FC = () => {
                     className="space-y-3"
                   >
                     <label className="block text-sm font-bold text-[#FFD875] ml-2 flex items-center gap-2">
-                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">4</div>
+                      <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                        4
+                      </div>
                       <ClockIcon className="w-4 h-4" />
                       Chọn Suất
                     </label>
@@ -1336,7 +1367,9 @@ const HomePage: React.FC = () => {
                       disabled={!selectedDate}
                       className="w-full px-4 py-4 bg-slate-700/80 border-2 border-yellow-400/20 rounded-2xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800/60 hover:bg-slate-600/80"
                     >
-                      <option value="" className="bg-slate-800 text-gray-300">Chọn suất chiếu</option>
+                      <option value="" className="bg-slate-800 text-gray-300">
+                        Chọn suất chiếu
+                      </option>
                       {availableShowtimes.length > 0 ? (
                         availableShowtimes.map((showtime) => (
                           <option key={showtime.id} value={showtime.id} className="bg-slate-800 text-gray-100">
@@ -1344,7 +1377,9 @@ const HomePage: React.FC = () => {
                           </option>
                         ))
                       ) : (
-                        <option value="" disabled className="bg-slate-800 text-gray-500">Không có suất chiếu</option>
+                        <option value="" disabled className="bg-slate-800 text-gray-500">
+                          Không có suất chiếu
+                        </option>
                       )}
                     </select>
                   </motion.div>
@@ -1354,11 +1389,9 @@ const HomePage: React.FC = () => {
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ duration: 0.5, delay: 1.4 }}
-                    className="space-y-3 lg:col-span-1"
+                    className="space-y-3 sm:col-span-2 lg:col-span-1"
                   >
-                    <label className="block text-sm font-bold text-transparent ml-2">
-                      .
-                    </label>
+                    <label className="block text-sm font-bold text-transparent ml-2">.</label>
                     <motion.button
                       onClick={handleQuickBooking}
                       disabled={!selectedShowtimeId}
@@ -1368,7 +1401,7 @@ const HomePage: React.FC = () => {
                     >
                       {/* Button shine effect */}
                       <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
-                      
+
                       <TicketIcon className="w-6 h-6 relative z-10" />
                       <span className="relative z-10">ĐẶT NGAY</span>
                     </motion.button>
@@ -1380,14 +1413,16 @@ const HomePage: React.FC = () => {
                   <div className="flex items-center gap-3">
                     {[1, 2, 3, 4].map((step) => (
                       <div key={step} className="flex items-center gap-3">
-                        <div className={`w-3 h-3 rounded-full transition-all duration-300 ${
-                          (step === 1 && selectedCinemaId) ||
-                          (step === 2 && selectedMovieId) ||
-                          (step === 3 && selectedDate) ||
-                          (step === 4 && selectedShowtimeId)
-                            ? 'bg-[#FFD875] shadow-lg shadow-yellow-400/50'
-                            : 'bg-slate-600'
-                        }`}></div>
+                        <div
+                          className={`w-3 h-3 rounded-full transition-all duration-300 ${
+                            (step === 1 && selectedCinemaId) ||
+                            (step === 2 && selectedMovieId) ||
+                            (step === 3 && selectedDate) ||
+                            (step === 4 && selectedShowtimeId)
+                              ? "bg-[#FFD875] shadow-lg shadow-yellow-400/50"
+                              : "bg-slate-600"
+                          }`}
+                        ></div>
                         {step < 4 && <div className="w-8 h-0.5 bg-slate-600"></div>}
                       </div>
                     ))}
@@ -1431,17 +1466,17 @@ const HomePage: React.FC = () => {
               >
                 <ChevronRightIcon className="w-6 h-6 rotate-180" />
               </button>
-              
+
               <button
                 onClick={handleNowShowingNext}
                 className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-r from-[#FFD875]/90 to-[#FFA500]/90 hover:from-[#FFD875] hover:to-[#FFA500] text-black rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-yellow-500/30 backdrop-blur-sm border border-white/20"
               >
                 <ChevronRightIcon className="w-6 h-6" />
               </button>
-              
+
               {/* Movies Carousel */}
               <div className="overflow-hidden">
-                <div 
+                <div
                   className="flex transition-transform duration-500"
                   style={{ transform: `translateX(-${nowShowingCurrentIndex * 25}%)` }}
                 >
@@ -1461,14 +1496,14 @@ const HomePage: React.FC = () => {
                             alt={movie.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
-                          
+
                           {/* Overlay gradient */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          
+
                           {/* Release Date Badge */}
                           <div className="absolute top-3 left-3">
                             <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center shadow-lg">
-                              {new Date(movie.releaseDate).toLocaleDateString('vi-VN')}
+                              {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
                             </span>
                           </div>
 
@@ -1485,7 +1520,7 @@ const HomePage: React.FC = () => {
                           <h3 className="text-gray-100 font-bold text-sm mb-3 line-clamp-2 min-h-[40px] group-hover:text-yellow-400 transition-colors duration-300">
                             {movie.title.toUpperCase()}
                           </h3>
-                          
+
                           <button
                             onClick={() => handleOpenBookingModal(movie)}
                             className="w-full py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-bold text-sm rounded-xl hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-yellow-400/40 transform hover:scale-105"
@@ -1544,17 +1579,17 @@ const HomePage: React.FC = () => {
               >
                 <ChevronRightIcon className="w-6 h-6 rotate-180" />
               </button>
-              
+
               <button
                 onClick={handleComingSoonNext}
                 className="absolute right-4 top-1/2 -translate-y-1/2 z-10 w-14 h-14 bg-gradient-to-r from-blue-500/90 to-blue-600/90 hover:from-blue-400 hover:to-blue-500 text-white rounded-full flex items-center justify-center transition-all duration-300 shadow-lg hover:shadow-xl hover:shadow-blue-500/30 backdrop-blur-sm border border-white/20"
               >
                 <ChevronRightIcon className="w-6 h-6" />
               </button>
-              
+
               {/* Movies Carousel */}
               <div className="overflow-hidden">
-                <div 
+                <div
                   className="flex transition-transform duration-500"
                   style={{ transform: `translateX(-${comingSoonCurrentIndex * 25}%)` }}
                 >
@@ -1574,14 +1609,14 @@ const HomePage: React.FC = () => {
                             alt={movie.title}
                             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                           />
-                          
+
                           {/* Overlay gradient */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                          
+
                           {/* Release Date Badge */}
                           <div className="absolute top-3 left-3">
                             <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center shadow-lg">
-                              {new Date(movie.releaseDate).toLocaleDateString('vi-VN')}
+                              {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
                             </span>
                           </div>
 
@@ -1598,7 +1633,7 @@ const HomePage: React.FC = () => {
                           <h3 className="text-gray-100 font-bold text-sm mb-3 line-clamp-2 min-h-[40px] group-hover:text-blue-400 transition-colors duration-300">
                             {movie.title.toUpperCase()}
                           </h3>
-                          
+
                           <button
                             onClick={() => handleOpenBookingModal(movie)}
                             className="w-full py-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-sm rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-blue-400/40 transform hover:scale-105"
@@ -1673,7 +1708,7 @@ const HomePage: React.FC = () => {
                 <div
                   className="flex gap-4 sm:gap-6 transition-transform duration-500"
                   style={{
-                    transform: `translateX(-${currentPromotionIndex * (getPromotionCardWidth() + 24)}px)`
+                    transform: `translateX(-${currentPromotionIndex * (getPromotionCardWidth() + 24)}px)`,
                   }}
                 >
                   {promotions.map((promotion, index) => (
@@ -1692,10 +1727,10 @@ const HomePage: React.FC = () => {
                           alt={promotion.title}
                           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                         />
-                        
+
                         {/* Overlay với thông tin */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
-                        
+
                         {/* Discount Badge */}
                         <div className="absolute top-4 right-4">
                           <span className="px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full">
@@ -1705,19 +1740,15 @@ const HomePage: React.FC = () => {
 
                         {/* Content */}
                         <div className="absolute bottom-4 left-4 right-4">
-                          <h3 className="text-white font-bold text-lg mb-2 line-clamp-1">
-                            {promotion.title}
-                          </h3>
-                          <p className="text-gray-300 text-sm line-clamp-2">
-                            {promotion.description}
-                          </p>
+                          <h3 className="text-white font-bold text-lg mb-2 line-clamp-1">{promotion.title}</h3>
+                          <p className="text-gray-300 text-sm line-clamp-2">{promotion.description}</p>
                         </div>
                       </div>
                     </motion.div>
                   ))}
                 </div>
               </div>
-              
+
               {/* Navigation Dots */}
               <div className="flex justify-center items-center gap-2 mt-8">
                 {[0, 1, 2].map((dot) => (
@@ -1781,10 +1812,8 @@ const HomePage: React.FC = () => {
                   <h3 className="text-white font-bold text-lg mb-2 group-hover:text-green-400 transition-colors duration-300">
                     {cinema.Cinema_Name}
                   </h3>
-                  
-                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">
-                    {cinema.Address}
-                  </p>
+
+                  <p className="text-gray-400 text-sm mb-4 line-clamp-2">{cinema.Address}</p>
 
                   <div className="flex items-center gap-2 text-sm text-green-400">
                     <MapPinIcon className="w-4 h-4" />
@@ -1836,26 +1865,26 @@ const HomePage: React.FC = () => {
                   icon: <FilmIcon className="w-8 h-8" />,
                   title: "Công Nghệ 4DX",
                   description: "Trải nghiệm điện ảnh sống động với ghế chuyển động và hiệu ứng đặc biệt",
-                  color: "from-blue-400 to-blue-600"
+                  color: "from-blue-400 to-blue-600",
                 },
                 {
                   icon: <UsersIcon className="w-8 h-8" />,
                   title: "Dịch Vụ VIP",
                   description: "Phòng chiếu VIP với ghế massage và dịch vụ cao cấp",
-                  color: "from-purple-400 to-purple-600"
+                  color: "from-purple-400 to-purple-600",
                 },
                 {
                   icon: <TrophyIcon className="w-8 h-8" />,
                   title: "Chất Lượng Hàng Đầu",
                   description: "Âm thanh Dolby Atmos và hình ảnh 4K siêu nét",
-                  color: "from-[#FFD875] to-[#FFA500]"
+                  color: "from-[#FFD875] to-[#FFA500]",
                 },
                 {
                   icon: <SparklesIcon className="w-8 h-8" />,
                   title: "Ưu Đãi Đặc Biệt",
                   description: "Chương trình khuyến mãi và tích điểm hấp dẫn",
-                  color: "from-red-400 to-red-600"
-                }
+                  color: "from-red-400 to-red-600",
+                },
               ].map((feature, index) => (
                 <motion.div
                   key={`feature-${index}`}
@@ -1865,19 +1894,17 @@ const HomePage: React.FC = () => {
                   viewport={{ once: true }}
                   className="group text-center bg-slate-800/30 rounded-2xl p-6 lg:p-8 border border-slate-700/50 hover:border-yellow-400/30 transition-all duration-500 hover:bg-slate-800/50"
                 >
-                  <div className={`w-20 h-20 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl`}>
-                    <div className="text-white">
-                      {feature.icon}
-                    </div>
+                  <div
+                    className={`w-20 h-20 bg-gradient-to-br ${feature.color} rounded-2xl flex items-center justify-center mx-auto mb-6 group-hover:scale-110 transition-transform duration-300 shadow-lg group-hover:shadow-xl`}
+                  >
+                    <div className="text-white">{feature.icon}</div>
                   </div>
-                  
+
                   <h3 className="text-white font-bold text-xl mb-4 group-hover:text-[#FFD875] transition-colors duration-300">
                     {feature.title}
                   </h3>
-                  
-                  <p className="text-gray-400 leading-relaxed text-sm lg:text-base">
-                    {feature.description}
-                  </p>
+
+                  <p className="text-gray-400 leading-relaxed text-sm lg:text-base">{feature.description}</p>
                 </motion.div>
               ))}
             </div>
@@ -1897,7 +1924,7 @@ const HomePage: React.FC = () => {
               className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
               onClick={handleCloseBookingModal}
             />
-            
+
             {/* Modal */}
             <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1911,7 +1938,7 @@ const HomePage: React.FC = () => {
                 {/* Background decorative elements */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-yellow-500/10 to-orange-500/10 rounded-full blur-3xl -translate-y-32 translate-x-32"></div>
                 <div className="absolute bottom-0 left-0 w-48 h-48 bg-gradient-to-tr from-[#FFD875]/10 to-[#FFA500]/10 rounded-full blur-3xl translate-y-24 -translate-x-24"></div>
-                
+
                 {/* Close Button */}
                 <button
                   onClick={(e) => {
@@ -1928,18 +1955,12 @@ const HomePage: React.FC = () => {
                   <div className="flex items-start gap-6 mb-8">
                     {/* Movie Poster */}
                     <div className="flex-shrink-0 w-24 h-36 rounded-xl overflow-hidden shadow-lg">
-                      <img
-                        src={bookingMovie.poster}
-                        alt={bookingMovie.title}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={bookingMovie.poster} alt={bookingMovie.title} className="w-full h-full object-cover" />
                     </div>
-                    
+
                     {/* Movie Info */}
                     <div className="flex-1">
-                      <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2">
-                        {bookingMovie.title}
-                      </h2>
+                      <h2 className="text-2xl lg:text-3xl font-bold text-white mb-2">{bookingMovie.title}</h2>
                       <div className="flex flex-wrap items-center gap-4 text-gray-300 mb-4">
                         <div className="flex items-center gap-2">
                           <ClockIcon className="w-4 h-4 text-[#FFD875]" />
@@ -1959,7 +1980,7 @@ const HomePage: React.FC = () => {
                           ĐANG CHIẾU
                         </span>
                         <span className="px-2 py-1 bg-red-500 text-white text-xs font-bold rounded">
-                          {bookingMovie.ageRating || 'T18'}
+                          {bookingMovie.ageRating || "T18"}
                         </span>
                       </div>
                     </div>
@@ -1978,7 +1999,9 @@ const HomePage: React.FC = () => {
                       {/* Step 1: Chọn Rạp */}
                       <div className="space-y-3">
                         <label className="block text-sm font-bold text-[#FFD875] flex items-center gap-2">
-                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">1</div>
+                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                            1
+                          </div>
                           <BuildingOfficeIcon className="w-4 h-4" />
                           Chọn Rạp
                         </label>
@@ -1987,9 +2010,15 @@ const HomePage: React.FC = () => {
                           onChange={(e) => handleModalCinemaChange(e.target.value)}
                           className="w-full px-4 py-3 bg-slate-700/80 border-2 border-yellow-400/20 rounded-xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm hover:bg-slate-600/80"
                         >
-                          <option value="" className="bg-slate-800 text-gray-300">Chọn rạp chiếu</option>
+                          <option value="" className="bg-slate-800 text-gray-300">
+                            Chọn rạp chiếu
+                          </option>
                           {cinemas.map((cinema) => (
-                            <option key={cinema.Cinema_ID} value={cinema.Cinema_ID} className="bg-slate-800 text-gray-100">
+                            <option
+                              key={cinema.Cinema_ID}
+                              value={cinema.Cinema_ID}
+                              className="bg-slate-800 text-gray-100"
+                            >
                               {cinema.Cinema_Name}
                             </option>
                           ))}
@@ -1999,7 +2028,9 @@ const HomePage: React.FC = () => {
                       {/* Step 2: Chọn Ngày */}
                       <div className="space-y-3">
                         <label className="block text-sm font-bold text-[#FFD875] flex items-center gap-2">
-                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">2</div>
+                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                            2
+                          </div>
                           <CalendarDaysIcon className="w-4 h-4" />
                           Chọn Ngày
                         </label>
@@ -2009,7 +2040,9 @@ const HomePage: React.FC = () => {
                           disabled={!modalSelectedCinemaId}
                           className="w-full px-4 py-3 bg-slate-700/80 border-2 border-yellow-400/20 rounded-xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-800/60 hover:bg-slate-600/80"
                         >
-                          <option value="" className="bg-slate-800 text-gray-300">Chọn ngày chiếu</option>
+                          <option value="" className="bg-slate-800 text-gray-300">
+                            Chọn ngày chiếu
+                          </option>
                           {(() => {
                             // Tạo mảng 3 ngày: hôm nay, ngày mai, ngày mốt
                             const today = new Date();
@@ -2017,34 +2050,34 @@ const HomePage: React.FC = () => {
                             tomorrow.setDate(tomorrow.getDate() + 1);
                             const dayAfterTomorrow = new Date(today);
                             dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
-                            
+
                             const fixedDates = [
                               {
-                                date: today.toISOString().split('T')[0],
-                                displayDate: `Hôm nay (${today.toLocaleDateString('vi-VN', {
-                                  weekday: 'long',
-                                  day: '2-digit',
-                                  month: '2-digit'
-                                })})`
+                                date: today.toISOString().split("T")[0],
+                                displayDate: `Hôm nay (${today.toLocaleDateString("vi-VN", {
+                                  weekday: "long",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })})`,
                               },
                               {
-                                date: tomorrow.toISOString().split('T')[0],
-                                displayDate: `Ngày mai (${tomorrow.toLocaleDateString('vi-VN', {
-                                  weekday: 'long',
-                                  day: '2-digit',
-                                  month: '2-digit'
-                                })})`
+                                date: tomorrow.toISOString().split("T")[0],
+                                displayDate: `Ngày mai (${tomorrow.toLocaleDateString("vi-VN", {
+                                  weekday: "long",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })})`,
                               },
                               {
-                                date: dayAfterTomorrow.toISOString().split('T')[0],
-                                displayDate: `Ngày mốt (${dayAfterTomorrow.toLocaleDateString('vi-VN', {
-                                  weekday: 'long',
-                                  day: '2-digit',
-                                  month: '2-digit'
-                                })})`
-                              }
+                                date: dayAfterTomorrow.toISOString().split("T")[0],
+                                displayDate: `Ngày mốt (${dayAfterTomorrow.toLocaleDateString("vi-VN", {
+                                  weekday: "long",
+                                  day: "2-digit",
+                                  month: "2-digit",
+                                })})`,
+                              },
                             ];
-                            
+
                             return fixedDates.map((dateItem) => (
                               <option key={dateItem.date} value={dateItem.date} className="bg-slate-800 text-gray-100">
                                 {dateItem.displayDate}
@@ -2057,7 +2090,9 @@ const HomePage: React.FC = () => {
                       {/* Step 3: Chọn Suất */}
                       <div className="space-y-3">
                         <label className="block text-sm font-bold text-[#FFD875] flex items-center gap-2">
-                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">3</div>
+                          <div className="w-6 h-6 bg-gradient-to-r from-[#FFD875] to-[#FFA500] rounded-full flex items-center justify-center text-black text-xs font-bold">
+                            3
+                          </div>
                           <ClockIcon className="w-4 h-4" />
                           Chọn Suất
                         </label>
@@ -2067,10 +2102,13 @@ const HomePage: React.FC = () => {
                           disabled={!modalSelectedDate}
                           className="w-full px-4 py-4 bg-slate-800/80 border-2 border-yellow-400/20 rounded-2xl text-gray-100 font-medium focus:border-yellow-400 focus:ring-4 focus:ring-yellow-400/20 transition-all duration-300 shadow-lg hover:shadow-xl hover:border-yellow-400/40 backdrop-blur-sm disabled:opacity-50 disabled:cursor-not-allowed disabled:bg-slate-900/60 hover:bg-slate-700/80"
                         >
-                          <option value="" className="bg-slate-800 text-gray-300">Chọn suất chiếu</option>
+                          <option value="" className="bg-slate-800 text-gray-300">
+                            Chọn suất chiếu
+                          </option>
                           {modalAvailableShowtimes.map((showtime) => (
                             <option key={showtime.id} value={showtime.id} className="bg-slate-800 text-gray-100">
-                              {showtime.startTime} - {showtime.roomName} ({showtime.roomType}) ({showtime.seatStatus} ghế)
+                              {showtime.startTime} - {showtime.roomName} ({showtime.roomType}) ({showtime.seatStatus}{" "}
+                              ghế)
                             </option>
                           ))}
                         </select>
@@ -2094,7 +2132,7 @@ const HomePage: React.FC = () => {
                       >
                         {/* Button shine effect */}
                         <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 group-hover:translate-x-full transition-transform duration-700"></div>
-                        
+
                         <TicketIcon className="w-5 h-5 relative z-10" />
                         <span className="relative z-10">ĐẶT GHẾ NGAY</span>
                       </motion.button>
@@ -2114,8 +2152,10 @@ const HomePage: React.FC = () => {
           isOpen={isPromotionModalOpen}
           onClose={handleClosePromotionModal}
           onApply={handleApplyPromotionCode}
-          formatPrice={(price: number) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price)}
-          formatDate={(dateString: string) => new Date(dateString).toLocaleDateString('vi-VN')}
+          formatPrice={(price: number) =>
+            new Intl.NumberFormat("vi-VN", { style: "currency", currency: "VND" }).format(price)
+          }
+          formatDate={(dateString: string) => new Date(dateString).toLocaleDateString("vi-VN")}
         />
       )}
     </>

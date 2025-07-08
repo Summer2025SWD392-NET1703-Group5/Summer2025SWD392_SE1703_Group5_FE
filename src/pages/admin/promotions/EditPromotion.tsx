@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { TagIcon, ArrowLeftIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import toast from 'react-hot-toast';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import { getPromotionById, updatePromotion } from '../../../services/admin/promotionManagementServices';
 import type { Promotion, UpdatePromotionDto } from '../../../services/admin/promotionManagementServices';
 
@@ -317,7 +317,7 @@ const EditPromotion: React.FC = () => {
   if (isLoading) {
     return (
       <div className="p-6 flex justify-center items-center min-h-[60vh]">
-        <LoadingSpinner size="large" />
+        <FullScreenLoader size="large" />
       </div>
     );
   }

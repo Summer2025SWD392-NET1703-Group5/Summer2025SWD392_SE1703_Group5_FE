@@ -12,7 +12,7 @@ import {
   PrinterIcon,
   ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 import '../../../components/admin/cinema-rooms/SeatMap.css';
 import showtimeService from '../../../services/showtimeService';
@@ -350,7 +350,7 @@ const ShowtimeDetail: React.FC = () => {
   if (loading || !showtime) {
     return (
       <div className="flex items-center justify-center p-6 min-h-[400px]">
-        <LoadingSpinner />
+        <FullScreenLoader />
       </div>
     );
   }

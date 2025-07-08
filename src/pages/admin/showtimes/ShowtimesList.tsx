@@ -23,7 +23,7 @@ import {
   MapPinIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
 import showtimeService from '../../../services/showtimeService';
 import movieService from '../../../services/movieService';
@@ -834,7 +834,7 @@ const ShowtimesList: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-6 min-h-[400px]">
-        <LoadingSpinner />
+        <FullScreenLoader />
       </div>
     );
   }

@@ -1,8 +1,8 @@
-import type { Movie } from './movie';
-import type { Cinema, Showtime } from './cinema';
+import type { Movie } from "./movie";
+import type { Cinema, Showtime } from "./cinema";
 
-export type { Movie } from './movie';
-export type { Cinema, Showtime } from './cinema';
+export type { Movie } from "./movie";
+export type { Cinema, Showtime } from "./cinema";
 
 // Movie related types
 export interface Movie {
@@ -83,12 +83,12 @@ export interface Cinema {
 export interface CinemaRoom {
   id: string;
   name: string;
-  type: 'standard' | 'premium' | 'imax';
+  type: "standard" | "premium" | "imax";
   totalSeats: number;
   rows: number;
   seatsPerRow: number[];
   layout: Seat[][];
-  screenPosition: 'front' | 'center';
+  screenPosition: "front" | "center";
 }
 
 // Showtime types
@@ -112,8 +112,8 @@ export interface Seat {
   id: string;
   row: string;
   number: number;
-  type: 'standard' | 'vip' | 'couple' | 'wheelchair' | 'hidden';
-  status: 'available' | 'selected' | 'occupied' | 'maintenance' | 'hidden';
+  type: "standard" | "vip";
+  status: "available" | "selected" | "occupied" | "maintenance";
   price: number;
   position?: {
     x: number;
@@ -128,7 +128,7 @@ export interface User {
   name: string;
   email: string;
   avatar?: string;
-  role: 'user' | 'admin';
+  role: "user" | "admin";
 }
 
 // Booking types
@@ -139,7 +139,7 @@ export interface Booking {
   seats: Seat[];
   totalPrice: number;
   bookingDate: string;
-  status: 'pending' | 'confirmed' | 'cancelled';
+  status: "pending" | "confirmed" | "cancelled";
   paymentMethod: string;
 }
 
@@ -162,6 +162,8 @@ export interface BookingSession {
   totalPrice: number;
   expiresAt: Date;
   step: number;
+  bookingId?: string;
+  forceReconnect?: number; // Timestamp để trigger WebSocket reconnect
 }
 
 // Component props types
@@ -207,7 +209,7 @@ export interface MovieFormData {
   genres: string[];
   duration: string;
   releaseDate: Date | null;
-  status: 'coming-soon' | 'now-showing' | 'ended';
+  status: "coming-soon" | "now-showing" | "ended";
   rating: number;
 }
 
@@ -230,4 +232,3 @@ export interface NavItem {
 
 // Không re-export movie.ts để tránh xung đột
 // export * from './movie';
-

@@ -5,7 +5,7 @@ import { ChevronLeftIcon } from '@heroicons/react/24/outline';
 import { seatLayoutService } from '../services/seatLayoutService';
 import { cinemaRoomService } from '../services/cinemaRoomService';
 import RoomSeatMap from './admin/cinema-rooms/RoomSeatMap';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 import type { SeatMap } from '../types/seatLayout';
 
 const SeatMapPage: React.FC = () => {
@@ -118,9 +118,7 @@ const SeatMapPage: React.FC = () => {
             </div>
 
             {loading ? (
-                <div className="flex justify-center p-12">
-                    <LoadingSpinner />
-                </div>
+                <FullScreenLoader text="Đang tải sơ đồ ghế..." />
             ) : seatMap ? (
                 <div className="bg-slate-900 rounded-lg p-6">
                     <div className="mb-6 grid grid-cols-1 md:grid-cols-3 gap-4">

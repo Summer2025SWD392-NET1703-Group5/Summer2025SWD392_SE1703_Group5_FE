@@ -19,7 +19,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { cinemaService } from '../../../services/cinemaService';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import type { Cinema, CinemaRoom } from '../../../types/cinema';
 
 interface Showtime {
@@ -157,7 +157,7 @@ const CinemaDetail: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <LoadingSpinner />
+                <FullScreenLoader />
             </div>
         );
     }

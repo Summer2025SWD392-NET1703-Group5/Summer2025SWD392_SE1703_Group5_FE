@@ -1,0 +1,1289 @@
+// services/webSocketService.ts
+import { io, Socket } from 'socket.io-client';
+import { toast } from 'react-hot-toast';
+import { sessionStorageService } from './sessionStorageService';
+
+// Types cho WebSocket events
+export interface SeatSelectionEvent {
+  showtimeId: string;
+  seatId: string;
+}
+
+export interface SeatUpdateEvent {
+  seatId: string;
+  userId?: string;
+  status: 'available' | 'selected' | 'occupied';
+  expiresAt?: string;
+}
+
+export interface SeatExpirationWarning {
+  seatId: string;
+  timeRemaining: number; // milliseconds
+}
+
+export interface SeatsStateEvent {
+  seats: Array<{
+    id: string;
+    status: 'available' | 'selected' | 'occupied';
+    userId?: string;
+    expiresAt?: string;
+  }>;
+}
+
+export interface BookingConfirmationEvent {
+  bookingId: string;
+  seatIds: string[];
+  totalPrice: number;
+}
+
+// WebSocket connection states
+export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+
+// WebSocket service configuration
+interface WebSocketConfig {
+  url: string;
+  reconnectAttempts: number;
+  reconnectDelay: number;
+  maxReconnectDelay: number;
+  timeout: number;
+}
+
+// Default configuration
+const DEFAULT_CONFIG: WebSocketConfig = {
+  url: 'http://localhost:3000',
+  reconnectAttempts: 10,
+  reconnectDelay: 1000,
+  maxReconnectDelay: 30000,
+  timeout: 20000,
+};
+
+/**
+ * WebSocket Service cho real-time seat selection
+ * Quản lý connection, authentication, và event handling
+ */
+class WebSocketService {
+  private socket: Socket | null = null;
+  private config: WebSocketConfig;
+  private connectionState: ConnectionState = 'disconnected';
+  private reconnectAttempts = 0;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private currentShowtimeId: string | null = null;
+  private lastSeatCount: number | null = null;
+
+  // Event listeners
+  private eventListeners: Map<string, Set<Function>> = new Map();
+
+  // Cross-tab communication
+  private storageKey = 'galaxy_cinema_seats';
+  private isInitialized = false;
+  private broadcastChannel: BroadcastChannel | null = null;
+  
+  // Fallback mode khi WebSocket không available
+  private fallbackMode = false;
+
+  constructor(config?: Partial<WebSocketConfig>) {
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    console.log('🔌 WebSocketService initialized với config:', this.config);
+
+    // 🔄 Setup cross-tab communication
+    this.setupCrossTabSync();
+  }
+
+  /**
+   * Setup cross-tab synchronization using BroadcastChannel
+   */
+  private setupCrossTabSync(): void {
+    console.log(`🔄 Setting up cross-tab sync (BroadcastChannel: ${typeof BroadcastChannel !== 'undefined'})`);
+
+    // 🔧 FORCE localStorage fallback for debugging
+    this.setupStorageFallback();
+
+    // Continue with normal setup...
+
+    try {
+      // 🔄 Initialize BroadcastChannel
+      this.broadcastChannel = new BroadcastChannel('galaxy_cinema_seats');
+
+      // Listen for messages from other tabs
+      const messageHandler = (event) => {
+        const data = event.data;
+
+        // Check if data has required fields
+        if (!data || typeof data !== 'object') {
+          console.warn(`⚠️ Invalid cross-tab data:`, data);
+          return;
+        }
+
+        // Only log important cross-tab events (not test messages)
+        if (!data.test) {
+          console.log(`📡 Cross-tab ${data.action}: ${data.seatId} by user ${data.userId}`);
+        }
+        this.emit('cross-tab-seat-update', {
+          seatId: data.seatId,
+          userId: data.userId,
+          showtimeId: data.showtimeId,
+          action: data.action,
+          timestamp: data.timestamp
+        });
+        console.log(`✅ [RECEIVE] cross-tab-seat-update event emitted`);
+        console.log(`🔄 [RECEIVE] ===== END CROSS-TAB MESSAGE =====`);
+      };
+
+      this.broadcastChannel.addEventListener('message', messageHandler);
+
+      this.isInitialized = true;
+      console.log('✅ Cross-tab sync initialized với BroadcastChannel');
+    } catch (error) {
+      console.error('❌ [SETUP] BroadcastChannel setup failed:', error);
+      console.warn('⚠️ [SETUP] BroadcastChannel không supported, fallback to localStorage');
+      this.setupStorageFallback();
+    }
+  }
+
+  /**
+   * Polling fallback as backup for localStorage
+   */
+  private setupPollingFallback(): void {
+    console.log(`🔄 [POLLING_SETUP] Setting up polling fallback as backup...`);
+
+    let lastPollingData: string | null = null;
+
+    const pollInterval = setInterval(() => {
+      try {
+        const currentData = localStorage.getItem(this.storageKey);
+
+        // Only process if data changed
+        if (currentData && currentData !== lastPollingData) {
+          console.log(`🔄 [POLLING_EVENT] Detected localStorage change via polling`);
+          console.log(`🔄 [POLLING_EVENT] New data:`, currentData);
+
+          const data = JSON.parse(currentData);
+          console.log(`🔄 [POLLING_RECEIVE] ===== CROSS-TAB MESSAGE VIA POLLING =====`);
+          console.log(`🔄 [POLLING_RECEIVE] Cross-tab ${data.action} for seat ${data.seatId} by user ${data.userId} in showtime ${data.showtimeId}`);
+          console.log(`🔄 [POLLING_RECEIVE] Current user: ${localStorage.getItem('userId')}`);
+          console.log(`🔄 [POLLING_RECEIVE] Event from user: ${data.userId}`);
+          console.log(`🔄 [POLLING_RECEIVE] Same user? ${localStorage.getItem('userId') === String(data.userId)}`);
+
+          // Skip if from same user
+          if (localStorage.getItem('userId') === String(data.userId)) {
+            console.log(`🔄 [POLLING_RECEIVE] Skipping - same user`);
+            lastPollingData = currentData;
+            return;
+          }
+
+          console.log(`🔄 [POLLING_RECEIVE] Emitting cross-tab-seat-update event...`);
+          this.emit('cross-tab-seat-update', {
+            seatId: data.seatId,
+            userId: data.userId,
+            showtimeId: data.showtimeId,
+            action: data.action,
+            timestamp: data.timestamp
+          });
+          console.log(`✅ [POLLING_RECEIVE] cross-tab-seat-update event emitted`);
+          console.log(`🔄 [POLLING_RECEIVE] ===== END CROSS-TAB MESSAGE VIA POLLING =====`);
+
+          lastPollingData = currentData;
+        }
+      } catch (error) {
+        // Silent error - polling should not spam console
+      }
+    }, 500); // Poll every 500ms
+
+    console.log(`✅ [POLLING_SETUP] Polling fallback initialized (500ms interval)`);
+
+    // Store interval for cleanup
+    (this as any).pollingInterval = pollInterval;
+  }
+
+  /**
+   * Fallback to localStorage for older browsers
+   */
+  private setupStorageFallback(): void {
+
+    window.addEventListener('storage', (event) => {
+      if (event.key === this.storageKey && event.newValue) {
+        try {
+          const data = JSON.parse(event.newValue);
+
+          // Only log important cross-tab events (not test messages)
+          if (!data.test) {
+            console.log(`📡 Cross-tab ${data.action}: ${data.seatId} by user ${data.userId}`);
+          }
+          this.emit('cross-tab-seat-update', {
+            seatId: data.seatId,
+            userId: data.userId,
+            showtimeId: data.showtimeId,
+            action: data.action,
+            timestamp: data.timestamp
+          });
+          console.log(`✅ [STORAGE_RECEIVE] cross-tab-seat-update event emitted`);
+          console.log(`🔄 [STORAGE_RECEIVE] ===== END CROSS-TAB MESSAGE =====`);
+        } catch (error) {
+          console.warn('⚠️ [STORAGE_RECEIVE] Failed to parse storage data:', error);
+        }
+      } else {
+        console.log(`🔄 [STORAGE_EVENT] Ignoring event - key: ${event.key}, hasValue: ${!!event.newValue}`);
+      }
+    });
+
+    this.isInitialized = true;
+    console.log('✅ Cross-tab sync initialized với localStorage fallback');
+
+    // 🚫 [STORAGE_TEST] DISABLED - WebSocket-only mode
+    // setTimeout(() => {
+    //   console.log(`🧪 [STORAGE_TEST] Testing localStorage fallback...`);
+    //   const testData = {
+    //     seatId: 'STORAGE_TEST_SEAT',
+    //     userId: localStorage.getItem('userId') || 'unknown',
+    //     showtimeId: '121',
+    //     action: 'selected',
+    //     timestamp: Date.now(),
+    //     test: true
+    //   };
+
+    //   console.log(`🧪 [STORAGE_TEST] Setting localStorage with data:`, testData);
+    //   localStorage.setItem(this.storageKey, JSON.stringify(testData));
+
+    //   // Remove after short delay to trigger storage event
+    //   setTimeout(() => {
+    //     localStorage.removeItem(this.storageKey);
+    //     console.log(`🧪 [STORAGE_TEST] Removed test data from localStorage`);
+    //   }, 100);
+    // }, 1000);
+  }
+
+  /**
+   * Broadcast seat update to other tabs
+   */
+  private broadcastSeatUpdate(seatId: string, userId: string, showtimeId: string, action: 'selected' | 'deselected'): void {
+    // 🔧 FIX: Enable cross-tab broadcast cho CLEAR_ALL case
+    if (seatId === 'CLEAR_ALL' && action === 'deselected') {
+      const data = {
+        seatId,
+        userId,
+        showtimeId,
+        action,
+        timestamp: Date.now()
+      };
+
+      // Use BroadcastChannel if available
+      if (this.broadcastChannel) {
+        try {
+          this.broadcastChannel.postMessage(data);
+          console.log(`📡 Broadcast ${action} seat ${seatId} to other tabs`);
+        } catch (error) {
+          console.error(`❌ [BROADCAST] Failed to send via BroadcastChannel:`, error);
+        }
+      } else {
+        console.warn(`⚠️ [BROADCAST] BroadcastChannel not available, using localStorage fallback`);
+
+        // Fallback to localStorage
+        try {
+          localStorage.setItem(this.storageKey, JSON.stringify(data));
+          setTimeout(() => localStorage.removeItem(this.storageKey), 100);
+          console.log(`✅ [BROADCAST] Successfully sent ${action} seat ${seatId} via localStorage`);
+        } catch (error) {
+          console.error(`❌ [BROADCAST] Failed to send via localStorage:`, error);
+        }
+      }
+      return;
+    }
+
+    // For regular seat selection/deselection, keep disabled
+    console.log(`🚫 [BROADCAST] DISABLED for regular seats - WebSocket-only mode`);
+    console.log(`🚫 [BROADCAST] Skipping cross-tab broadcast for ${action} seat ${seatId} by user ${userId}`);
+    console.log(`🚫 [BROADCAST] WebSocket server will handle all synchronization`);
+  }
+
+  /**
+   * Kết nối tới WebSocket server với JWT authentication
+   */
+  async connect(authToken?: string): Promise<boolean> {
+    try {
+      if (this.socket?.connected) {
+        console.log('✅ WebSocket đã kết nối');
+        return true;
+      }
+
+      this.setConnectionState('connecting');
+      console.log('🔄 Đang kết nối WebSocket server...');
+
+      // Lấy auth token từ localStorage nếu không được provide
+      const token = authToken || localStorage.getItem('accessToken');
+
+      console.log('🔑 [DEBUG] Auth token check:', {
+        provided: !!authToken,
+        fromStorage: !!localStorage.getItem('accessToken'),
+        tokenLength: token ? token.length : 0,
+        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+      });
+
+      if (!token) {
+        console.warn('⚠️ Không có auth token, sử dụng fallback mode');
+        this.enableFallbackMode();
+        return false;
+      }
+
+      // 🔧 Tạo socket connection với authentication và CORS fix
+      this.socket = io(this.config.url, {
+        auth: { token },
+        extraHeaders: {
+          'Authorization': `Bearer ${token}`
+        },
+        timeout: this.config.timeout,
+        transports: ['websocket', 'polling'],
+        forceNew: true,
+        withCredentials: true,
+        autoConnect: true,
+      });
+
+      // Setup event listeners
+      this.setupSocketEventListeners();
+
+      // Đợi connection hoặc timeout
+      return new Promise((resolve) => {
+        const connectTimeout = setTimeout(() => {
+          console.error('❌ WebSocket connection timeout');
+          this.enableFallbackMode();
+          resolve(false);
+        }, this.config.timeout);
+
+        this.socket!.on('connect', () => {
+          clearTimeout(connectTimeout);
+          this.setConnectionState('connected');
+          this.reconnectAttempts = 0;
+          console.log('✅ WebSocket connected thành công');
+          console.log(`🔌 Client Socket ID: ${this.socket?.id}`);
+          resolve(true);
+        });
+
+        this.socket!.on('connect_error', (error) => {
+          clearTimeout(connectTimeout);
+          console.error('❌ WebSocket connection error:', error);
+          this.handleConnectionError(error);
+          resolve(false);
+        });
+      });
+
+    } catch (error) {
+      console.error('❌ Lỗi khi kết nối WebSocket:', error);
+      this.enableFallbackMode();
+      return false;
+    }
+  }
+
+  /**
+   * Setup các event listeners cho socket
+   */
+  private setupSocketEventListeners(): void {
+    if (!this.socket) return;
+
+    // Connection events
+    this.socket.on('disconnect', (reason) => {
+      console.warn('⚠️ WebSocket disconnected:', reason);
+      console.warn('📊 Disconnect details:', {
+        reason,
+        currentShowtime: this.currentShowtimeId,
+        reconnectAttempts: this.reconnectAttempts,
+        fallbackMode: this.fallbackMode,
+        timestamp: new Date().toISOString()
+      });
+      this.setConnectionState('disconnected');
+      this.handleDisconnection(reason);
+    });
+
+    this.socket.on('reconnect', (attemptNumber) => {
+      console.log(`🔄 WebSocket reconnected sau ${attemptNumber} attempts`);
+      this.setConnectionState('connected');
+      this.reconnectAttempts = 0;
+
+      // 🔧 QUAN TRỌNG: Setup lại event listeners sau reconnect
+      this.setupEventListeners();
+
+      // Rejoin showtime room nếu có
+      if (this.currentShowtimeId) {
+        this.joinShowtime(this.currentShowtimeId);
+      }
+    });
+
+    this.socket.on('reconnect_error', (error) => {
+      console.error('❌ Reconnection error:', error);
+      this.setConnectionState('error');
+    });
+
+    // Seat management events
+    this.socket.on('seats-state', (data: SeatsStateEvent) => {
+      // 🔧 FIX: Backend gửi array trực tiếp, không phải object với property seats
+      const seatsArray = Array.isArray(data) ? data : (data?.seats || []);
+      // Only log first time or when seat count changes
+      if (!this.lastSeatCount || this.lastSeatCount !== seatsArray.length) {
+        console.log(`🪑 Received ${seatsArray.length} seats from server`);
+        this.lastSeatCount = seatsArray.length;
+      }
+
+      // ✅ Validate data structure trước khi xử lý
+      if (!Array.isArray(seatsArray)) {
+        console.error('❌ Invalid seats data received:', data);
+        return;
+      }
+
+      // Merge với session storage data nếu có currentShowtimeId
+      if (this.currentShowtimeId && this.userId) {
+        // 🔧 FIX: Chỉ lấy ghế của current user để tránh merge ghế của user khác
+        const sessionSeats = sessionStorageService.getSelectedSeats(this.currentShowtimeId, this.userId.toString());
+        console.log(`🔍 [DEBUG] Session seats for user ${this.userId}:`, sessionSeats);
+
+        try {
+          const mergedData = {
+            seats: seatsArray.map(seat => {
+              // ✅ Validate seat object structure
+              if (!seat || typeof seat !== 'object') {
+                console.warn('⚠️ Invalid seat object:', seat);
+                return seat;
+              }
+
+              // Nếu seat có trong session storage, mark as selected
+              const seatId = seat.id || seat.seatId;
+              if (seatId && sessionSeats.includes(seatId)) {
+                return { ...seat, status: 'selected' as const };
+              }
+              return seat;
+            })
+          };
+
+          console.log(`💾 Merged ${sessionSeats.length} session seats with server data`);
+          this.emit('seats-state', mergedData);
+        } catch (error) {
+          console.error('❌ Error merging seats data:', error);
+          // Fallback: emit original data
+          this.emit('seats-state', { seats: seatsArray });
+        }
+      } else {
+        this.emit('seats-state', { seats: seatsArray });
+      }
+    });
+
+    this.socket.on('seat-selected', (data: SeatUpdateEvent) => {
+      console.log(`🔧 [FRONTEND_DEBUG] Raw data received:`, JSON.stringify(data));
+      console.log(`🔧 [FRONTEND_DEBUG] data.seatId type: ${typeof data.seatId}, value: ${data.seatId}`);
+      console.log(`🔧 [FRONTEND_DEBUG] data.userId type: ${typeof data.userId}, value: ${data.userId}`);
+      console.log(`🔒 Ghế ${data.seatId} được chọn bởi user ${data.userId}`);
+      console.log(`🔌 Socket ID nhận event: ${this.socket?.id}`);
+      console.log(`📊 Event data:`, data);
+      this.emit('seat-selected', data);
+    });
+
+    this.socket.on('seat-deselected', (data: SeatUpdateEvent) => {
+      console.log(`🔓 Ghế ${data.seatId} được bỏ chọn`);
+      this.emit('seat-deselected', data);
+    });
+
+    this.socket.on('seats-booked', (data: { seatIds: string[] }) => {
+      console.log('🎫 Ghế đã được đặt:', data.seatIds);
+      this.emit('seats-booked', data);
+    });
+
+    this.socket.on('seat-booked', (data: { seatId: string; bookingId: string }) => {
+      console.log(`🔴 Ghế ${data.seatId} đã được booking #${data.bookingId}`);
+      this.emit('seat-booked', data);
+    });
+
+    this.socket.on('seat-released', (data: SeatUpdateEvent) => {
+      console.log(`🔄 Ghế ${data.seatId} được giải phóng`);
+      this.emit('seat-released', data);
+
+      // 🔧 SIMPLE FIX: Auto refresh seats when any seat is released
+      console.log('🔄 [AUTO_REFRESH] Seat released detected - refreshing seats from server...');
+      setTimeout(() => {
+        if (this.socket?.connected && this.currentShowtime) {
+          this.requestCurrentSeatsState(this.currentShowtime);
+          console.log('✅ [AUTO_REFRESH] Requested fresh seats from server');
+        }
+      }, 500);
+    });
+
+    // Timeout management events
+    this.socket.on('seat-expiration-warning', (data: SeatExpirationWarning) => {
+      console.log(`⏰ Cảnh báo ghế ${data.seatId} sắp hết hạn: ${data.timeRemaining}ms`);
+      this.emit('seat-expiration-warning', data);
+      this.showExpirationWarning(data);
+    });
+
+    this.socket.on('seat-hold-extended', (data: { seatId: string; newExpiresAt: string }) => {
+      console.log(`⏳ Ghế ${data.seatId} được gia hạn đến ${data.newExpiresAt}`);
+      this.emit('seat-hold-extended', data);
+      toast.success(`Đã gia hạn ghế ${data.seatId} thêm 15 phút`);
+    });
+
+    this.socket.on('seat-hold-extension-failed', (data: { seatId: string; reason: string }) => {
+      console.error(`❌ Gia hạn ghế ${data.seatId} thất bại: ${data.reason}`);
+      this.emit('seat-hold-extension-failed', data);
+      toast.error(`Không thể gia hạn ghế ${data.seatId}: ${data.reason}`);
+    });
+
+    // Booking confirmation
+    this.socket.on('booking-confirmed', (data: BookingConfirmationEvent) => {
+      console.log('🎉 Booking confirmed:', data);
+      this.emit('booking-confirmed', data);
+    });
+
+    // Error handling
+    this.socket.on('error', (error: any) => {
+      console.error('❌ WebSocket error:', error);
+      this.emit('error', error);
+
+      // Handle specific backend errors
+      if (error.message === 'Failed to join showtime') {
+        console.warn('⚠️ Backend database error - switching to fallback mode');
+        this.emit('fallback-mode', { reason: 'backend-error', error: error.error });
+        toast.warning('Chuyển sang chế độ offline - một số tính năng real-time có thể bị hạn chế');
+        return;
+      }
+
+      // Show user-friendly error message
+      if (error.message) {
+        toast.error(`Lỗi kết nối: ${error.message}`);
+      } else {
+        toast.error('Có lỗi xảy ra với kết nối WebSocket');
+      }
+    });
+  }
+
+  /**
+   * Tham gia showtime room
+   */
+  joinShowtime(showtimeId: string): void {
+    if (!this.socket) {
+      console.warn('⚠️ Socket chưa được khởi tạo');
+      return;
+    }
+
+    // Nếu chưa connected, đợi connected event
+    if (!this.socket.connected) {
+      console.log(`⏳ WebSocket chưa connected, đợi kết nối để join showtime ${showtimeId}`);
+      this.currentShowtimeId = showtimeId;
+
+      // Đợi connected event để join
+      this.socket.once('connect', () => {
+        console.log(`🔄 Connected! Bây giờ join showtime ${showtimeId}`);
+        this.performJoinShowtime(showtimeId);
+      });
+      return;
+    }
+
+    // Nếu đã connected, join ngay
+    this.performJoinShowtime(showtimeId);
+  }
+
+  private performJoinShowtime(showtimeId: string): void {
+    console.log(`🎬 Tham gia showtime room: ${showtimeId}`);
+    console.log(`🔌 Using Socket ID: ${this.socket?.id}`);
+    this.currentShowtimeId = showtimeId;
+
+    // 🚫 DISABLED: Clear session storage để preserve seats across tabs
+    // sessionStorageService.clearSelectedSeats(showtimeId);
+
+    this.socket!.emit('join-showtime', { showtimeId });
+
+    // 🔄 Request current state của tất cả ghế khi join
+    this.requestCurrentSeatsState(showtimeId);
+  }
+
+  /**
+   * Request current state của tất cả ghế trong showtime
+   */
+  requestCurrentSeatsState(showtimeId: string): void {
+    if (!this.socket?.connected) {
+      console.warn('⚠️ WebSocket chưa kết nối, không thể request seats state');
+      return;
+    }
+
+    // Request current seats state (reduced logging)
+    this.socket.emit('get-seats-state', { showtimeId });
+
+    // 🎭 Simulate server response với current state từ localStorage
+    this.simulateCurrentSeatsStateResponse(showtimeId);
+  }
+
+  /**
+   * Alias method for requestCurrentSeatsState
+   */
+  requestSeatsState(showtimeId: string): void {
+    this.requestCurrentSeatsState(showtimeId);
+  }
+
+  /**
+   * Simulate server response cho get-seats-state request
+   */
+  private simulateCurrentSeatsStateResponse(showtimeId: string): void {
+    setTimeout(() => {
+      // Lấy current state từ localStorage của tất cả users
+      const allSelectedSeats = this.getAllSelectedSeatsFromStorage(showtimeId);
+
+      if (allSelectedSeats.length > 0) {
+        console.log(`🔄 Simulating seats-state response với ${allSelectedSeats.length} ghế đã được chọn`);
+
+        // Emit seats-state event với current state
+        this.emit('seats-state', {
+          showtimeId,
+          seats: allSelectedSeats.map(seatId => ({
+            seatId,
+            status: 'selected',
+            userId: this.getOwnerOfSeat(seatId, showtimeId),
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 phút
+          }))
+        });
+      }
+    }, 100); // Delay nhỏ để simulate network
+  }
+
+  /**
+   * Lấy tất cả ghế đã được chọn từ localStorage của tất cả users
+   */
+  private getAllSelectedSeatsFromStorage(showtimeId: string): string[] {
+    const allSeats: string[] = [];
+
+    // Scan tất cả localStorage keys để tìm selected seats
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`selectedSeats_${showtimeId}_`)) {
+        try {
+          const seats = JSON.parse(localStorage.getItem(key) || '[]');
+          allSeats.push(...seats);
+        } catch (error) {
+          console.warn(`⚠️ Không thể parse localStorage key: ${key}`);
+        }
+      }
+    }
+
+    // Remove duplicates
+    return [...new Set(allSeats)];
+  }
+
+  /**
+   * Tìm owner của ghế từ localStorage
+   */
+  private getOwnerOfSeat(seatId: string, showtimeId: string): string {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+      if (key?.startsWith(`selectedSeats_${showtimeId}_`)) {
+        try {
+          const seats = JSON.parse(localStorage.getItem(key) || '[]');
+          if (seats.includes(seatId)) {
+            // Extract userId từ key: selectedSeats_showtimeId_userId
+            return key.split('_')[2] || 'unknown';
+          }
+        } catch (error) {
+          console.warn(`⚠️ Không thể parse localStorage key: ${key}`);
+        }
+      }
+    }
+    return 'unknown';
+  }
+
+  /**
+   * Rời khỏi showtime room
+   */
+  leaveShowtime(): void {
+    if (!this.socket?.connected || !this.currentShowtimeId) return;
+
+    console.log(`🚪 Rời khỏi showtime room: ${this.currentShowtimeId}`);
+    this.socket.emit('leave-showtime', { showtimeId: this.currentShowtimeId });
+    this.currentShowtimeId = null;
+  }
+
+  /**
+   * Chọn ghế
+   */
+  selectSeat(showtimeId: string, seatId: string, userId?: string): void {
+    // Validation đầu vào
+    if (!seatId || seatId === 'undefined' || seatId === showtimeId) {
+      console.warn(`⚠️ Invalid seatId: ${seatId}, skipping selectSeat`);
+      return;
+    }
+
+    if (!showtimeId || showtimeId === 'undefined') {
+      console.warn(`⚠️ Invalid showtimeId: ${showtimeId}, skipping selectSeat`);
+      return;
+    }
+
+    if (!this.socket?.connected || !this.currentShowtimeId) {
+      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      return;
+    }
+
+    const finalUserId = userId || localStorage.getItem('userId');
+
+    if (!finalUserId || finalUserId === 'undefined') {
+      console.warn(`⚠️ Invalid userId: ${finalUserId}, skipping selectSeat`);
+      return;
+    }
+
+    console.log(`🔒 Chọn ghế ${seatId} cho user ${finalUserId} trong showtime ${showtimeId}`);
+
+    // 💾 Save to session storage for persistence
+    sessionStorageService.saveSelectedSeat(seatId, finalUserId, showtimeId);
+
+    // Emit to WebSocket server
+    this.socket.emit('select-seat', {
+      showtimeId: showtimeId,
+      seatId,
+      userId: finalUserId,
+    });
+
+    // 🚫 DISABLED: Cross-tab broadcast - let WebSocket server handle all sync
+    // this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, 'selected');
+    console.log(`🚫 [SELECT_SEAT] Cross-tab broadcast disabled - WebSocket server will handle sync`);
+  }
+
+  /**
+   * Bỏ chọn ghế
+   */
+  deselectSeat(seatId: string, userId?: string): void {
+    if (!this.socket?.connected || !this.currentShowtimeId) {
+      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      return;
+    }
+
+    const finalUserId = userId || localStorage.getItem('userId') || 'anonymous';
+
+
+    // 🗑️ Remove from session storage
+    sessionStorageService.removeSelectedSeat(seatId, this.currentShowtimeId);
+
+    // Emit to WebSocket server
+    this.socket.emit('deselect-seat', {
+      showtimeId: this.currentShowtimeId,
+      seatId,
+      userId: finalUserId,
+    });
+
+    // 🚫 DISABLED: Cross-tab broadcast - let WebSocket server handle all sync
+    // this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, 'deselected');
+    console.log(`🚫 [DESELECT_SEAT] Cross-tab broadcast disabled - WebSocket server will handle sync`);
+  }
+
+  /**
+   * Gia hạn thời gian giữ ghế
+   */
+  extendSeatHold(seatId: string): void {
+    if (!this.socket?.connected || !this.currentShowtimeId) {
+      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      return;
+    }
+
+    console.log(`⏳ Gia hạn ghế: ${seatId}`);
+    this.socket.emit('extend-seat-hold', {
+      showtimeId: this.currentShowtimeId,
+      seatId,
+    });
+  }
+
+  /**
+   * Xác nhận booking
+   */
+  confirmBooking(seatIds: string[], bookingData: any): void {
+    if (!this.socket?.connected || !this.currentShowtimeId) {
+      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      return;
+    }
+
+    console.log('🎫 Xác nhận booking:', { seatIds, bookingData });
+    this.socket.emit('confirm-booking', {
+      showtimeId: this.currentShowtimeId,
+      seatIds,
+      bookingData,
+    });
+  }
+
+  /**
+   * Đăng ký event listener
+   */
+  on(event: string, callback: Function): void {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)!.add(callback);
+  }
+
+  /**
+   * Hủy đăng ký event listener
+   */
+  off(event: string, callback: Function): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.delete(callback);
+    }
+  }
+
+  /**
+   * Emit event tới các listeners
+   */
+  private emit(event: string, data: any): void {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`❌ Lỗi khi xử lý event ${event}:`, error);
+        }
+      });
+    }
+  }
+
+  /**
+   * Set connection state và emit event
+   */
+  private setConnectionState(state: ConnectionState): void {
+    if (this.connectionState !== state) {
+      this.connectionState = state;
+      this.emit('connection-state-changed', state);
+      console.log(`🔌 Connection state changed: ${state}`);
+    }
+  }
+
+  /**
+   * Xử lý connection error
+   */
+  private handleConnectionError(error: any): void {
+    this.setConnectionState('error');
+
+    if (error.message === 'Authentication failed') {
+      console.error('❌ Authentication failed, chuyển sang fallback mode');
+      toast.error('Xác thực thất bại. Sử dụng chế độ offline.');
+      this.enableFallbackMode();
+    } else {
+      console.error('❌ Connection error:', error);
+      this.scheduleReconnect();
+    }
+  }
+
+  /**
+   * Xử lý disconnection
+   */
+  private handleDisconnection(reason: string): void {
+    console.warn(`⚠️ WebSocket disconnected: ${reason}`);
+
+    // 🔥 FORCE RECONNECT - Luôn thử reconnect trong mọi trường hợp
+    if (this.currentShowtimeId) {
+      console.log(`🔄 Auto-reconnecting for showtime ${this.currentShowtimeId}...`);
+      this.scheduleReconnect();
+
+      // Backup: Start continuous auto-reconnect
+      this.startAutoReconnect(this.currentShowtimeId);
+    }
+  }
+
+  /**
+   * 🔥 AGGRESSIVE RECONNECT - Không bao giờ từ bỏ kết nối
+   */
+  private scheduleReconnect(): void {
+    // 🔥 NEVER GIVE UP - Reset attempts nếu quá nhiều để tiếp tục thử
+    if (this.reconnectAttempts >= this.config.reconnectAttempts) {
+      console.warn(`⚠️ Reached max attempts (${this.config.reconnectAttempts}), resetting counter...`);
+      this.reconnectAttempts = 0; // Reset để tiếp tục thử
+    }
+
+    this.setConnectionState('reconnecting');
+    this.reconnectAttempts++;
+
+    const delay = Math.min(
+      this.config.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1),
+      this.config.maxReconnectDelay
+    );
+
+    console.log(`🔄 Reconnect attempt ${this.reconnectAttempts}/${this.config.reconnectAttempts} sau ${delay}ms`);
+
+    this.reconnectTimer = setTimeout(() => {
+      this.connect();
+    }, delay);
+  }
+
+  /**
+   * Bật fallback mode
+   */
+  private enableFallbackMode(): void {
+    this.fallbackMode = true;
+    this.setConnectionState('error');
+    console.warn('⚠️ Fallback mode enabled - sử dụng localStorage và API calls');
+    toast.warning('Chế độ offline: Một số tính năng real-time có thể không khả dụng');
+  }
+
+  /**
+   * Hiển thị cảnh báo ghế sắp hết hạn
+   */
+  private showExpirationWarning(data: SeatExpirationWarning): void {
+    const minutes = Math.ceil(data.timeRemaining / 60000);
+    toast.warning(
+      `Ghế ${data.seatId} sẽ hết hạn sau ${minutes} phút. Nhấn để gia hạn.`,
+      {
+        duration: 10000,
+        onClick: () => this.extendSeatHold(data.seatId),
+      }
+    );
+  }
+
+  /**
+   * Ngắt kết nối WebSocket
+   */
+  disconnect(): void {
+    console.log('🔌 Ngắt kết nối WebSocket...');
+
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    this.setConnectionState('disconnected');
+    this.currentShowtimeId = null;
+    this.reconnectAttempts = 0;
+    this.fallbackMode = false;
+  }
+
+
+
+  /**
+   * Silent clear - không broadcast đến tabs khác (cho payment)
+   */
+  silentClearAllSelectedSeats(userId?: string, showtimeId?: string): void {
+    const targetShowtimeId = showtimeId || this.currentShowtimeId;
+
+    if (!targetShowtimeId) {
+      console.warn('⚠️ Không có showtime ID để silent clear seats');
+      return;
+    }
+
+    console.log(`🤫 Silent clear all seats for showtime: ${targetShowtimeId} (no broadcast)`);
+
+    // 🔧 FIX: Lấy userId chính xác từ nhiều nguồn
+    const finalUserId = userId ||
+                       localStorage.getItem('userId') ||
+                       localStorage.getItem('user')?.replace(/['"]/g, '') ||
+                       sessionStorage.getItem('userId') ||
+                       'anonymous';
+
+    console.log(`👤 [SILENT_CLEAR] Using userId: ${finalUserId} (from ${userId ? 'param' : 'storage'})`);
+
+    // Clear all possible storage keys
+    const allStorageKeys = [
+      `booking_session_${targetShowtimeId}`,
+      `galaxy_cinema_session_${targetShowtimeId}`,
+      `selectedSeats_${targetShowtimeId}`,
+      `selectedSeats_${targetShowtimeId}_${finalUserId}`,
+      `seat_${targetShowtimeId}`,
+      `payment_timer_${targetShowtimeId}`,
+    ];
+
+    // Clear sessionStorage
+    allStorageKeys.forEach(key => {
+      if (sessionStorage.getItem(key)) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
+    // Clear localStorage
+    allStorageKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // 🧹 ENABLE: Clear sessionStorageService khi cancel booking để tránh restore
+    sessionStorageService.clearSelectedSeats(targetShowtimeId);
+
+    // Clear server state
+    if (this.socket?.connected) {
+      this.socket.emit('clear-all-seats', {
+        showtimeId: targetShowtimeId,
+        userId: finalUserId,
+      });
+    }
+
+    // 🤫 NO BROADCAST - Silent cleanup for payment
+    console.log(`🤫 Silent cleanup completed - no cross-tab broadcast sent`);
+  }
+
+  /**
+   * Clear tất cả ghế đã chọn của user hiện tại
+   */
+  clearAllSelectedSeats(userId?: string, showtimeId?: string): void {
+    const targetShowtimeId = showtimeId || this.currentShowtimeId;
+
+    if (!targetShowtimeId) {
+      console.warn('⚠️ Không có showtime ID để clear seats');
+      return;
+    }
+
+    console.log(`🧹 Clearing all seats for showtime: ${targetShowtimeId}`);
+
+    // 🔧 FIX: Lấy userId chính xác từ nhiều nguồn
+    const finalUserId = userId ||
+                       localStorage.getItem('userId') ||
+                       localStorage.getItem('user')?.replace(/['"]/g, '') ||
+                       sessionStorage.getItem('userId') ||
+                       'anonymous';
+
+    // Clear all possible storage keys
+    const allStorageKeys = [
+      `booking_session_${targetShowtimeId}`,
+      `galaxy_cinema_session_${targetShowtimeId}`,
+      `selectedSeats_${targetShowtimeId}`,
+      `selectedSeats_${targetShowtimeId}_${finalUserId}`,
+      `seat_${targetShowtimeId}`,
+      `payment_timer_${targetShowtimeId}`,
+    ];
+
+    // Clear sessionStorage
+    allStorageKeys.forEach(key => {
+      if (sessionStorage.getItem(key)) {
+        sessionStorage.removeItem(key);
+      }
+    });
+
+    // Clear localStorage
+    allStorageKeys.forEach(key => {
+      if (localStorage.getItem(key)) {
+        localStorage.removeItem(key);
+      }
+    });
+
+    // 🧹 ENABLE: Clear sessionStorageService khi cancel booking để tránh restore
+    sessionStorageService.clearSelectedSeats(targetShowtimeId);
+
+    // Clear server state
+    if (this.socket?.connected) {
+      this.socket.emit('clear-all-seats', {
+        showtimeId: targetShowtimeId,
+        userId: finalUserId,
+      });
+    }
+
+    // 🚫 DISABLED: NO cross-tab broadcast để tránh clear ghế của user khác
+    // this.broadcastSeatUpdate('CLEAR_ALL', finalUserId, targetShowtimeId, 'deselected');
+    console.log(`✅ Cleared all seats for showtime: ${targetShowtimeId} (NO cross-tab broadcast)`);
+  }
+
+  /**
+   * Silent cleanup cho payment - không broadcast đến tabs khác
+   */
+  silentCleanupUserSeats(showtimeId?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const targetShowtimeId = showtimeId || this.currentShowtimeId;
+
+      if (!targetShowtimeId) {
+        console.warn('⚠️ Không có showtime ID để silent cleanup');
+        resolve(false);
+        return;
+      }
+
+      console.log(`🤫 Silent cleanup for showtime: ${targetShowtimeId} (no cross-tab broadcast)`);
+
+      // 1. Clear frontend storage ONLY (no broadcast)
+      this.silentClearAllSelectedSeats(undefined, targetShowtimeId);
+
+      // 2. Force cleanup backend if connected
+      if (!this.socket?.connected) {
+        console.warn('⚠️ WebSocket not connected, only frontend cleanup performed');
+        resolve(true);
+        return;
+      }
+
+      // Listen for completion
+      const timeoutId = setTimeout(() => {
+        console.warn('⚠️ Silent cleanup timeout');
+        resolve(true);
+      }, 5000);
+
+      const handleCompletion = (data: any) => {
+        clearTimeout(timeoutId);
+        this.socket?.off('force-cleanup-completed', handleCompletion);
+
+        console.log(`✅ Silent cleanup completed`);
+        resolve(true);
+      };
+
+      this.socket.on('force-cleanup-completed', handleCompletion);
+
+      // Request backend cleanup
+      this.socket.emit('force-cleanup-user-seats', {
+        showtimeId: targetShowtimeId
+      });
+    });
+  }
+
+  /**
+   * Force cleanup tất cả ghế của user (cho navigation back)
+   */
+  forceCleanupUserSeats(showtimeId?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const targetShowtimeId = showtimeId || this.currentShowtimeId;
+
+      if (!targetShowtimeId) {
+        console.warn('⚠️ Không có showtime ID để force cleanup');
+        resolve(false);
+        return;
+      }
+
+      console.log(`🧹 Force cleanup for showtime: ${targetShowtimeId}`);
+
+      // 1. Clear frontend storage first
+      this.clearAllSelectedSeats(undefined, targetShowtimeId);
+
+      // 2. Force cleanup backend if connected
+      if (!this.socket?.connected) {
+        console.warn('⚠️ WebSocket not connected, only frontend cleanup performed');
+        resolve(true);
+        return;
+      }
+
+      // Listen for completion
+      const timeoutId = setTimeout(() => {
+        console.warn('⚠️ Force cleanup timeout');
+        resolve(true);
+      }, 5000);
+
+      const handleCompletion = (data: any) => {
+        clearTimeout(timeoutId);
+        this.socket?.off('force-cleanup-completed', handleCompletion);
+
+        console.log(`✅ Force cleanup completed`);
+        resolve(true);
+      };
+
+      this.socket.on('force-cleanup-completed', handleCompletion);
+
+      // Request backend cleanup
+      this.socket.emit('force-cleanup-user-seats', {
+        showtimeId: targetShowtimeId
+      });
+    });
+  }
+
+  /**
+   * Cleanup khi component unmount
+   */
+  cleanup(): void {
+    console.log('🧹 Cleanup WebSocketService...');
+
+    // 🚨 KHÔNG clear selected seats để preserve session khi navigate
+    // this.clearAllSelectedSeats();
+
+    this.leaveShowtime();
+    this.disconnect();
+    this.eventListeners.clear();
+
+    // 🔄 Close BroadcastChannel
+    if (this.broadcastChannel) {
+      this.broadcastChannel.close();
+      this.broadcastChannel = null;
+      console.log('🔄 BroadcastChannel closed');
+    }
+  }
+
+  // Getters
+  get isConnected(): boolean {
+    return this.socket?.connected || false;
+  }
+
+  get isFallbackMode(): boolean {
+    return this.fallbackMode;
+  }
+
+  get getConnectionState(): ConnectionState {
+    return this.connectionState;
+  }
+
+  get getCurrentShowtimeId(): string | null {
+    return this.currentShowtimeId;
+  }
+
+  /**
+   * Force refresh seats state từ server
+   */
+  refreshSeatsState(): void {
+    if (!this.socket?.connected || !this.currentShowtimeId) {
+      console.warn('⚠️ Không thể refresh seats state');
+      return;
+    }
+
+    console.log('🔄 Refresh seats state từ server...');
+    this.socket.emit('get-seats-state', {
+      showtimeId: this.currentShowtimeId
+    });
+  }
+
+  /**
+   * 🔥 FORCE RECONNECT - Buộc kết nối lại ngay lập tức
+   */
+  forceReconnect(showtimeId?: string): Promise<boolean> {
+    return new Promise((resolve) => {
+      const targetShowtimeId = showtimeId || this.currentShowtimeId;
+
+      console.log(`🔥 Force reconnecting WebSocket${targetShowtimeId ? ` for showtime ${targetShowtimeId}` : ''}...`);
+
+      // Disconnect trước
+      if (this.socket?.connected) {
+        this.socket.disconnect();
+      }
+
+      // Reset state
+      this.setConnectionState('disconnected');
+      this.reconnectAttempts = 0;
+
+      // Connect lại
+      setTimeout(() => {
+        this.connect().then(resolve).catch(() => resolve(false));
+      }, 100);
+    });
+  }
+
+  /**
+   * 🔄 AUTO RECONNECT - Tự động kết nối lại với retry logic
+   */
+  startAutoReconnect(showtimeId?: string): void {
+    if (this.reconnectTimer) {
+      clearInterval(this.reconnectTimer);
+    }
+
+    const targetShowtimeId = showtimeId || this.currentShowtimeId;
+    if (!targetShowtimeId) return;
+
+    console.log(`🔄 Starting auto-reconnect for showtime ${targetShowtimeId}`);
+
+    this.reconnectTimer = setInterval(() => {
+      if (!this.socket?.connected && this.connectionState !== 'connecting') {
+        console.log(`🔄 Auto-reconnect attempt ${this.reconnectAttempts + 1}...`);
+        this.connect();
+      }
+    }, 3000); // Check every 3 seconds
+  }
+
+  /**
+   * Kiểm tra health của WebSocket connection
+   */
+  async healthCheck(): Promise<boolean> {
+    if (!this.socket?.connected) {
+      return false;
+    }
+
+    return new Promise((resolve) => {
+      const timeout = setTimeout(() => resolve(false), 5000);
+
+      this.socket!.emit('ping', { timestamp: Date.now() });
+      this.socket!.once('pong', () => {
+        clearTimeout(timeout);
+        resolve(true);
+      });
+    });
+  }
+}
+
+// Export singleton instance
+export const webSocketService = new WebSocketService();
+export default webSocketService;

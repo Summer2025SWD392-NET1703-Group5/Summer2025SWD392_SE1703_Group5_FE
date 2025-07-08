@@ -7,7 +7,7 @@ import {
 } from '@heroicons/react/24/solid';
 import { StarIcon as StarOutlineIcon } from '@heroicons/react/24/outline';
 import type { Review } from '../types';
-import LoadingSpinner from './LoadingSpinner';
+import FullScreenLoader from './FullScreenLoader';
 
 interface ReviewSectionProps {
   movieId: string | number;
@@ -201,7 +201,7 @@ const ReviewSection: React.FC<ReviewSectionProps> = ({ movieId, reviews, onSubmi
                 : 'bg-gradient-to-r from-[#ffd875] to-[#ffb347] text-black hover:from-[#ffb347] hover:to-[#ffd875]'
                 }`}
             >
-              {isSubmitting ? <span className="inline-block"><LoadingSpinner className="w-5 h-5" /></span> : 'Gửi đánh giá'}
+              {isSubmitting ? <span className="inline-block"><FullScreenLoader variant="inline" size="small" /></span> : 'Gửi đánh giá'}
             </button>
           </div>
 

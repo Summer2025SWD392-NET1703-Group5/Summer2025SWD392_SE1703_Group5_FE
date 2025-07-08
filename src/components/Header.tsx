@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useNavigate, useLocation, NavLink } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import { Link, useNavigate, useLocation, NavLink } from "react-router-dom";
 import {
   MagnifyingGlassIcon,
   Bars3Icon,
@@ -20,19 +20,18 @@ import {
   CheckCircleIcon,
   InformationCircleIcon,
   ExclamationTriangleIcon,
-  XCircleIcon
-} from '@heroicons/react/24/outline';
-import { Popover, Transition } from '@headlessui/react';
-import { useAuth } from '../contexts/SimpleAuthContext';
-import { useNotification } from '../contexts/NotificationContext';
-import { Fragment } from 'react/jsx-runtime';
-import api from '../config/api';
-import { toast } from 'react-hot-toast';
-
+  XCircleIcon,
+} from "@heroicons/react/24/outline";
+import { Popover, Transition } from "@headlessui/react";
+import { useAuth } from "../contexts/SimpleAuthContext";
+import { useNotification } from "../contexts/NotificationContext";
+import { Fragment } from "react/jsx-runtime";
+import api from "../config/api";
+import { toast } from "react-hot-toast";
 
 const Header: React.FC = () => {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState("");
   const [isScrolled, setIsScrolled] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [isCinemaMenuOpen, setIsCinemaMenuOpen] = useState(false);
@@ -47,13 +46,13 @@ const Header: React.FC = () => {
   // Function to get notification icon based on type
   const getNotificationIcon = (type: string) => {
     switch (type) {
-      case 'success':
+      case "success":
         return <CheckCircleIcon className="h-5 w-5 text-green-400" />;
-      case 'info':
+      case "info":
         return <InformationCircleIcon className="h-5 w-5 text-blue-400" />;
-      case 'warning':
+      case "warning":
         return <ExclamationTriangleIcon className="h-5 w-5 text-yellow-400" />;
-      case 'error':
+      case "error":
         return <XCircleIcon className="h-5 w-5 text-red-400" />;
       default:
         return <BellIcon className="h-5 w-5 text-gray-400" />;
@@ -63,10 +62,10 @@ const Header: React.FC = () => {
   // Function to translate role to Vietnamese
   const translateRole = (role: string) => {
     const roleTranslations: { [key: string]: string } = {
-      'Customer': 'Khách hàng',
-      'Staff': 'Nhân viên',
-      'Manager': 'Quản lý',
-      'Admin': 'Quản trị viên'
+      Customer: "Khách hàng",
+      Staff: "Nhân viên",
+      Manager: "Quản lý",
+      Admin: "Quản trị viên",
     };
     return roleTranslations[role] || role;
   };
@@ -77,8 +76,8 @@ const Header: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
   }, [handleScroll]);
 
   // Close dropdowns when clicking outside
@@ -89,8 +88,8 @@ const Header: React.FC = () => {
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
   // Close all menus when route changes
@@ -108,50 +107,48 @@ const Header: React.FC = () => {
     if (searchQuery.trim()) {
       navigate(`/movies?search=${encodeURIComponent(searchQuery.trim())}`);
       setIsSearchOpen(false);
-      setSearchQuery('');
+      setSearchQuery("");
     }
   };
-
-
 
   // Navigation items dựa trên role
   const getNavItems = () => {
     // Staff chỉ được xem một số trang nhất định
-    if (user?.role === 'Staff') {
+    if (user?.role === "Staff") {
       return [
-        { name: 'Lịch chiếu', path: '/showtimes', icon: ClockIcon },
-        { name: 'Quét vé', path: '/staff/scanner', icon: TicketIcon },
+        { name: "Lịch chiếu", path: "/showtimes", icon: ClockIcon },
+        { name: "Quét vé", path: "/staff/scanner", icon: TicketIcon },
       ];
     }
-    
+
     // Navigation mặc định cho Customer và Guest
     return [
-      { name: 'Trang Chủ', path: '/', icon: HomeIcon },
-      { name: 'Phim', path: '/movies', icon: FilmIcon },
+      { name: "Trang Chủ", path: "/", icon: HomeIcon },
+      { name: "Phim", path: "/movies", icon: FilmIcon },
       {
-        name: 'Rạp Chiếu',
-        path: '/cinemas',
+        name: "Rạp Chiếu",
+        path: "/cinemas",
         icon: BuildingOfficeIcon,
         hasDropdown: true,
         dropdownItems: [
-          { name: 'Tất cả rạp', path: '/cinemas', icon: BuildingOfficeIcon },
-          { name: 'Lịch chiếu', path: '/showtimes', icon: ClockIcon },
-        ]
+          { name: "Tất cả rạp", path: "/cinemas", icon: BuildingOfficeIcon },
+          { name: "Lịch chiếu", path: "/showtimes", icon: ClockIcon },
+        ],
       },
-      { name: 'Khuyến Mãi', path: '/promotions', icon: TagIcon },
+      { name: "Khuyến Mãi", path: "/promotions", icon: TagIcon },
     ];
   };
 
   const navItems = getNavItems();
 
   const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
+    if (path === "/") return location.pathname === "/";
     return location.pathname.startsWith(path);
   };
 
   // Add custom CSS for the text animation and search animation
   useEffect(() => {
-    const style = document.createElement('style');
+    const style = document.createElement("style");
     style.innerHTML = `
       /* Search animation */
       @keyframes searchAppear {
@@ -510,11 +507,11 @@ const Header: React.FC = () => {
     const x = event.clientX - rect.left - size / 2;
     const y = event.clientY - rect.top - size / 2;
 
-    const ripple = document.createElement('span');
-    ripple.className = 'ripple-effect';
-    ripple.style.width = ripple.style.height = size + 'px';
-    ripple.style.left = x + 'px';
-    ripple.style.top = y + 'px';
+    const ripple = document.createElement("span");
+    ripple.className = "ripple-effect";
+    ripple.style.width = ripple.style.height = size + "px";
+    ripple.style.left = x + "px";
+    ripple.style.top = y + "px";
 
     button.appendChild(ripple);
 
@@ -529,15 +526,15 @@ const Header: React.FC = () => {
     const rect = button.getBoundingClientRect();
 
     for (let i = 0; i < 6; i++) {
-      const particle = document.createElement('span');
-      particle.className = 'particle';
+      const particle = document.createElement("span");
+      particle.className = "particle";
 
       const x = Math.random() * rect.width;
       const y = Math.random() * rect.height;
 
-      particle.style.left = x + 'px';
-      particle.style.top = y + 'px';
-      particle.style.animationDelay = Math.random() * 0.5 + 's';
+      particle.style.left = x + "px";
+      particle.style.top = y + "px";
+      particle.style.animationDelay = Math.random() * 0.5 + "s";
 
       button.appendChild(particle);
 
@@ -557,16 +554,16 @@ const Header: React.FC = () => {
   useEffect(() => {
     const handleNotificationsUpdate = (event: CustomEvent) => {
       // Cập nhật lại trạng thái hiển thị dựa trên dữ liệu từ sự kiện
-      if (event.detail && typeof event.detail.unreadCount === 'number') {
+      if (event.detail && typeof event.detail.unreadCount === "number") {
         // Không cần set thủ công vì useNotification đã cập nhật
       }
     };
 
     // Thêm event listener kiểu typesafe
-    window.addEventListener('notifications-update', handleNotificationsUpdate as EventListener);
-    
+    window.addEventListener("notifications-update", handleNotificationsUpdate as EventListener);
+
     return () => {
-      window.removeEventListener('notifications-update', handleNotificationsUpdate as EventListener);
+      window.removeEventListener("notifications-update", handleNotificationsUpdate as EventListener);
     };
   }, []);
 
@@ -574,21 +571,21 @@ const Header: React.FC = () => {
   const handleMarkAllNotificationsAsRead = async () => {
     try {
       // Gọi API trực tiếp
-      await api.put('/notifications/mark-all-read');
-      
+      await api.put("/notifications/mark-all-read");
+
       // Cập nhật context sau khi API thành công
       markAllAsRead();
-      
+
       // Thêm thông báo thành công
-      toast.success('Đã đánh dấu tất cả thông báo là đã đọc');
-      
+      toast.success("Đã đánh dấu tất cả thông báo là đã đọc");
+
       // Tải lại trang để cập nhật UI
       setTimeout(() => {
         window.location.reload();
       }, 800);
     } catch (error) {
-      console.error('Lỗi khi đánh dấu đã đọc tất cả thông báo:', error);
-      toast.error('Không thể đánh dấu đã đọc');
+      console.error("Lỗi khi đánh dấu đã đọc tất cả thông báo:", error);
+      toast.error("Không thể đánh dấu đã đọc");
     }
   };
 
@@ -597,12 +594,12 @@ const Header: React.FC = () => {
     try {
       // Gọi API trực tiếp
       await api.put(`/notifications/${notificationId}/read`);
-      
+
       // Cập nhật context sau khi API thành công
       markAsRead(notificationId);
-      
+
       // Kiểm tra nếu đây là thông báo chưa đọc cuối cùng
-      const remainingUnread = notifications.filter(n => !n.Is_Read && n.Notification_ID !== notificationId).length;
+      const remainingUnread = notifications.filter((n) => !n.Is_Read && n.Notification_ID !== notificationId).length;
       if (remainingUnread === 0) {
         // Nếu không còn thông báo chưa đọc nào, tải lại trang
         setTimeout(() => {
@@ -615,8 +612,11 @@ const Header: React.FC = () => {
   };
 
   return (
-    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'glass-dark shadow-2xl' : 'bg-transparent'
-      }`}>
+    <header
+      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+        isScrolled ? "glass-dark shadow-2xl" : "bg-transparent"
+      }`}
+    >
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
@@ -626,7 +626,9 @@ const Header: React.FC = () => {
             </div>
             <div className="hidden sm:flex flex-col">
               <h1 className="text-xl font-bold text-white uppercase tracking-wider leading-tight">Galaxy Cinema</h1>
-              <p className="text-[10px] text-[#FFD875] uppercase tracking-widest leading-tight -mt-1">Vũ Trụ Điện Ảnh</p>
+              <p className="text-[10px] text-[#FFD875] uppercase tracking-widest leading-tight -mt-1">
+                Vũ Trụ Điện Ảnh
+              </p>
             </div>
           </Link>
 
@@ -640,15 +642,17 @@ const Header: React.FC = () => {
                   <div key={item.name} className="relative" ref={cinemaMenuRef}>
                     <button
                       onClick={() => setIsCinemaMenuOpen(!isCinemaMenuOpen)}
-                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 group ${isActive(item.path)
-                        ? 'text-[#FFD875] bg-[#FFD875]/10'
-                        : 'text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5'
-                        }`}
+                      className={`flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 group ${
+                        isActive(item.path)
+                          ? "text-[#FFD875] bg-[#FFD875]/10"
+                          : "text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5"
+                      }`}
                     >
                       <Icon className="w-5 h-5" />
                       <span className="font-medium">{item.name}</span>
-                      <ChevronDownIcon className={`w-4 h-4 transition-transform duration-300 ${isCinemaMenuOpen ? 'rotate-180' : ''
-                        }`} />
+                      <ChevronDownIcon
+                        className={`w-4 h-4 transition-transform duration-300 ${isCinemaMenuOpen ? "rotate-180" : ""}`}
+                      />
                     </button>
 
                     {/* Cinema Dropdown */}
@@ -681,9 +685,10 @@ const Header: React.FC = () => {
                   key={item.name}
                   to={item.path}
                   className={({ isActive }) =>
-                    `flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 group ${isActive
-                      ? 'text-[#FFD875] bg-[#FFD875]/10'
-                      : 'text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5'
+                    `flex items-center space-x-2 px-4 py-2 rounded-lg transition-all duration-300 group ${
+                      isActive
+                        ? "text-[#FFD875] bg-[#FFD875]/10"
+                        : "text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5"
                     }`
                   }
                 >
@@ -692,8 +697,6 @@ const Header: React.FC = () => {
                 </NavLink>
               );
             })}
-
-
           </nav>
 
           {/* Right Side Actions */}
@@ -706,7 +709,10 @@ const Header: React.FC = () => {
             >
               <MagnifyingGlassIcon className="w-6 h-6" />
               {isSearchOpen && (
-                <span className="absolute top-0 left-0 w-full h-full bg-[#FFD875]/20 rounded-full animate-ping" style={{ animationDuration: '1s' }}></span>
+                <span
+                  className="absolute top-0 left-0 w-full h-full bg-[#FFD875]/20 rounded-full animate-ping"
+                  style={{ animationDuration: "1s" }}
+                ></span>
               )}
             </button>
 
@@ -717,12 +723,15 @@ const Header: React.FC = () => {
                   <>
                     <Popover.Button className="relative flex items-center p-2 text-gray-400 hover:text-white focus:outline-none group transition-all duration-300">
                       <span className="sr-only">View notifications</span>
-                      <BellIcon className="h-6 w-6 transition-all duration-300 group-hover:scale-110 group-hover:text-[#FFD875]" aria-hidden="true" />
+                      <BellIcon
+                        className="h-6 w-6 transition-all duration-300 group-hover:scale-110 group-hover:text-[#FFD875]"
+                        aria-hidden="true"
+                      />
                       {unreadCount > 0 && (
                         <div className="absolute top-0 right-0 flex h-5 w-5">
                           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gradient-to-r from-red-400 to-red-500 opacity-75"></span>
                           <span className="relative inline-flex rounded-full h-5 w-5 bg-gradient-to-r from-red-500 to-red-600 items-center justify-center text-xs font-bold text-white shadow-[0_0_10px_rgba(239,68,68,0.6)]">
-                            {unreadCount > 99 ? '99+' : unreadCount}
+                            {unreadCount > 99 ? "99+" : unreadCount}
                           </span>
                         </div>
                       )}
@@ -759,28 +768,37 @@ const Header: React.FC = () => {
                                 <div className="flow-root max-h-80 overflow-y-auto">
                                   <ul role="list" className="divide-y divide-slate-600/30">
                                     {notifications.slice(0, 10).map((notification, index) => (
-                                      <li key={notification.Notification_ID} className="py-1" style={{ animationDelay: `${index * 50}ms` }}>
+                                      <li
+                                        key={notification.Notification_ID}
+                                        className="py-1"
+                                        style={{ animationDelay: `${index * 50}ms` }}
+                                      >
                                         <div
                                           onClick={() => handleMarkNotificationAsRead(notification.Notification_ID)}
-                                          className={`block p-2.5 rounded-lg transition-all duration-300 cursor-pointer notification-item group ${notification.Is_Read
-                                            ? 'hover:bg-slate-700/20' 
-                                            : 'notification-unread bg-[#FFD875]/5 border-l-3 border-l-[#FFD875]'
-                                            }`}
+                                          className={`block p-2.5 rounded-lg transition-all duration-300 cursor-pointer notification-item group ${
+                                            notification.Is_Read
+                                              ? "hover:bg-slate-700/20"
+                                              : "notification-unread bg-[#FFD875]/5 border-l-3 border-l-[#FFD875]"
+                                          }`}
                                         >
                                           <div className="flex items-start gap-2.5">
                                             <div className="flex-shrink-0 mt-0.5 p-1 bg-slate-700/30 rounded group-hover:bg-slate-600/30 transition-colors duration-300">
                                               {getNotificationIcon(notification.Type)}
                                             </div>
                                             <div className="flex-grow min-w-0">
-                                              <p className="text-sm font-medium text-white group-hover:text-[#FFD875] transition-colors duration-300 truncate">{notification.Title}</p>
-                                              <p className="text-xs text-gray-400 mt-1 line-clamp-2">{notification.Content}</p>
+                                              <p className="text-sm font-medium text-white group-hover:text-[#FFD875] transition-colors duration-300 truncate">
+                                                {notification.Title}
+                                              </p>
+                                              <p className="text-xs text-gray-400 mt-1 line-clamp-2">
+                                                {notification.Content}
+                                              </p>
                                               <div className="flex justify-between items-center mt-1.5">
                                                 <p className="text-xs text-gray-500 bg-slate-700/20 px-1.5 py-0.5 rounded-full">
-                                                  {new Date(notification.Creation_Date).toLocaleString('vi-VN', {
-                                                    month: 'short',
-                                                    day: 'numeric',
-                                                    hour: '2-digit',
-                                                    minute: '2-digit'
+                                                  {new Date(notification.Creation_Date).toLocaleString("vi-VN", {
+                                                    month: "short",
+                                                    day: "numeric",
+                                                    hour: "2-digit",
+                                                    minute: "2-digit",
                                                   })}
                                                 </p>
                                                 {!notification.Is_Read && (
@@ -828,20 +846,30 @@ const Header: React.FC = () => {
               <Popover className="relative">
                 {({ open }) => (
                   <>
-                    <Popover.Button className="flex items-center gap-x-2 text-sm font-semibold leading-6 text-white outline-none">
+                    <Popover.Button className="flex items-center gap-x-2 text-sm font-semibold leading-6 text-white outline-none hover:text-[#FFD875] transition-colors duration-300 group">
                       <img
-                        src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=ffd875&color=000&bold=true`}
+                        src={
+                          user.avatar ||
+                          `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                            user.fullName
+                          )}&background=ffd875&color=000&bold=true`
+                        }
                         alt={user.fullName}
-                        className="h-8 w-8 rounded-full bg-gray-50"
+                        className="h-8 w-8 rounded-full bg-gray-50 ring-2 ring-transparent group-hover:ring-[#FFD875]/30 transition-all duration-300"
                       />
-                      <span className="hidden sm:block">{user.fullName}</span>
+                      <span className="hidden sm:block group-hover:text-[#FFD875] transition-colors duration-300">
+                        {user.fullName}
+                      </span>
                       {/* Role Badge */}
-                      {['Admin', 'Manager'].includes(user.role) && (
+                      {["Admin", "Manager"].includes(user.role) && (
                         <span className="hidden sm:block px-2 py-1 text-xs font-medium bg-[#FFD875] text-black rounded-full">
                           {translateRole(user.role)}
                         </span>
                       )}
-                      <ChevronDownIcon className={`h-5 w-5 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true" />
+                      <ChevronDownIcon
+                        className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`}
+                        aria-hidden="true"
+                      />
                     </Popover.Button>
 
                     <Transition
@@ -856,13 +884,16 @@ const Header: React.FC = () => {
                       <Popover.Panel className="absolute right-0 top-full z-10 mt-3 w-screen max-w-xs overflow-hidden rounded-xl bg-gray-800 shadow-lg ring-1 ring-gray-700">
                         <div className="p-4">
                           {/* Admin Dashboard Link for Admin/Manager */}
-                          {['Admin', 'Manager'].includes(user.role) && (
+                          {["Admin", "Manager"].includes(user.role) && (
                             <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2 border border-[#FFD875]/30 bg-[#FFD875]/5">
                               <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-[#FFD875] group-hover:bg-[#FFD875]/80">
                                 <CogIcon className="h-6 w-6 text-black" aria-hidden="true" />
                               </div>
                               <div className="flex-auto">
-                                <Link to="/admin/dashboard" className="block font-semibold text-[#FFD875] group-hover:text-white">
+                                <Link
+                                  to="/admin/dashboard"
+                                  className="block font-semibold text-[#FFD875] group-hover:text-white"
+                                >
                                   Admin Dashboard
                                   <span className="absolute inset-0" />
                                 </Link>
@@ -872,7 +903,7 @@ const Header: React.FC = () => {
                           )}
 
                           {/* Customer Profile Links */}
-                          {user.role === 'Customer' && (
+                          {user.role === "Customer" && (
                             <>
                               <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700">
                                 <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
@@ -886,19 +917,21 @@ const Header: React.FC = () => {
                                   <p className="mt-1 text-gray-400">Xem và chỉnh sửa thông tin</p>
                                 </div>
                               </div>
-
                             </>
                           )}
 
                           {/* Staff Profile Links */}
-                          {user.role === 'Staff' && (
+                          {user.role === "Staff" && (
                             <>
                               <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2 border border-blue-500/30 bg-blue-500/5">
                                 <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-blue-500 group-hover:bg-blue-600">
                                   <ClockIcon className="h-6 w-6 text-white" aria-hidden="true" />
                                 </div>
                                 <div className="flex-auto">
-                                  <Link to="/showtimes" className="block font-semibold text-blue-400 group-hover:text-white">
+                                  <Link
+                                    to="/showtimes"
+                                    className="block font-semibold text-blue-400 group-hover:text-white"
+                                  >
                                     Lịch chiếu
                                     <span className="absolute inset-0" />
                                   </Link>
@@ -937,18 +970,29 @@ const Header: React.FC = () => {
                           <div className="p-4 bg-gray-900/50">
                             <div className="flex items-center gap-x-3">
                               <img
-                                src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=ffd875&color=000&bold=true`}
+                                src={
+                                  user.avatar ||
+                                  `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                                    user.fullName
+                                  )}&background=ffd875&color=000&bold=true`
+                                }
                                 alt={user.fullName}
                                 className="h-10 w-10 rounded-full bg-gray-50"
                               />
                               <div>
                                 <p className="text-sm font-medium text-white">{user.fullName}</p>
                                 <p className="text-xs text-gray-400">{user.email}</p>
-                                <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full mt-1 ${user.role === 'Admin' ? 'bg-red-500/20 text-red-400' :
-                                  user.role === 'Manager' ? 'bg-orange-500/20 text-orange-400' :
-                                    user.role === 'Staff' ? 'bg-blue-500/20 text-blue-400' :
-                                      'bg-green-500/20 text-green-400'
-                                  }`}>
+                                <span
+                                  className={`inline-block px-2 py-1 text-xs font-medium rounded-full mt-1 ${
+                                    user.role === "Admin"
+                                      ? "bg-red-500/20 text-red-400"
+                                      : user.role === "Manager"
+                                      ? "bg-orange-500/20 text-orange-400"
+                                      : user.role === "Staff"
+                                      ? "bg-blue-500/20 text-blue-400"
+                                      : "bg-green-500/20 text-green-400"
+                                  }`}
+                                >
                                   {translateRole(user.role)}
                                 </span>
                               </div>
@@ -1002,11 +1046,7 @@ const Header: React.FC = () => {
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="lg:hidden p-2 text-gray-300 hover:text-[#FFD875] transition-colors duration-300"
             >
-              {isMobileMenuOpen ? (
-                <XMarkIcon className="w-6 h-6" />
-              ) : (
-                <Bars3Icon className="w-6 h-6" />
-              )}
+              {isMobileMenuOpen ? <XMarkIcon className="w-6 h-6" /> : <Bars3Icon className="w-6 h-6" />}
             </button>
           </div>
         </div>
@@ -1047,10 +1087,11 @@ const Header: React.FC = () => {
                       <Link
                         to={item.path}
                         onClick={() => setIsMobileMenuOpen(false)}
-                        className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 ${isActive(item.path)
-                          ? 'text-[#FFD875] bg-[#FFD875]/10'
-                          : 'text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5'
-                          }`}
+                        className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 ${
+                          isActive(item.path)
+                            ? "text-[#FFD875] bg-[#FFD875]/10"
+                            : "text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5"
+                        }`}
                       >
                         <Icon className="w-5 h-5" />
                         <span className="font-medium">{item.name}</span>
@@ -1082,10 +1123,11 @@ const Header: React.FC = () => {
                     key={item.name}
                     to={item.path}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 ${isActive(item.path)
-                      ? 'text-[#FFD875] bg-[#FFD875]/10'
-                      : 'text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5'
-                      }`}
+                    className={`flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-300 ${
+                      isActive(item.path)
+                        ? "text-[#FFD875] bg-[#FFD875]/10"
+                        : "text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5"
+                    }`}
                   >
                     <Icon className="w-5 h-5" />
                     <span className="font-medium">{item.name}</span>
@@ -1104,7 +1146,7 @@ const Header: React.FC = () => {
                     <div className="relative flex h-6 w-6">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-gradient-to-r from-red-400 to-red-500 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-6 w-6 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs items-center justify-center font-bold shadow-[0_0_10px_rgba(239,68,68,0.6)]">
-                        {unreadCount > 99 ? '99+' : unreadCount}
+                        {unreadCount > 99 ? "99+" : unreadCount}
                       </span>
                     </div>
                   )}
@@ -1115,10 +1157,11 @@ const Header: React.FC = () => {
                       <div
                         key={notification.Notification_ID}
                         onClick={() => handleMarkNotificationAsRead(notification.Notification_ID)}
-                        className={`p-2.5 rounded-lg border transition-all duration-300 cursor-pointer group ${!notification.Is_Read
-                          ? 'bg-[#FFD875]/5 border-[#FFD875]/20 border-l-3 border-l-[#FFD875]'
-                          : 'bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50'
-                          }`}
+                        className={`p-2.5 rounded-lg border transition-all duration-300 cursor-pointer group ${
+                          !notification.Is_Read
+                            ? "bg-[#FFD875]/5 border-[#FFD875]/20 border-l-3 border-l-[#FFD875]"
+                            : "bg-gray-800/50 border-gray-700/50 hover:bg-gray-700/50"
+                        }`}
                         style={{ animationDelay: `${index * 50}ms` }}
                       >
                         <div className="flex items-start gap-2.5">
@@ -1129,21 +1172,17 @@ const Header: React.FC = () => {
                             <p className="text-sm font-medium text-white truncate group-hover:text-[#FFD875] transition-colors duration-300">
                               {notification.Title}
                             </p>
-                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">
-                              {notification.Content}
-                            </p>
+                            <p className="text-xs text-gray-400 mt-1 line-clamp-2">{notification.Content}</p>
                             <div className="flex items-center justify-between mt-1.5">
                               <p className="text-xs text-gray-500 bg-slate-700/20 px-1.5 py-0.5 rounded-full">
-                                {new Date(notification.Creation_Date).toLocaleString('vi-VN', {
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
+                                {new Date(notification.Creation_Date).toLocaleString("vi-VN", {
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
                                 })}
                               </p>
-                              {!notification.Is_Read && (
-                                <span className="text-xs text-[#FFD875] font-medium">Mới</span>
-                              )}
+                              {!notification.Is_Read && <span className="text-xs text-[#FFD875] font-medium">Mới</span>}
                             </div>
                           </div>
                         </div>
@@ -1172,28 +1211,38 @@ const Header: React.FC = () => {
               {/* Mobile User Profile */}
               {user && (
                 <div className="px-4 py-3 border-t border-gray-700/50">
-                  <div className="flex items-center space-x-3 mb-3">
+                  <div className="flex items-center space-x-3 mb-3 p-2 rounded-lg">
                     <img
-                      src={user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=ffd875&color=000&bold=true`}
+                      src={
+                        user.avatar ||
+                        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+                          user.fullName
+                        )}&background=ffd875&color=000&bold=true`
+                      }
                       alt={user.fullName}
-                      className="w-10 h-10 rounded-full object-cover"
+                      className="w-10 h-10 rounded-full object-cover ring-2 ring-[#FFD875]/30"
                     />
                     <div>
                       <p className="text-white font-medium">{user.fullName}</p>
                       <p className="text-gray-400 text-sm">{user.email}</p>
-                      <span className={`inline-block px-2 py-1 text-xs font-medium rounded-full mt-1 ${
-                        user.role === 'Admin' ? 'bg-red-500/20 text-red-400' :
-                        user.role === 'Manager' ? 'bg-orange-500/20 text-orange-400' :
-                        user.role === 'Staff' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-green-500/20 text-green-400'
-                      }`}>
+                      <span
+                        className={`inline-block px-2 py-1 text-xs font-medium rounded-full mt-1 ${
+                          user.role === "Admin"
+                            ? "bg-red-500/20 text-red-400"
+                            : user.role === "Manager"
+                            ? "bg-orange-500/20 text-orange-400"
+                            : user.role === "Staff"
+                            ? "bg-blue-500/20 text-blue-400"
+                            : "bg-green-500/20 text-green-400"
+                        }`}
+                      >
                         {translateRole(user.role)}
                       </span>
                     </div>
                   </div>
                   <div className="space-y-1">
                     {/* Staff-specific mobile menu */}
-                    {user.role === 'Staff' ? (
+                    {user.role === "Staff" ? (
                       <>
                         <Link
                           to="/showtimes"
@@ -1211,14 +1260,6 @@ const Header: React.FC = () => {
                           <TicketIcon className="w-4 h-4" />
                           <span className="text-sm">Quét vé</span>
                         </Link>
-                        <Link
-                          to="/profile"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
-                        >
-                          <UserIcon className="w-4 h-4" />
-                          <span className="text-sm">Thông tin cá nhân</span>
-                        </Link>
                       </>
                     ) : (
                       /* Customer/other roles mobile menu */
@@ -1228,21 +1269,24 @@ const Header: React.FC = () => {
                           onClick={() => setIsMobileMenuOpen(false)}
                           className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
                         >
-                          <UserIcon className="w-4 h-4" />
+                          <UserCircleIcon className="w-4 h-4" />
                           <span className="text-sm">Trang cá nhân</span>
-                        </Link>
-
-                        <Link
-                          to="/profile/settings"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
-                        >
-                          <CogIcon className="w-4 h-4" />
-                          <span className="text-sm">Cài đặt</span>
                         </Link>
                       </>
                     )}
-                    
+
+                    {/* Common profile link for Staff */}
+                    {user.role === "Staff" && (
+                      <Link
+                        to="/profile"
+                        onClick={() => setIsMobileMenuOpen(false)}
+                        className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
+                      >
+                        <UserCircleIcon className="w-4 h-4" />
+                        <span className="text-sm">Thông tin cá nhân</span>
+                      </Link>
+                    )}
+
                     <button
                       onClick={logout}
                       className="flex items-center space-x-2 w-full px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-400/10 rounded-lg transition-colors"
@@ -1295,4 +1339,3 @@ const Header: React.FC = () => {
 };
 
 export default Header;
-

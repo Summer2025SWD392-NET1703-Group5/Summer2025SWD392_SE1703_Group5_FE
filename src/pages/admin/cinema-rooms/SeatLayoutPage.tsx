@@ -9,7 +9,7 @@ import {
     SparklesIcon
 } from '@heroicons/react/24/outline';
 import SeatLayoutManager from '../../../components/admin/cinema-rooms/SeatLayoutManager';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
 
 const SeatLayoutPage: React.FC = () => {
@@ -80,9 +80,7 @@ const SeatLayoutPage: React.FC = () => {
             </motion.div>
 
             {loading ? (
-                <div className="flex justify-center items-center h-64">
-                    <LoadingSpinner />
-                </div>
+                <FullScreenLoader text="Đang tải sơ đồ ghế..." />
             ) : (
                 <motion.div
                     initial={{ opacity: 0, y: 20 }}

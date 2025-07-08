@@ -16,7 +16,7 @@ import {
 import { movieService } from '../../../services/movieService';
 import '../styles/MovieManagement.css';
 import { motion } from 'framer-motion';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import { toast } from 'react-hot-toast';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 
@@ -118,7 +118,7 @@ const MovieDetail: React.FC<MovieDetailProps> = () => {
         return (
             <div className="flex items-center justify-center h-[60vh]">
                 <div className="flex flex-col items-center">
-                    <LoadingSpinner />
+                    <FullScreenLoader />
                     <p className="mt-4 text-white">Đang tải thông tin phim...</p>
                 </div>
             </div>

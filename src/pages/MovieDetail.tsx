@@ -24,7 +24,7 @@ import TrailerModal from '../components/TrailerModal';
 import ImageGallery from '../components/ImageGallery';
 import ReviewSection from '../components/ReviewSection';
 import ShowtimeSection from '../components/ShowtimeSection';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 import type { Movie } from '../types';
 import { movieService } from '../services/movieService';
 import showtimeService from '../services/showtimeService';
@@ -520,9 +520,8 @@ const MovieDetail: React.FC = () => {
     return (
       <div className="min-h-screen bg-slate-900">
         <Header />
-        <div className="pt-20 flex flex-col items-center justify-center h-[80vh]">
-          <LoadingSpinner />
-          <p className="text-lg text-white mt-4">Đang tải thông tin phim...</p>
+        <div className="pt-20">
+          <FullScreenLoader text="Đang tải thông tin phim..." />
         </div>
       </div>
     );
@@ -584,7 +583,11 @@ const MovieDetail: React.FC = () => {
 
       <main className="pt-20">
         {/* Hero Section */}
-        <section className={`relative h-screen overflow-hidden ${isContentLoaded ? 'opacity-100' : 'opacity-0'} transition-opacity duration-700`}>
+        <section
+          className={`relative h-screen overflow-hidden ${
+            isContentLoaded ? "opacity-100" : "opacity-0"
+          } transition-opacity duration-700`}
+        >
           {/* Background Image */}
           <div className="absolute inset-0">
             <img
@@ -630,13 +633,9 @@ const MovieDetail: React.FC = () => {
               {/* Movie Info */}
               <div className="lg:col-span-2 space-y-6">
                 <div>
-                  <h1 className="text-4xl lg:text-6xl font-bold text-white mb-2 animate-fadeInUp">
-                    {movie.title}
-                  </h1>
+                  <h1 className="text-4xl lg:text-6xl font-bold text-white mb-2 animate-fadeInUp">{movie.title}</h1>
                   {movie.englishTitle !== movie.title && (
-                    <p className="text-xl text-gray-300 animate-fadeInUp animation-delay-200">
-                      {movie.englishTitle}
-                    </p>
+                    <p className="text-xl text-gray-300 animate-fadeInUp animation-delay-200">{movie.englishTitle}</p>
                   )}
                 </div>
 
@@ -708,12 +707,7 @@ const MovieDetail: React.FC = () => {
         {/* Content Tabs */}
         <section className="py-12">
           <div className="container mx-auto px-4">
-            <Breadcrumb
-              items={[
-                { label: 'Phim', path: '/movies' },
-                { label: movie.title }
-              ]}
-            />
+            <Breadcrumb items={[{ label: "Phim", path: "/movies" }, { label: movie.title }]} />
 
             {/* Tab Navigation */}
             <div className="flex flex-wrap gap-4 mb-8 animate-fadeInUp">
@@ -722,10 +716,11 @@ const MovieDetail: React.FC = () => {
                   <button
                     key={tab.id}
                     onClick={() => handleTabClick(tab.id)}
-                    className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${activeTab === tab.id
-                      ? 'bg-[#FFD875] text-black shadow-[0_0_15px_rgba(255,216,117,0.3)]'
-                      : 'bg-gray-800/50 backdrop-blur-sm border border-gray-600 text-white'
-                      }`}
+                    className={`flex items-center space-x-2 px-6 py-3 rounded-lg font-semibold transition-all duration-300 transform hover:scale-105 ${
+                      activeTab === tab.id
+                        ? "bg-[#FFD875] text-black shadow-[0_0_15px_rgba(255,216,117,0.3)]"
+                        : "bg-gray-800/50 backdrop-blur-sm border border-gray-600 text-white"
+                    }`}
                     style={{ animationDelay: `${index * 100 + 800}ms` }}
                   >
                     {React.createElement(tab.icon, { className: "w-5 h-5" })}
@@ -737,7 +732,7 @@ const MovieDetail: React.FC = () => {
 
             {/* Tab Content */}
             <div className="animate-fadeInUp animation-delay-1000">
-              {activeTab === 'overview' && (
+              {activeTab === "overview" && (
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                   {/* Movie Details */}
                   <div className="lg:col-span-2 space-y-8">
@@ -773,26 +768,20 @@ const MovieDetail: React.FC = () => {
 
                     {/* Synopsis */}
                     <div className="glass-dark p-6 rounded-2xl hover:shadow-[0_0_20px_rgba(255,216,117,0.2)] transition-all duration-500">
-                      <h3 className="text-xl font-bold text-white mb-4">
-                        Nội Dung Phim
-                      </h3>
-                      <p className="text-gray-300 leading-relaxed">
-                        {movie.description}
-                      </p>
+                      <h3 className="text-xl font-bold text-white mb-4">Nội Dung Phim</h3>
+                      <p className="text-gray-300 leading-relaxed">{movie.description}</p>
                     </div>
                   </div>
 
                   {/* Movie Info Sidebar */}
                   <div className="space-y-6">
                     <div className="glass-dark p-6 rounded-2xl hover:shadow-[0_0_20px_rgba(255,216,117,0.2)] transition-all duration-500">
-                      <h3 className="text-lg font-bold text-white mb-4">
-                        Thông Tin Phim
-                      </h3>
+                      <h3 className="text-lg font-bold text-white mb-4">Thông Tin Phim</h3>
 
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between p-2 hover:bg-slate-700/30 rounded-lg transition-colors">
                           <span className="text-gray-400">Thể loại:</span>
-                          <span className="text-white">{movie.genres.join(', ')}</span>
+                          <span className="text-white">{movie.genres.join(", ")}</span>
                         </div>
 
                         <div className="flex justify-between p-2 hover:bg-slate-700/30 rounded-lg transition-colors">
@@ -825,7 +814,7 @@ const MovieDetail: React.FC = () => {
                 </div>
               )}
 
-              {activeTab === 'showtimes' && (
+              {activeTab === "showtimes" && (
                 <ShowtimeSection
                   movieId={movie.id}
                   cinemas={cinemas}
@@ -835,18 +824,14 @@ const MovieDetail: React.FC = () => {
                 />
               )}
 
-              {activeTab === 'reviews' && (
+              {activeTab === "reviews" && (
                 <>
-                  {console.log('Rendering ReviewSection with reviews:', movie.reviews)}
-                  <ReviewSection
-                    movieId={movie.id}
-                    reviews={movie.reviews || []}
-                    onSubmitReview={handleRateMovie}
-                  />
+                  {console.log("Rendering ReviewSection with reviews:", movie.reviews)}
+                  <ReviewSection movieId={movie.id} reviews={movie.reviews || []} onSubmitReview={handleRateMovie} />
                 </>
               )}
 
-              {activeTab === 'gallery' && (
+              {activeTab === "gallery" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                   {[movie.poster, movie.backgroundImage, ...movie.gallery].map((image, index) => (
                     <div
@@ -879,7 +864,7 @@ const MovieDetail: React.FC = () => {
             <div className="container mx-auto px-4">
               <h2 className="text-2xl lg:text-3xl font-bold text-white mb-8 animate-fadeInUp">
                 Phim Liên Quan
-                {similarLoading && <LoadingSpinner />}
+                {similarLoading && <FullScreenLoader variant="inline" size="small" />}
               </h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-3">
@@ -898,12 +883,19 @@ const MovieDetail: React.FC = () => {
                         />
 
                         {/* Age rating badge */}
-                        <div className={`absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold ${relatedMovie.ageRating === 'P' ? 'bg-green-500 text-white' :
-                          relatedMovie.ageRating === 'P13' ? 'bg-yellow-500 text-black' :
-                            relatedMovie.ageRating === 'T16' ? 'bg-orange-500 text-white' :
-                              relatedMovie.ageRating === 'T18' ? 'bg-red-600 text-white' :
-                                'bg-gray-600 text-white'
-                        }`}>
+                        <div
+                          className={`absolute top-2 right-2 w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold ${
+                            relatedMovie.ageRating === "P"
+                              ? "bg-green-500 text-white"
+                              : relatedMovie.ageRating === "P13"
+                              ? "bg-yellow-500 text-black"
+                              : relatedMovie.ageRating === "T16"
+                              ? "bg-orange-500 text-white"
+                              : relatedMovie.ageRating === "T18"
+                              ? "bg-red-600 text-white"
+                              : "bg-gray-600 text-white"
+                          }`}
+                        >
                           {relatedMovie.ageRating}
                         </div>
 
@@ -916,7 +908,9 @@ const MovieDetail: React.FC = () => {
                                 <StarIcon className="w-3 h-3 text-[#FFD875]" />
                                 <span className="text-white text-xs ml-1">{relatedMovie.rating}</span>
                               </div>
-                              <span className="text-gray-400 text-xs">{new Date(relatedMovie.releaseDate).getFullYear()}</span>
+                              <span className="text-gray-400 text-xs">
+                                {new Date(relatedMovie.releaseDate).getFullYear()}
+                              </span>
                             </div>
                           </div>
                         </div>
@@ -933,12 +927,19 @@ const MovieDetail: React.FC = () => {
                             className="w-full h-full object-cover rounded-lg"
                           />
                           <div className="absolute top-2 right-2">
-                            <div className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold ${relatedMovie.ageRating === 'P' ? 'bg-green-500 text-white' :
-                              relatedMovie.ageRating === 'P13' ? 'bg-yellow-500 text-black' :
-                                relatedMovie.ageRating === 'T16' ? 'bg-orange-500 text-white' :
-                                  relatedMovie.ageRating === 'T18' ? 'bg-red-600 text-white' :
-                                    'bg-gray-600 text-white'
-                              }`}>
+                            <div
+                              className={`w-8 h-8 flex items-center justify-center rounded-full text-xs font-bold ${
+                                relatedMovie.ageRating === "P"
+                                  ? "bg-green-500 text-white"
+                                  : relatedMovie.ageRating === "P13"
+                                  ? "bg-yellow-500 text-black"
+                                  : relatedMovie.ageRating === "T16"
+                                  ? "bg-orange-500 text-white"
+                                  : relatedMovie.ageRating === "T18"
+                                  ? "bg-red-600 text-white"
+                                  : "bg-gray-600 text-white"
+                              }`}
+                            >
                               {relatedMovie.ageRating}
                             </div>
                           </div>
@@ -949,7 +950,9 @@ const MovieDetail: React.FC = () => {
                           <div className="flex items-center space-x-2 mb-1">
                             <StarIcon className="w-3 h-3 text-[#FFD875]" />
                             <span className="text-white text-xs">{relatedMovie.rating}</span>
-                            <span className="text-gray-400 text-xs">{new Date(relatedMovie.releaseDate).getFullYear()}</span>
+                            <span className="text-gray-400 text-xs">
+                              {new Date(relatedMovie.releaseDate).getFullYear()}
+                            </span>
                           </div>
                           <p className="text-gray-300 text-xs line-clamp-2">{relatedMovie.description}</p>
                         </div>
@@ -991,12 +994,7 @@ const MovieDetail: React.FC = () => {
       </main>
 
       {/* Modals */}
-      {showTrailerModal && (
-        <TrailerModal
-          movie={movie}
-          onClose={() => setShowTrailerModal(false)}
-        />
-      )}
+      {showTrailerModal && <TrailerModal movie={movie} onClose={() => setShowTrailerModal(false)} />}
 
       {showFullGallery && (
         <ImageGallery

@@ -29,7 +29,7 @@ import {
   Filler,
 } from 'chart.js';
 import 'react-datepicker/dist/react-datepicker.css';
-import GlowingLoader from '../../../components/admin/GlowingLoader';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import reportService, { type DailyReportData } from '../../../services/reportService';
 import toast from 'react-hot-toast';
 
@@ -283,7 +283,7 @@ const DailyReports: React.FC = () => {
   if (loading) {
     return (
       <div className="p-6 flex justify-center items-center min-h-[400px]">
-        <GlowingLoader size="lg" text="Đang tải báo cáo..." />
+        <FullScreenLoader size="large" text="Đang tải báo cáo..." />
       </div>
     );
   }

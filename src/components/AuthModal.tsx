@@ -1,13 +1,7 @@
-
-
-
-
-
-
 import React, { useState } from 'react';
 import { XMarkIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/SimpleAuthContext';
-import LoadingSpinner from './LoadingSpinner';
+import FullScreenLoader from './FullScreenLoader';
 
 
 interface AuthModalProps {
@@ -250,7 +244,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                             disabled={isLoading}
                             className="w-full bg-[#FFD875] hover:bg-[#FFD875]/80 text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            {isLoading ? <LoadingSpinner size="small" /> : 'Đăng nhập'}
+                            {isLoading ? <FullScreenLoader variant="inline" size="small" /> : 'Đăng nhập'}
                         </button>
 
 
@@ -422,7 +416,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                             disabled={isLoading}
                             className="w-full bg-[#FFD875] hover:bg-[#FFD875]/80 text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            {isLoading ? <LoadingSpinner size="small" /> : 'Đăng ký'}
+                            {isLoading ? <FullScreenLoader variant="inline" size="small" /> : 'Đăng ký'}
                         </button>
 
 
@@ -465,7 +459,7 @@ const AuthModal: React.FC<AuthModalProps> = ({
                             disabled={isLoading}
                             className="w-full bg-[#FFD875] hover:bg-[#FFD875]/80 text-black font-semibold py-3 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
                         >
-                            {isLoading ? <LoadingSpinner size="small" /> : 'Gửi email khôi phục'}
+                            {isLoading ? <FullScreenLoader variant="inline" size="small" /> : 'Gửi email khôi phục'}
                         </button>
 
 

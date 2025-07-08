@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import {
   StarIcon,
   ClockIcon,
@@ -9,17 +9,17 @@ import {
   FireIcon,
   SparklesIcon,
   TicketIcon,
-  InformationCircleIcon
-} from '@heroicons/react/24/solid';
-import type { Movie } from '../types';
-import TrailerModal from './TrailerModal';
-import { toast } from 'react-hot-toast';
+  InformationCircleIcon,
+} from "@heroicons/react/24/solid";
+import type { Movie } from "../types";
+import TrailerModal from "./TrailerModal";
+import { toast } from "react-hot-toast";
 
 interface MovieCardProps {
   movie: Movie;
   showTrailer?: boolean;
   onTrailerClick?: (movie: Movie) => void;
-  variant?: 'default' | 'compact' | 'detailed' | 'grid';
+  variant?: "default" | "compact" | "detailed" | "grid";
   showRank?: boolean;
   rank?: number;
   className?: string;
@@ -30,11 +30,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
   movie,
   showTrailer = true,
   onTrailerClick,
-  variant = 'default',
+  variant = "default",
   showRank = false,
   rank,
-  className = '',
-  lazy = true
+  className = "",
+  lazy = true,
 }) => {
   if (!movie) return null;
 
@@ -80,47 +80,48 @@ const MovieCard: React.FC<MovieCardProps> = ({
     rating = 0,
     genre,
     genres = [],
-    duration = 'N/A',
+    duration = "N/A",
     releaseDate,
     year,
-    description = '',
+    description = "",
     cast = [],
-    director = '',
-    ageRating = 'T13',
+    director = "",
+    ageRating = "T13",
     trailerUrl,
     isComingSoon = false,
     isHot = false,
     isNew = false,
-    country = '',
-    quality = 'HD',
-    subtitle = 'Vietsub'
+    country = "",
+    quality = "HD",
+    subtitle = "Vietsub",
   } = movie;
 
   // Helper functions
-  const truncatedDescription = description && description.length > 120
-    ? description.slice(0, 120) + '...'
-    : description || 'Chưa có mô tả cho bộ phim này.';
+  const truncatedDescription =
+    description && description.length > 120
+      ? description.slice(0, 120) + "..."
+      : description || "Chưa có mô tả cho bộ phim này.";
 
   // Xử lý hiển thị diễn viên từ dữ liệu API
   const displayCast = (() => {
     if (Array.isArray(cast) && cast.length > 0) {
-      return cast.slice(0, 3).join(', ');
-    } else if (typeof cast === 'string' && cast.trim() !== '') {
+      return cast.slice(0, 3).join(", ");
+    } else if (typeof cast === "string" && cast.trim() !== "") {
       return cast;
     } else {
-      return 'Đang cập nhật';
+      return "Đang cập nhật";
     }
   })();
 
-  const displayGenres = genres.length > 0 ? genres : (genre ? [genre] : ['Chưa phân loại']);
+  const displayGenres = genres.length > 0 ? genres : genre ? [genre] : ["Chưa phân loại"];
 
   const formatDate = (dateString: string) => {
-    if (!dateString) return 'Chưa xác định';
+    if (!dateString) return "Chưa xác định";
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric'
+    return date.toLocaleDateString("vi-VN", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
     });
   };
 
@@ -134,36 +135,36 @@ const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   const createSlug = (title: string) => {
-    if (!title) return '';
+    if (!title) return "";
 
     return title
       .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9\s-]/g, '')
-      .replace(/\s+/g, '-')
-      .replace(/-+/g, '-')
-      .trim('-');
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/-+/g, "-")
+      .trim("-");
   };
 
   const getRatingColor = (rating: number) => {
-    if (rating >= 8.5) return 'text-green-400 bg-green-900/50';
-    if (rating >= 7.0) return 'text-[#FFD875] bg-yellow-900/50';
-    if (rating >= 5.0) return 'text-orange-400 bg-orange-900/50';
-    return 'text-red-400 bg-red-900/50';
+    if (rating >= 8.5) return "text-green-400 bg-green-900/50";
+    if (rating >= 7.0) return "text-[#FFD875] bg-yellow-900/50";
+    if (rating >= 5.0) return "text-orange-400 bg-orange-900/50";
+    return "text-red-400 bg-red-900/50";
   };
 
   // Xử lý poster URL
   const getPosterUrl = () => {
-    if (!poster) return 'https://via.placeholder.com/300x450?text=No+Image';
+    if (!poster) return "https://via.placeholder.com/300x450?text=No+Image";
 
     // Kiểm tra nếu poster là URL đầy đủ
-    if (poster.startsWith('http://') || poster.startsWith('https://')) {
+    if (poster.startsWith("http://") || poster.startsWith("https://")) {
       return poster;
     }
 
     // Nếu là đường dẫn tương đối, thêm URL cơ sở
-    return `${import.meta.env.VITE_API_URL || ''}${poster}`;
+    return `${import.meta.env.VITE_API_URL || ""}${poster}`;
   };
 
   // Xử lý khi click vào card
@@ -194,7 +195,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
   };
 
   // Render different variants
-  if (variant === 'compact') {
+  if (variant === "compact") {
     return (
       <div
         ref={cardRef}
@@ -208,7 +209,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
               <img
                 src={getPosterUrl()}
                 alt={title}
-                className={`w-full h-full object-cover ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                className={`w-full h-full object-cover ${imageLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
                 loading="lazy"
@@ -222,12 +223,12 @@ const MovieCard: React.FC<MovieCardProps> = ({
           {/* Info */}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-white truncate">{title}</h3>
-            <p className="text-xs text-gray-400 truncate">{displayGenres.join(', ')}</p>
+            <p className="text-xs text-gray-400 truncate">{displayGenres.join(", ")}</p>
             <div className="flex items-center space-x-2 mt-1">
               <StarIcon className="w-4 h-4 text-[#FFD875]" />
               <span className="text-sm text-gray-300">{rating}/5</span>
               <span className="text-xs text-gray-500">•</span>
-              <span className="text-xs text-gray-500">{year || 'N/A'}</span>
+              <span className="text-xs text-gray-500">{year || "N/A"}</span>
             </div>
           </div>
         </div>
@@ -262,8 +263,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 ref={imageRef}
                 src={getPosterUrl()}
                 alt={title}
-                className={`w-full h-full object-cover transition-all duration-500 ${isHovered ? 'scale-110 blur-sm brightness-50' : ''
-                  } ${imageLoaded ? 'opacity-100' : 'opacity-0'}`}
+                className={`w-full h-full object-cover transition-all duration-500 ${
+                  isHovered ? "scale-110 blur-sm brightness-50" : ""
+                } ${imageLoaded ? "opacity-100" : "opacity-0"}`}
                 onLoad={handleImageLoad}
                 onError={handleImageError}
                 loading="lazy"
@@ -305,8 +307,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
           {/* Hover Actions */}
           <div
-            className={`absolute inset-0 flex flex-col items-center justify-center space-y-4 transition-opacity duration-300 ${isHovered ? 'opacity-100' : 'opacity-0'
-              }`}
+            className={`absolute inset-0 flex flex-col items-center justify-center space-y-4 transition-opacity duration-300 ${
+              isHovered ? "opacity-100" : "opacity-0"
+            }`}
           >
             {showTrailer && trailerUrl && (
               <button
@@ -330,28 +333,26 @@ const MovieCard: React.FC<MovieCardProps> = ({
 
           <div className="absolute top-3 right-3 flex flex-col items-end space-y-2">
             {/* Rating */}
-            <div className={`flex items-center space-x-1 px-2 py-1 rounded-full backdrop-blur-sm ${getRatingColor(rating)}`}>
+            <div
+              className={`flex items-center space-x-1 px-2 py-1 rounded-full backdrop-blur-sm ${getRatingColor(
+                rating
+              )}`}
+            >
               <StarIcon className="w-4 h-4" />
               <span className="text-sm font-semibold">{rating}/5</span>
             </div>
 
             {/* Quality & Subtitle */}
             <div className="flex space-x-1">
-              <span className="bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold">
-                {quality}
-              </span>
-              <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-bold">
-                {subtitle}
-              </span>
+              <span className="bg-green-600 text-white px-2 py-0.5 rounded text-xs font-bold">{quality}</span>
+              <span className="bg-blue-600 text-white px-2 py-0.5 rounded text-xs font-bold">{subtitle}</span>
             </div>
           </div>
 
           {/* Bottom Info */}
           <div className="absolute bottom-3 left-3 right-3 flex justify-between items-end">
             {/* Age Rating */}
-            <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">
-              {ageRating}
-            </div>
+            <div className="bg-red-600 text-white px-2 py-1 rounded text-xs font-bold">{ageRating}</div>
 
             {/* View Count */}
             {viewCount > 0 && (
@@ -367,13 +368,9 @@ const MovieCard: React.FC<MovieCardProps> = ({
         <div className="p-5 space-y-4">
           {/* Title */}
           <div className="block group-hover:text-yellow-400 transition-colors duration-300">
-            <h3 className="font-bold text-xl line-clamp-2 text-white mb-2 leading-tight">
-              {title}
-            </h3>
+            <h3 className="font-bold text-xl line-clamp-2 text-white mb-2 leading-tight">{title}</h3>
             {(englishTitle || originalTitle) && (englishTitle || originalTitle) !== title && (
-              <p className="text-sm text-gray-400 line-clamp-1 mb-2">
-                {englishTitle || originalTitle}
-              </p>
+              <p className="text-sm text-gray-400 line-clamp-1 mb-2">{englishTitle || originalTitle}</p>
             )}
           </div>
 
@@ -384,7 +381,11 @@ const MovieCard: React.FC<MovieCardProps> = ({
                 key={index}
                 onClick={(e) => {
                   e.stopPropagation();
-                  navigate(`/genres/${typeof genreItem === 'string' ? genreItem.toLowerCase() : String(genreItem).toLowerCase()}`);
+                  navigate(
+                    `/genres/${
+                      typeof genreItem === "string" ? genreItem.toLowerCase() : String(genreItem).toLowerCase()
+                    }`
+                  );
                 }}
                 className="genre-badge px-3 py-1 rounded-full text-xs bg-gradient-to-r from-gray-700 to-gray-600 text-gray-300 hover:from-yellow-600 hover:to-yellow-700 hover:text-black transition-all duration-300 cursor-pointer"
               >
@@ -418,14 +419,10 @@ const MovieCard: React.FC<MovieCardProps> = ({
           </div>
 
           {/* Description */}
-          {description && (
-            <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">
-              {truncatedDescription}
-            </p>
-          )}
+          {description && <p className="text-sm text-gray-400 line-clamp-3 leading-relaxed">{truncatedDescription}</p>}
 
           {/* Cast & Director */}
-          {(displayCast !== 'Đang cập nhật' || director) && (
+          {(displayCast !== "Đang cập nhật" || director) && (
             <div className="space-y-1 text-xs text-gray-500">
               {director && (
                 <div>
@@ -433,7 +430,7 @@ const MovieCard: React.FC<MovieCardProps> = ({
                   <span>{director}</span>
                 </div>
               )}
-              {displayCast !== 'Đang cập nhật' && (
+              {displayCast !== "Đang cập nhật" && (
                 <div>
                   <span className="font-medium">Diễn viên: </span>
                   <span>{displayCast}</span>

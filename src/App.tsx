@@ -99,6 +99,17 @@ const AdminPages = {
   EditPromotion: React.lazy(
     () => import(/* webpackChunkName: "admin-promotions" */ "./pages/admin/promotions/EditPromotion")
   ),
+
+  // Reports management
+  DailyReports: React.lazy(
+    () => import(/* webpackChunkName: "admin-reports" */ "./pages/admin/reports/DailyReportsPage")
+  ),
+  MonthlyReports: React.lazy(
+    () => import(/* webpackChunkName: "admin-reports" */ "./pages/admin/reports/MonthlyReportsPage")
+  ),
+  CustomReports: React.lazy(
+    () => import(/* webpackChunkName: "admin-reports" */ "./pages/admin/reports/CustomReportsPage")
+  ),
 };
 
 // Public Pages - Nhóm các trang public theo chức năng
@@ -110,7 +121,7 @@ const PublicPages = {
   BookingPage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/BookingPage")),
   ShowtimePage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/ShowtimePage")),
   ShowtimeSelection: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/ShowtimeSelectionPage")),
-  SeatSelection: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/booking/SeatSelection")),
+  SeatSelection: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/SeatSelectionPage")),
   PaymentPage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/PaymentPage")),
   BookingSuccess: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/BookingSuccessPage")),
 
@@ -476,6 +487,47 @@ function App() {
                       </AdminOnlyRoute>
                     }
                   />
+
+                  {/* Reports routes */}
+                  <Route
+                    path="reports/daily"
+                    element={
+                      <Suspense fallback={AdminLoader}>
+                        <LazyWrapper component={AdminPages.DailyReports} fallback={AdminLoader} />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="reports/monthly"
+                    element={
+                      <Suspense fallback={AdminLoader}>
+                        <LazyWrapper component={AdminPages.MonthlyReports} fallback={AdminLoader} />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="reports/custom"
+                    element={
+                      <Suspense fallback={AdminLoader}>
+                        <LazyWrapper component={AdminPages.CustomReports} fallback={AdminLoader} />
+                      </Suspense>
+                    }
+                  />
+
+                  {/* Test route for sidebar scrolling */}
+                  <Route
+                    path="test/sidebar"
+                    element={
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper
+                            component={() => import("./components/admin/AdminSidebarTest")}
+                            fallback={AdminLoader}
+                          />
+                        </Suspense>
+                      </AdminOnlyRoute>
+                    }
+                  />
                 </Route>
 
                 {/* Public Routes with Header/Footer */}
@@ -573,6 +625,8 @@ function App() {
                   }
                 />
 
+                {/* Payment route removed - now integrated into BookingPage */}
+                {/*
                 <Route
                   path="/payment/:bookingId"
                   element={
@@ -589,6 +643,7 @@ function App() {
                     </AuthRequiredRoute>
                   }
                 />
+                */}
 
                 <Route
                   path="/booking-success/:bookingId"

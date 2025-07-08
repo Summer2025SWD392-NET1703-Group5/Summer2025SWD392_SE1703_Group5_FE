@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import ButtonWithSpinner from '../../../components/admin/common/ButtonWithSpinner';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 import showtimeService from '../../../services/showtimeService';

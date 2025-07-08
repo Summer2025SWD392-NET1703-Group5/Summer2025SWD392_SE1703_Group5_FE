@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, HomeIcon, CheckCircleIcon, XCircleIcon, ClockIcon, MapIcon } from '@heroicons/react/24/outline';
 import { cinemaService } from '../../../services/cinemaService';
-import LoadingSpinner from '../../LoadingSpinner';
+import FullScreenLoader from '../../FullScreenLoader';
 import { useNavigate } from 'react-router-dom';
 
 interface Room {
@@ -106,7 +106,7 @@ const CinemaRoomsModal: React.FC<CinemaRoomsModalProps> = ({ isOpen, onClose, ci
                 <div className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]">
                     {loading ? (
                         <div className="flex justify-center py-8">
-                            <LoadingSpinner />
+                            <FullScreenLoader variant="inline" text="Đang tải danh sách phòng..." />
                         </div>
                     ) : rooms.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

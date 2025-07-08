@@ -7,7 +7,7 @@ import '../styles/MovieManagement.css';
 import { motion } from 'framer-motion';
 import { movieService } from '../../../services/movieService';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 
 const EditMovie: React.FC = () => {
   const navigate = useNavigate();
@@ -99,7 +99,7 @@ const EditMovie: React.FC = () => {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="flex flex-col items-center">
-          <LoadingSpinner />
+          <FullScreenLoader />
           <p className="mt-4 text-white">Đang tải thông tin phim...</p>
         </div>
       </div>

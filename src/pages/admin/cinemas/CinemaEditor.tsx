@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { cinemaService } from '../../../services/cinemaService';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import { ArrowLeftIcon, BuildingOfficeIcon, MapPinIcon, PhoneIcon, EnvelopeIcon } from '@heroicons/react/24/outline';
 import type { Cinema } from '../../../types/cinema';
 
@@ -211,7 +211,7 @@ const CinemaEditor: React.FC = () => {
     if (loading) {
         return (
             <div className="w-full h-full flex items-center justify-center p-10">
-                <LoadingSpinner />
+                <FullScreenLoader />
             </div>
         );
     }

@@ -4,7 +4,7 @@ import { toast } from 'react-hot-toast';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
 import CinemaRoomForm from '../../../components/admin/forms/CinemaRoomForm';
 import type { CinemaRoom, CinemaRoomFormData } from '../../../types/cinemaRoom';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 
 const CinemaRoomEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -81,7 +81,7 @@ const CinemaRoomEditor: React.FC = () => {
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return <FullScreenLoader text="Đang tải thông tin phòng chiếu..." />;
   }
 
   return (

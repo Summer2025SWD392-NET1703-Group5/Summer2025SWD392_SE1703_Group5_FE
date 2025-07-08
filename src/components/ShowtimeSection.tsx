@@ -5,7 +5,7 @@ import type { Cinema } from '../types/cinema';
 import type { Showtime } from '../types/showtime';
 import { getShowtimeSeatsInfo } from '../services/showtimeService';
 import type { ShowtimeSeatsInfo } from '../services/showtimeService';
-import LoadingSpinner from './LoadingSpinner';
+
 import AuthModal from './AuthModal';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import { formatTime as formatTimeUtil } from '../utils/timeFormatter';

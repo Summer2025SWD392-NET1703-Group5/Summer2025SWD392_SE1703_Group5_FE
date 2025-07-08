@@ -10,7 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Cinema } from '../types/cinema';
 import { sampleCinemas } from '../data/cinema';
 import { cinemaService } from '../services/cinemaService';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 import toast from 'react-hot-toast';
 
 // Define a type for the frontend cinema display that includes additional fields
@@ -313,28 +313,7 @@ const CinemaDetailPage: React.FC = () => {
     : {};
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen bg-black pt-20">
-        <div className="fixed inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-br from-black via-slate-900 to-black" />
-          <div className="absolute top-20 left-20 w-72 h-72 bg-[#FFD875]/10 rounded-full filter blur-3xl animate-pulse" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#FFD875]/5 rounded-full filter blur-3xl animate-pulse animation-delay-2000" />
-        </div>
-        <div className="flex items-center justify-center min-h-screen relative z-10">
-          <motion.div
-            className="text-center"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="relative mb-6">
-              <div className="w-16 h-16 border-4 border-[#FFD875]/20 border-t-[#FFD875] rounded-full animate-spin mx-auto"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-[#FFD875]/50 rounded-full animate-spin animation-delay-150 mx-auto"></div>
-            </div>
-            <p className="text-slate-400 text-lg">Đang tải thông tin rạp chiếu phim...</p>
-          </motion.div>
-        </div>
-      </div>
-    );
+    return <FullScreenLoader text="Đang tải thông tin rạp chiếu phim..." />;
   }
 
   if (error) {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, FilmIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { cinemaService } from '../../../services/cinemaService';
-import LoadingSpinner from '../../LoadingSpinner';
+import FullScreenLoader from '../../FullScreenLoader';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -156,7 +156,7 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
 
                     {loading ? (
                         <div className="flex justify-center py-8">
-                            <LoadingSpinner />
+                            <FullScreenLoader variant="inline" text="Đang tải lịch chiếu..." />
                         </div>
                     ) : Object.values(showtimesByMovie).length > 0 ? (
                         <div className="space-y-6">

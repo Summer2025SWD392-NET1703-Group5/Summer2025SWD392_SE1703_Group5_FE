@@ -16,7 +16,7 @@ import { seatLayoutService } from '../../../services/seatLayoutService';
 import type { ApiResponse } from '../../../services/seatLayoutService';
 import RoomSeatMap from '../../../pages/admin/cinema-rooms/RoomSeatMap';
 import type { SeatMap, SeatType } from '../../../types/seatLayout';
-import LoadingSpinner from '../../LoadingSpinner';
+import FullScreenLoader from '../../FullScreenLoader';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
 import { cinemaService } from '../../../services/cinemaService';
 import type { CinemaRoom } from '../../../types/cinemaRoom';
@@ -422,7 +422,7 @@ const SeatLayoutManager: React.FC<SeatLayoutManagerProps> = ({
     if (loading) {
         return (
             <div className="flex justify-center items-center h-64">
-                <LoadingSpinner />
+                <FullScreenLoader variant="inline" text="Đang tải sơ đồ ghế..." />
             </div>
         );
     }

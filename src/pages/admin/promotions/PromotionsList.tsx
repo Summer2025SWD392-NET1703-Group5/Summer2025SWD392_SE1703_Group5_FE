@@ -21,7 +21,7 @@ import {
   BanknotesIcon,
   CubeIcon
 } from '@heroicons/react/24/outline';
-import LoadingSpinner from '../../../components/LoadingSpinner';
+import FullScreenLoader from '../../../components/FullScreenLoader';
 import toast from 'react-hot-toast';
 import { getAllPromotions, deletePromotion } from '../../../services/admin/promotionManagementServices';
 import type { Promotion } from '../../../services/admin/promotionManagementServices';
@@ -304,7 +304,7 @@ const PromotionsList: React.FC = () => {
         {/* Content */}
         {loading ? (
           <div className="flex justify-center items-center py-12">
-            <LoadingSpinner size="large" />
+            <FullScreenLoader size="large" />
           </div>
         ) : error ? (
           <motion.div

@@ -3,7 +3,7 @@ import MovieGrid from '../components/MovieGrid';
 import PageTransition from '../components/PageTransition';
 import { movieService } from '../services/movieService';
 import type { Movie } from '../types';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 
 const MoviesPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'now-playing' | 'coming-soon'>('now-playing');
@@ -129,9 +129,7 @@ const MoviesPage: React.FC = () => {
 
           {/* Loading State */}
           {loading ? (
-            <div className="flex justify-center py-20">
-              <LoadingSpinner />
-            </div>
+            <FullScreenLoader text="Đang tải danh sách phim..." />
           ) : (
             /* Movie Grid */
             <MovieGrid

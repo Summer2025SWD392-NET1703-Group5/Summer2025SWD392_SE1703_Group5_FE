@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import type { Cinema } from '../types/cinema';
 import { cinemaService } from '../services/cinemaService';
 import toast from 'react-hot-toast';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 
 // Define a type for the frontend cinema display that includes additional fields from the sample data
 interface CinemaDisplay extends Cinema {
@@ -238,17 +238,7 @@ const CinemaListPage: React.FC = () => {
 
         {/* Loading State */}
         {isLoading ? (
-          <motion.div
-            className="flex flex-col items-center justify-center py-12"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-          >
-            <div className="relative">
-              <div className="w-16 h-16 border-4 border-[#FFD875]/20 border-t-[#FFD875] rounded-full animate-spin"></div>
-              <div className="absolute inset-0 w-16 h-16 border-4 border-transparent border-t-[#FFD875]/50 rounded-full animate-spin animation-delay-150"></div>
-            </div>
-            <p className="text-slate-400 mt-6 text-lg">Đang tải danh sách rạp chiếu phim...</p>
-          </motion.div>
+          <FullScreenLoader text="Đang tải danh sách rạp chiếu phim..." />
         ) : error ? (
           <motion.div
             className="bg-red-500/10 border border-red-500/20 rounded-2xl p-8 text-center backdrop-blur-md"

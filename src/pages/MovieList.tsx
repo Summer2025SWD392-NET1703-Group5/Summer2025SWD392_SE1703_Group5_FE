@@ -22,7 +22,7 @@ import Header from '../components/Header';
 import Breadcrumb from '../components/Breadcrumb';
 import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
-import LoadingSpinner from '../components/LoadingSpinner';
+import FullScreenLoader from '../components/FullScreenLoader';
 import type { Movie, FilterOptions } from '../types';
 import { movieService } from '../services/movieService';
 import './styles/MovieList.css';
@@ -192,7 +192,7 @@ const MovieList: React.FC = () => {
         startTime: showtime.startTime || showtime.Start_Time || '',
         endTime: showtime.endTime || showtime.End_Time || '',
         showDate: showtime.showDate || showtime.Show_Date || '',
-        price: showtime.price || showtime.Base_Price || 90000,
+        price: showtime.price || showtime.Base_Price,
         availableSeats: showtime.availableSeats || showtime.Available_Seats || 0,
         totalSeats: showtime.totalSeats || showtime.Total_Seats || 100,
         cinemaName: showtime.cinemaName || showtime.Cinema_Name || '',
@@ -363,7 +363,7 @@ const MovieList: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900">
         <Header />
         <div className="pt-20">
-          <LoadingSpinner />
+          <FullScreenLoader />
         </div>
       </div>
     );
