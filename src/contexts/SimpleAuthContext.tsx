@@ -3,6 +3,7 @@ import React, { createContext, useContext, useState, useEffect, type ReactNode }
 import type { User, LoginCredentials, RegisterData } from '../types/auth';
 import { authService } from '../services/authService';
 import { userService } from '../services/userService';
+import { bookingService } from '../services/bookingService';
 
 interface AuthContextType {
     user: User | null;
@@ -74,8 +75,90 @@ export const SimpleAuthProvider = ({ children }: { children: ReactNode }) => {
         setError(null);
         try {
             const userData = await authService.login(credentials);
+
+            // 🔥 Clear all booking sessions when user changes (but preserve pending booking info)
+            console.log('🧹 [AUTH] Clearing all booking sessions for new user login');
+            Object.keys(sessionStorage).forEach(key => {
+                if ((key.startsWith('booking_session_') ||
+                    key.startsWith('payment_state_') ||
+                    key.includes('booking') ||
+                    key.includes('payment')) &&
+                    key !== 'has_pending_booking') { // ← Preserve pending booking info
+                    console.log(`🗑️ [AUTH] Removing session key: ${key}`);
+                    sessionStorage.removeItem(key);
+                }
+            });
+
             setUser(userData);
             setIsAuthenticated(true);
+
+            // 🔍 Check for pending bookings after successful login
+            console.log('🔍 [AUTH] Checking for pending bookings after login');
+            try {
+                const pendingResult = await bookingService.checkPendingBookings();
+                if (pendingResult) {
+                    console.log('📋 [AUTH] Found pending booking:', pendingResult);
+
+                    if (pendingResult.hasPendingBooking) {
+                        // Có pending booking nhưng chỉ có thông tin cơ bản từ error message
+                        console.log(`🎬 [AUTH] User has pending booking for movie: ${pendingResult.movieName}`);
+                        console.log(`⏰ [AUTH] Remaining time: ${pendingResult.remainingMinutes} minutes`);
+
+                        // Set flag để BookingPage biết có pending booking
+                        sessionStorage.setItem('has_pending_booking', JSON.stringify({
+                            movieName: pendingResult.movieName,
+                            remainingMinutes: pendingResult.remainingMinutes,
+                            message: pendingResult.message
+                        }));
+                    } else {
+                        // Có full thông tin pending booking
+                        const bookingSession = {
+                            id: `booking-${Date.now()}`,
+                            bookingId: pendingResult.Booking_ID,
+                            movieId: String(pendingResult.Movie_ID || '1'), // 🔧 Đảm bảo có movieId
+                            cinemaId: '1', // Default cinema ID
+                            showtimeId: String(pendingResult.Showtime_ID), // 🔧 Đảm bảo có showtimeId
+                            selectedSeats: pendingResult.Seats || pendingResult.seats || [], // 🔧 Sử dụng đúng field name
+                            totalPrice: pendingResult.Total_Amount,
+                            movieName: pendingResult.Movie_Name,
+                            showDate: pendingResult.Show_Date,
+                            startTime: pendingResult.Start_Time,
+                            roomName: pendingResult.Room_Name,
+                            timestamp: Date.now(),
+                            expiresAt: new Date(pendingResult.Payment_Deadline)
+                        };
+
+                        const showtimeIdStr = String(pendingResult.Showtime_ID);
+                        const bookingIdStr = String(pendingResult.Booking_ID);
+
+                        // 🔧 Lưu với cả 2 key để đảm bảo tìm được
+                        sessionStorage.setItem(`booking_session_${showtimeIdStr}`, JSON.stringify(bookingSession));
+                        sessionStorage.setItem(`booking_session_${bookingIdStr}`, JSON.stringify(bookingSession));
+                        console.log(`💾 [AUTH] Restored booking session for pending booking with keys: booking_session_${showtimeIdStr} and booking_session_${bookingIdStr}`);
+
+                        // 🎯 QUAN TRỌNG: Set flag để BookingPage biết có pending booking
+                        const deadlineTime = new Date(pendingResult.Payment_Deadline).getTime();
+                        const currentTime = new Date().getTime();
+                        const remainingMinutes = Math.ceil((deadlineTime - currentTime) / (1000 * 60));
+
+                        sessionStorage.setItem('has_pending_booking', JSON.stringify({
+                            movieName: pendingResult.Movie_Name,
+                            remainingMinutes: remainingMinutes,
+                            message: 'Bạn có đơn đặt vé chưa thanh toán',
+                            bookingId: pendingResult.Booking_ID,
+                            showtimeId: pendingResult.Showtime_ID,
+                            movieId: pendingResult.Movie_ID
+                        }));
+                        console.log('🎯 [AUTH] Set has_pending_booking flag for BookingPage redirect');
+                    }
+                } else {
+                    console.log('📭 [AUTH] No pending bookings found');
+                }
+            } catch (error) {
+                console.error('❌ [AUTH] Error checking pending bookings:', error);
+                // Don't throw error, just log it
+            }
+
         } catch (error: any) {
             setError(error.message || 'Login failed');
             throw error;
@@ -100,6 +183,19 @@ export const SimpleAuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     const logout = () => {
+        // 🔥 Clear all booking sessions when user logs out (but preserve pending booking info)
+        console.log('🧹 [AUTH] Clearing all booking sessions for logout');
+        Object.keys(sessionStorage).forEach(key => {
+            if ((key.startsWith('booking_session_') ||
+                key.startsWith('payment_state_') ||
+                key.includes('booking') ||
+                key.includes('payment')) &&
+                key !== 'has_pending_booking') { // ← Preserve pending booking info
+                console.log(`🗑️ [AUTH] Removing session key: ${key}`);
+                sessionStorage.removeItem(key);
+            }
+        });
+
         authService.logout();
         setUser(null);
         setIsAuthenticated(false);

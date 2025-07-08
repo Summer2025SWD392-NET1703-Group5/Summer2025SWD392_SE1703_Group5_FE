@@ -18,6 +18,7 @@ import type { BookingSession } from '../types';
 import { toast } from 'react-hot-toast';
 import api from '../config/api';
 import { bookingService } from '../services/bookingService';
+import { promotionService } from '../services/promotionService';
 
 const mockPromoCodes = [
   { code: 'CINEMA10', description: 'Giảm 10,000đ', value: 10000 },
@@ -61,6 +62,9 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   const [userPoints, setUserPoints] = useState<number>(0);
   const [isLoadingPoints, setIsLoadingPoints] = useState<boolean>(false);
   const [isApplyingPromo, setIsApplyingPromo] = useState<boolean>(false);
+  const [availablePromotions, setAvailablePromotions] = useState<any[]>([]);
+  const [isLoadingPromotions, setIsLoadingPromotions] = useState<boolean>(false);
+  const [showPromotionDropdown, setShowPromotionDropdown] = useState<boolean>(false);
 
   // Member search states for staff
   const [memberSearchQuery, setMemberSearchQuery] = useState<string>('');
@@ -101,7 +105,114 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     };
 
     fetchUserPoints();
-  }, [user]);
+    fetchAvailablePromotions();
+  }, [user, bookingSession.bookingId]);
+
+  // 🎯 Lấy danh sách mã khuyến mãi phù hợp
+  const fetchAvailablePromotions = async () => {
+    if (!bookingSession.bookingId) {
+      console.log('Chưa có booking ID, bỏ qua việc lấy mã khuyến mãi');
+      return;
+    }
+
+    try {
+      setIsLoadingPromotions(true);
+      console.log('Đang lấy mã khuyến mãi phù hợp cho booking:', bookingSession.bookingId);
+
+      const promotions = await promotionService.getAvailablePromotionsForBooking(bookingSession.bookingId);
+      console.log('🎯 Raw promotions từ service:', promotions);
+      console.log('🎯 Kiểu dữ liệu promotions:', typeof promotions, Array.isArray(promotions));
+
+      setAvailablePromotions(promotions);
+
+      console.log(`🎯 Đã set availablePromotions với ${promotions.length} mã:`, promotions);
+      console.log('🎯 State availablePromotions sau khi set:', availablePromotions);
+    } catch (error) {
+      console.error('Lỗi khi lấy mã khuyến mãi:', error);
+      setAvailablePromotions([]);
+    } finally {
+      setIsLoadingPromotions(false);
+    }
+  };
+
+  // 🎯 Áp dụng mã khuyến mãi từ dropdown
+  const handleApplyPromotionFromDropdown = async (promotionCode: string) => {
+    setPromoCode(promotionCode);
+    setShowPromotionDropdown(false);
+
+    // Tự động áp dụng mã
+    if (!bookingSession.bookingId) {
+      setPromoError('Không tìm thấy thông tin đơn hàng');
+      return;
+    }
+
+    try {
+      setIsApplyingPromo(true);
+      setPromoError(null);
+
+      console.log('Áp dụng mã giảm giá từ dropdown:', {
+        bookingId: bookingSession.bookingId,
+        promoCode: promotionCode
+      });
+
+      const response = await bookingService.applyPromotion({
+        bookingId: bookingSession.bookingId,
+        promoCode: promotionCode
+      });
+
+      console.log('Kết quả áp dụng mã giảm giá:', response);
+
+      if (response.success) {
+        setAppliedDiscount(response.discount_amount || 0);
+        setPromoCode('');
+        toast.success(`Đã áp dụng mã giảm giá: -${(response.discount_amount || 0).toLocaleString('vi-VN')}đ`);
+
+        // Refresh danh sách mã khuyến mãi
+        await fetchAvailablePromotions();
+      } else {
+        setPromoError(response.message || 'Không thể áp dụng mã giảm giá');
+      }
+    } catch (error: any) {
+      console.error('Lỗi khi áp dụng mã giảm giá:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể áp dụng mã giảm giá';
+      setPromoError(errorMessage);
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
+
+  // 🎯 Xóa mã khuyến mãi đã áp dụng
+  const handleRemovePromotion = async () => {
+    if (!bookingSession.bookingId) {
+      return;
+    }
+
+    try {
+      setIsApplyingPromo(true);
+      setPromoError(null);
+
+      console.log('Xóa mã giảm giá cho booking:', bookingSession.bookingId);
+
+      const response = await bookingService.removePromotion(bookingSession.bookingId);
+
+      if (response.success) {
+        setAppliedDiscount(0);
+        setPromoCode('');
+        toast.success('Đã xóa mã giảm giá');
+
+        // Refresh danh sách mã khuyến mãi
+        await fetchAvailablePromotions();
+      } else {
+        setPromoError(response.message || 'Không thể xóa mã giảm giá');
+      }
+    } catch (error: any) {
+      console.error('Lỗi khi xóa mã giảm giá:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Không thể xóa mã giảm giá';
+      setPromoError(errorMessage);
+    } finally {
+      setIsApplyingPromo(false);
+    }
+  };
 
   // 🎯 Xử lý áp dụng mã giảm giá
   const handleApplyPromoCode = async () => {
@@ -322,15 +433,43 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   // 🎬 Load dữ liệu movie từ API hoặc sessionStorage
   useEffect(() => {
     const loadMovieData = async () => {
-      if (!bookingSession?.movieId) {
-        console.log('⚠️ Không có movie ID');
+      // 🔧 Thử lấy movieId từ nhiều nguồn khác nhau
+      let movieId = bookingSession?.movieId;
+
+      if (!movieId) {
+        // Thử lấy từ sessionStorage với các key khác nhau
+        const possibleKeys = [
+          `booking_session_${bookingSession?.bookingId}`,
+          `booking_session_${bookingSession?.showtimeId}`,
+          'has_pending_booking'
+        ];
+
+        for (const key of possibleKeys) {
+          try {
+            const savedData = sessionStorage.getItem(key);
+            if (savedData) {
+              const parsedData = JSON.parse(savedData);
+              if (parsedData.movieId) {
+                movieId = parsedData.movieId;
+                console.log(`🔍 Found movieId from ${key}: ${movieId}`);
+                break;
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error parsing ${key}:`, error);
+          }
+        }
+      }
+
+      if (!movieId) {
+        console.log('⚠️ Không tìm thấy movie ID từ bất kỳ nguồn nào');
         setMovie(null);
         setIsLoadingMovie(false);
         return;
       }
 
       // 1. Thử lấy từ sessionStorage trước
-      const sessionKey = `booking_session_${bookingSession.bookingId}`;
+      const sessionKey = `booking_session_${bookingSession?.bookingId}`;
       const savedData = sessionStorage.getItem(sessionKey);
 
       if (savedData) {
@@ -351,9 +490,9 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
       // 2. Nếu không có, fetch từ API
       try {
         setIsLoadingMovie(true);
-        console.log(`🎬 Đang tải thông tin phim ID: ${bookingSession.movieId}`);
+        console.log(`🎬 Đang tải thông tin phim ID: ${movieId}`);
 
-        const response = await api.get(`/movies/${bookingSession.movieId}`);
+        const response = await api.get(`/movies/${movieId}`);
         console.log('✅ Thông tin phim từ API:', response.data);
         setMovie(response.data);
       } catch (error) {
@@ -365,13 +504,51 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     };
 
     loadMovieData();
-  }, [bookingSession?.movieId, bookingSession?.bookingId]);
+  }, [bookingSession?.movieId, bookingSession?.bookingId, bookingSession?.showtimeId]);
 
   // 🎭 Load dữ liệu showtime từ API
   useEffect(() => {
     const loadShowtimeData = async () => {
-      if (!bookingSession?.showtimeId) {
-        console.log('⚠️ Không có showtime ID');
+      // 🔧 Thử lấy showtimeId từ nhiều nguồn khác nhau
+      let showtimeId = bookingSession?.showtimeId;
+
+      if (!showtimeId) {
+        // Thử lấy từ URL
+        const urlParts = window.location.pathname.split('/');
+        const urlShowtimeId = urlParts[urlParts.length - 1];
+        if (urlShowtimeId && !isNaN(Number(urlShowtimeId))) {
+          showtimeId = urlShowtimeId;
+          console.log(`🔍 Found showtimeId from URL: ${showtimeId}`);
+        }
+      }
+
+      if (!showtimeId) {
+        // Thử lấy từ sessionStorage với các key khác nhau
+        const possibleKeys = [
+          `booking_session_${bookingSession?.bookingId}`,
+          `booking_session_${bookingSession?.showtimeId}`,
+          'has_pending_booking'
+        ];
+
+        for (const key of possibleKeys) {
+          try {
+            const savedData = sessionStorage.getItem(key);
+            if (savedData) {
+              const parsedData = JSON.parse(savedData);
+              if (parsedData.showtimeId) {
+                showtimeId = parsedData.showtimeId;
+                console.log(`🔍 Found showtimeId from ${key}: ${showtimeId}`);
+                break;
+              }
+            }
+          } catch (error) {
+            console.warn(`⚠️ Error parsing ${key}:`, error);
+          }
+        }
+      }
+
+      if (!showtimeId) {
+        console.log('⚠️ Không tìm thấy showtime ID từ bất kỳ nguồn nào');
         setShowtime(null);
         setIsLoadingShowtime(false);
         return;
@@ -379,9 +556,9 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
       try {
         setIsLoadingShowtime(true);
-        console.log(`🎭 Đang tải thông tin showtime ID: ${bookingSession.showtimeId}`);
+        console.log(`🎭 Đang tải thông tin showtime ID: ${showtimeId}`);
 
-        const response = await api.get(`/showtimes/${bookingSession.showtimeId}`);
+        const response = await api.get(`/showtimes/${showtimeId}`);
         console.log('✅ Thông tin showtime từ API:', response.data);
         setShowtime(response.data);
       } catch (error) {
@@ -393,7 +570,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     };
 
     loadShowtimeData();
-  }, [bookingSession?.showtimeId]);
+  }, [bookingSession?.showtimeId, bookingSession?.bookingId]);
 
   // 🔄 Restore user data từ localStorage và auto-select payment method
   useEffect(() => {
@@ -502,9 +679,48 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  // 🔧 Xử lý selectedSeats - có thể là string hoặc array
+  const processedSeats = React.useMemo(() => {
+    console.log('🔧 [PAYMENT] Processing seats:', {
+      selectedSeats: bookingSession.selectedSeats,
+      type: typeof bookingSession.selectedSeats,
+      isArray: Array.isArray(bookingSession.selectedSeats)
+    });
+
+    if (!bookingSession.selectedSeats) return [];
+
+    // Nếu là string, convert thành array
+    if (typeof bookingSession.selectedSeats === 'string') {
+      const seatLabels = bookingSession.selectedSeats.split(',').map(s => s.trim()).filter(Boolean);
+      const processedArray = seatLabels.map(seatLabel => {
+        const row = seatLabel.charAt(0);
+        const number = parseInt(seatLabel.slice(1));
+        return {
+          id: seatLabel,
+          row: row,
+          number: number,
+          type: 'standard' as const,
+          price: 90000,
+          status: 'selected' as const
+        };
+      });
+      console.log('✅ [PAYMENT] Converted string to seats:', processedArray);
+      return processedArray;
+    }
+
+    // Nếu đã là array, return as is
+    if (Array.isArray(bookingSession.selectedSeats)) {
+      console.log('✅ [PAYMENT] Using existing array:', bookingSession.selectedSeats);
+      return bookingSession.selectedSeats;
+    }
+
+    console.log('⚠️ [PAYMENT] Unknown selectedSeats format, returning empty array');
+    return [];
+  }, [bookingSession.selectedSeats]);
+
   // 💰 Tính toán giá tiền với fallback
   const subtotal = bookingSession.totalPrice ||
-    (bookingSession.selectedSeats?.reduce((sum, seat) => sum + (seat.price || 90000), 0) || 0);
+    (processedSeats?.reduce((sum, seat) => sum + (seat.price || 90000), 0) || 0);
   const serviceFee = 0;
   const total = Math.max(0, subtotal + serviceFee - appliedDiscount - appliedPointsValue);
 
@@ -544,8 +760,8 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
         toast.success('Thanh toán tiền mặt thành công!');
 
         // Xóa session timer khi thanh toán thành công
-        if (bookingSession && bookingSession.selectedSeats) {
-          const seatIds = bookingSession.selectedSeats.map(seat => seat.id || seat.seatId || 'unknown').join('_');
+        if (bookingSession && processedSeats) {
+          const seatIds = processedSeats.map(seat => seat.id || seat.seatId || 'unknown').join('_');
           const sessionKey = `payment_timer_${bookingSession.showtimeId}_${seatIds}`;
           sessionStorage.removeItem(sessionKey);
           console.log(`Thanh toán thành công - đã xóa session timer: ${sessionKey}`);
@@ -936,8 +1152,8 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
 
 
-            {/* Promo Code Section - Chỉ hiển thị khi có member */}
-            {selectedMember && (
+            {/* Promo Code Section - Hiển thị cho user thường hoặc staff có member được chọn */}
+            {((!['Staff', 'Admin', 'Manager'].includes(user?.role || user?.Role)) || selectedMember) && (
               <div className="bg-gradient-to-br from-slate-800/80 to-slate-900/80 backdrop-blur-xl rounded-3xl p-8 border border-slate-700/30 shadow-2xl">
                 <div className="flex items-center gap-3 mb-8">
                   <svg className="w-6 h-6 text-[#FFD875]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -965,13 +1181,100 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
                 </button>
               </div>
 
+              {/* Dropdown mã khuyến mãi phù hợp */}
+              {(() => {
+                console.log('🎯 Kiểm tra điều kiện dropdown:', {
+                  availablePromotionsLength: availablePromotions.length,
+                  availablePromotions: availablePromotions,
+                  appliedDiscount: appliedDiscount,
+                  shouldShow: availablePromotions.length > 0 && !appliedDiscount
+                });
+                return availablePromotions.length > 0 && !appliedDiscount;
+              })() && (
+                <div className="mb-4">
+                  <button
+                    onClick={() => setShowPromotionDropdown(!showPromotionDropdown)}
+                    className="flex items-center gap-2 text-[#FFD875] hover:text-[#FFA500] text-sm font-medium transition-colors"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                    Mã khuyến mãi phù hợp ({availablePromotions.length})
+                  </button>
+
+                  {showPromotionDropdown && (
+                    <div className="mt-3 bg-slate-700/50 border border-slate-600 rounded-lg max-h-48 overflow-y-auto">
+                      {availablePromotions.map((promo) => (
+                        <div
+                          key={promo.id}
+                          className="p-3 border-b border-slate-600/50 last:border-b-0 hover:bg-slate-600/30 transition-colors"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="font-mono text-[#FFD875] font-medium">
+                                  {promo.code}
+                                </span>
+                                {promo.isCurrentlyApplied && (
+                                  <span className="text-xs bg-green-500/20 text-green-400 px-2 py-1 rounded">
+                                    Đang áp dụng
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-sm text-gray-300 mb-1">
+                                {promo.title}
+                              </div>
+                              <div className="text-xs text-[#FFD875]">
+                                Giảm {promo.discountAmount?.toLocaleString('vi-VN')}đ
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {promo.isCurrentlyApplied ? (
+                                <button
+                                  onClick={handleRemovePromotion}
+                                  disabled={isApplyingPromo}
+                                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Xóa mã"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                  </svg>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => handleApplyPromotionFromDropdown(promo.code)}
+                                  disabled={isApplyingPromo}
+                                  className="px-3 py-1 bg-[#FFD875] hover:bg-[#FFA500] text-slate-900 text-xs font-medium rounded transition-colors disabled:opacity-50"
+                                >
+                                  {isApplyingPromo ? '...' : 'Áp dụng'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
               {promoError && (
                 <div className="text-red-400 text-sm mb-4">{promoError}</div>
               )}
 
               {appliedDiscount > 0 && (
-                <div className="bg-[#FFD875]/20 border border-[#FFD875]/50 rounded-lg p-3 text-[#FFD875] text-sm">
-                  ✅ Đã áp dụng mã giảm giá: -{appliedDiscount.toLocaleString('vi-VN')}đ
+                <div className="bg-[#FFD875]/20 border border-[#FFD875]/50 rounded-lg p-3 text-[#FFD875] text-sm flex items-center justify-between">
+                  <span>✅ Đã áp dụng mã giảm giá: -{appliedDiscount.toLocaleString('vi-VN')}đ</span>
+                  <button
+                    onClick={handleRemovePromotion}
+                    disabled={isApplyingPromo}
+                    className="p-1 text-[#FFD875] hover:text-[#FFA500] transition-colors disabled:opacity-50"
+                    title="Xóa mã giảm giá"
+                  >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
                 </div>
               )}
               </div>
@@ -1124,7 +1427,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
               <div className="mb-6 pb-4 border-b border-slate-700/50">
                 <h4 className="font-semibold text-white text-sm mb-3">Ghế đã chọn</h4>
                 <div className="space-y-2">
-                  {bookingSession.selectedSeats?.map((seat, index) => (
+                  {processedSeats?.map((seat, index) => (
                     <div key={index} className="flex justify-between items-center py-2">
                       <div className="flex items-center gap-2">
                         <div className={`w-6 h-6 rounded flex items-center justify-center text-xs font-bold ${
@@ -1347,7 +1650,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
             });
           }}
           amount={total}
-          ticketInfo={bookingSession.selectedSeats?.map(seat => `${seat.row}${seat.number}`).join(', ')}
+          ticketInfo={processedSeats?.map(seat => `${seat.row}${seat.number}`).join(', ')}
           skipConfirmation={true}
           isStaff={['Staff', 'Admin', 'Manager'].includes(user?.role || user?.Role)}
         />
