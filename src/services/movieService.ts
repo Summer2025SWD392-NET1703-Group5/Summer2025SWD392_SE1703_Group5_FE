@@ -131,8 +131,6 @@ export const movieService = {
             '/movie'
         ];
 
-        let lastError = null;
-
         // Thử từng endpoint cho đến khi thành công
         for (const endpoint of endpoints) {
             try {
@@ -147,8 +145,8 @@ export const movieService = {
                 const movies = processApiResponse(response.data);
                 return movies;
             } catch (error) {
-                lastError = error;
                 // Tiếp tục với endpoint tiếp theo
+                console.error(`movieService.getMovies - Error fetching from ${endpoint}:`, error);
             }
         }
 
@@ -380,8 +378,6 @@ export const movieService = {
             '/movies/status/now-showing'
         ];
 
-        let lastError = null;
-
         // Thử từng endpoint cho đến khi thành công
         for (const endpoint of endpoints) {
             try {
@@ -401,8 +397,8 @@ export const movieService = {
 
                 return nowShowingMovies;
             } catch (error) {
-                lastError = error;
                 // Tiếp tục với endpoint tiếp theo
+                console.error(`movieService.getNowShowingMovies - Error fetching from ${endpoint}:`, error);
             }
         }
 
@@ -424,8 +420,6 @@ export const movieService = {
             '/movies/status/coming-soon'
         ];
 
-        let lastError = null;
-
         // Thử từng endpoint cho đến khi thành công
         for (const endpoint of endpoints) {
             try {
@@ -445,8 +439,8 @@ export const movieService = {
 
                 return comingSoonMovies;
             } catch (error) {
-                lastError = error;
                 // Tiếp tục với endpoint tiếp theo
+                console.error(`movieService.getComingSoonMovies - Error fetching from ${endpoint}:`, error);
             }
         }
 
@@ -613,7 +607,7 @@ export const movieService = {
                     if (movieGenre) {
                         // Split by comma if multiple genres
                         const genres = movieGenre.split(',').map((g: string) => g.trim());
-                        genres.forEach(genre => {
+                        genres.forEach((genre: string) => {
                             if (genre) genreSet.add(genre);
                         });
                     }

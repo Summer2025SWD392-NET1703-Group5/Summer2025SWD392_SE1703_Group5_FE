@@ -223,7 +223,7 @@ const AnimatedHeroBackground: React.FC<AnimatedHeroBackgroundProps> = ({ childre
                 ))}
             </svg>
 
-            <style jsx>{`
+            <style>{`
         @keyframes slow-zoom {
           0% {
             transform: scale(1);

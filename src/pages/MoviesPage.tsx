@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import MovieGrid from '../components/MovieGrid';
 import PageTransition from '../components/PageTransition';
 import { movieService } from '../services/movieService';
-import type { Movie } from '../types';
+import type { Movie } from '../types/movie';
 import FullScreenLoader from '../components/FullScreenLoader';
 
 const MoviesPage: React.FC = () => {
@@ -58,11 +58,11 @@ const MoviesPage: React.FC = () => {
       console.log('Processing movie:', movie);
 
       // Xử lý nhiều cấu trúc dữ liệu khác nhau
-      const id = movie.id || movie.movieId || movie.Movie_ID || '';
-      const title = movie.title || movie.movieName || movie.Movie_Name || '';
+      const id = movie.id || '';
+      const title = movie.title || '';
       const originalTitle = movie.englishTitle || movie.originalTitle || '';
-      const posterUrl = movie.poster || movie.posterUrl || movie.Poster_URL || '';
-      const ageRating = movie.rating || movie.ageRating || movie.Rating || '';
+      const posterUrl = movie.poster || '';
+      const ageRating = movie.ageRating || '';
 
       console.log('Formatted movie:', { id, title, originalTitle, posterUrl, ageRating });
 

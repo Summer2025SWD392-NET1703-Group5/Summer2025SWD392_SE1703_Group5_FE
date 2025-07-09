@@ -7,7 +7,7 @@ import FullScreenLoader from '../../../components/FullScreenLoader';
 import { getPromotionById, updatePromotion } from '../../../services/admin/promotionManagementServices';
 import type { Promotion, UpdatePromotionDto } from '../../../services/admin/promotionManagementServices';
 
-interface PromotionForm extends Omit<Promotion, 'Created_At' | 'Created_By' | 'Is_Expired' | 'Is_Active'> {
+interface PromotionForm extends Omit<Promotion, 'Created_At' | 'Created_By' | 'Is_Expired' | 'Is_Active' | 'Discount_Value' | 'Minimum_Purchase' | 'Maximum_Discount' | 'Usage_Limit'> {
   Discount_Value: number | '';
   Minimum_Purchase: number | '';
   Maximum_Discount: number | '';

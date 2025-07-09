@@ -1,6 +1,5 @@
 import React from 'react'
 import { Calendar, Star } from 'lucide-react'
-import { comingSoonMovies } from '../data/movies'
 
 const ComingSoon: React.FC = () => {
   return (
