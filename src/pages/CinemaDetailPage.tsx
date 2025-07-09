@@ -2,47 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  MapPin, Phone, Mail, Clock, Star, Car, Wifi, Utensils,
-  ChevronLeft, ChevronRight, Play, Calendar, Users, Globe,
-  ArrowLeft, Share2, Heart, Navigation, Info, Ticket, ExternalLink, Building2, Sparkles
+  MapPin, Clock, Car, Wifi, Utensils, Calendar, Globe,
+  ArrowLeft, Share2, Heart, Navigation, Info, Ticket, Building2, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Cinema } from '../types/cinema';
-import { sampleCinemas } from '../data/cinema';
 import { cinemaService } from '../services/cinemaService';
 import FullScreenLoader from '../components/FullScreenLoader';
 import toast from 'react-hot-toast';
-
-// Define a type for the frontend cinema display that includes additional fields
-interface CinemaDisplay extends Cinema {
-  coordinates?: {
-    lat: number;
-    lng: number;
-  };
-  images?: string[];
-  amenities?: string[];
-  facilities?: string[];
-  rating?: number;
-  operatingHours?: {
-    open: string;
-    close: string;
-  };
-  screens?: number;
-  totalSeats?: number;
-  ticketPrices?: {
-    standard: number;
-    vip: number;
-    couple?: number;
-  };
-  description?: string;
-  rooms?: {
-    id: number;
-    name: string;
-    type: string;
-    capacity: number;
-    status: string;
-  }[];
-}
 
 interface Movie {
   Movie_ID: number;
@@ -73,6 +40,7 @@ interface ShowtimeData {
   room_name?: string;
   room_type?: string;
   capacity_available?: number;
+  capacity_total?: number;
   movie_id?: number;
   movie_name?: string;
   duration?: number;
@@ -88,7 +56,6 @@ const CinemaDetailPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'info' | 'showtimes'>('info');
-  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
 
   // Showtimes states
@@ -216,24 +183,6 @@ const CinemaDetailPage: React.FC = () => {
       fetchShowtimes();
     }
   }, [selectedDate, activeTab]);
-
-  const getAmenityIcon = (amenity: string) => {
-    switch (amenity.toLowerCase()) {
-      case 'bãi đậu xe':
-      case 'bãi đậu xe miễn phí':
-        return <Car className="w-5 h-5" />;
-      case 'khu ẩm thực':
-      case 'khu ẩm thực đa dạng':
-        return <Utensils className="w-5 h-5" />;
-      case 'wifi miễn phí':
-      case 'wifi tốc độ cao':
-        return <Wifi className="w-5 h-5" />;
-      case 'website':
-        return <Globe className="w-5 h-5" />;
-      default:
-        return <Sparkles className="w-5 h-5" />;
-    }
-  };
 
   const handleShare = async () => {
     if (navigator.share) {
@@ -691,7 +640,7 @@ const CinemaDetailPage: React.FC = () => {
                             const roomName = showtime.Room_Name || showtime.room_name || 'Phòng chiếu';
 
                             // Get capacity with fallback - use real seat data if available
-                            const seatData = showtimeSeats[showtimeId?.toString()];
+                            const seatData = showtimeId ? showtimeSeats[showtimeId.toString()] : null;
                             let available = showtime.Capacity_Available ?? showtime.capacity_available ?? 0;
                             let total = showtime.Capacity_Total ?? showtime.capacity_total ?? 0;
                             let booked = 0;

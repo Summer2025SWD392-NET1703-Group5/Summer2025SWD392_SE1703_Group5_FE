@@ -2,7 +2,6 @@ import api from '../config/api';
 import type {
     Promotion,
     ApiPromotion,
-    PromotionDetail,
     PromotionValidationResult,
     PromotionApplicationResult,
     PromotionRemovalResult,

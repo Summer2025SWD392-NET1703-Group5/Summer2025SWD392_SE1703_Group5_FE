@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, Link, useNavigate } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   FunnelIcon,
@@ -12,15 +12,11 @@ import {
   CalendarIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
-  ClockIcon,
-  MapPinIcon,
-  EyeIcon,
-  TicketIcon
 } from '@heroicons/react/24/outline';
 import { StarIcon as StarSolid } from '@heroicons/react/24/solid';
 import Header from '../components/Header';
 import Breadcrumb from '../components/Breadcrumb';
-import MovieCard from '../components/MovieCard';
+
 import TrailerModal from '../components/TrailerModal';
 import FullScreenLoader from '../components/FullScreenLoader';
 import type { Movie, FilterOptions } from '../types';
@@ -49,6 +45,18 @@ interface CinemaInfo {
 }
 
 interface MovieWithShowtimes extends Movie {
+  // UI-specific fields for backward compatibility
+  englishTitle?: string;
+  backgroundImage?: string;
+  genres?: string[];
+  description?: string;
+  ageRating?: string;
+  isComingSoon?: boolean;
+  isHot?: boolean;
+  isNew?: boolean;
+  gallery?: string[];
+  reviews?: any[];
+  // Showtime-related fields
   showtimes?: ShowtimeInfo[];
   cinemas?: CinemaInfo[];
   showtimesLoading?: boolean;
@@ -56,7 +64,6 @@ interface MovieWithShowtimes extends Movie {
 
 const MovieList: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const navigate = useNavigate();
   const [nowShowingMovies, setNowShowingMovies] = useState<MovieWithShowtimes[]>([]);
   const [comingSoonMovies, setComingSoonMovies] = useState<MovieWithShowtimes[]>([]);
   const [loading, setLoading] = useState(true);
@@ -65,10 +72,6 @@ const MovieList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [error, setError] = useState<string | null>(null);
   const moviesPerPage = 24;
-
-  // State cho showtime modal
-  const [selectedMovieForShowtimes, setSelectedMovieForShowtimes] = useState<MovieWithShowtimes | null>(null);
-  const [showShowtimesModal, setShowShowtimesModal] = useState(false);
 
   const [filters, setFilters] = useState<FilterOptions>({
     genre: searchParams.get('genre') || '',
@@ -90,28 +93,41 @@ const MovieList: React.FC = () => {
 
         // Helper function to map API movie to UI movie format
         const mapApiMovieToUIMovie = (apiMovie: any): MovieWithShowtimes => {
+          const movieId = apiMovie.Movie_ID || apiMovie.id || 0;
+          const castArray = apiMovie.cast ? (typeof apiMovie.cast === 'string' ? apiMovie.cast.split(',').map((c: string) => c.trim()) : apiMovie.cast) : 
+                           (apiMovie.Cast ? (typeof apiMovie.Cast === 'string' ? apiMovie.Cast.split(',').map((c: string) => c.trim()) : apiMovie.Cast) : []);
+          const ratingValue = Number(apiMovie.ratingAverage || apiMovie.Average_Rating || apiMovie.rating || 0);
+          const durationValue = typeof apiMovie.duration === 'string' ? parseInt(apiMovie.duration) || 0 : (apiMovie.duration || 0);
+          
           return {
-            id: parseInt(apiMovie.id) || 0,
-            title: apiMovie.title || '',
-            englishTitle: apiMovie.originalTitle,
-            poster: apiMovie.poster || '',
-            backgroundImage: apiMovie.poster || '', // Use poster as background if not available
-            duration: apiMovie.duration ? `${apiMovie.duration} phút` : 'N/A',
-            genres: apiMovie.genre ? [apiMovie.genre] : [],
-            genre: apiMovie.genre,
-            director: apiMovie.director || '',
-            cast: apiMovie.cast ? (typeof apiMovie.cast === 'string' ? apiMovie.cast.split(',') : apiMovie.cast) : [],
-            description: apiMovie.synopsis || '',
-            releaseDate: apiMovie.releaseDate || '',
-            rating: apiMovie.ratingAverage || 0,
-            country: apiMovie.country || '',
-            language: apiMovie.language || '',
-            ageRating: apiMovie.rating || 'T13',
-            isComingSoon: apiMovie.status === 'coming-soon',
+            Movie_ID: movieId,
+            id: String(movieId),
+            title: apiMovie.title || apiMovie.Movie_Name || '',
+            poster: apiMovie.poster || apiMovie.Poster_URL || '',
+            duration: durationValue,
+            releaseDate: apiMovie.releaseDate || apiMovie.Release_Date || '',
+            premiereDate: apiMovie.premiereDate || apiMovie.Premiere_Date,
+            endDate: apiMovie.endDate || apiMovie.End_Date,
+            productionCompany: apiMovie.productionCompany || apiMovie.Production_Company,
+            director: apiMovie.director || apiMovie.Director || '',
+            cast: typeof castArray === 'object' ? castArray.join(', ') : String(castArray || ''),
+            genre: apiMovie.genre || apiMovie.Genre,
+            rating: ratingValue,
+            language: apiMovie.language || apiMovie.Language || '',
+            country: apiMovie.country || apiMovie.Country || '',
+            synopsis: apiMovie.synopsis || apiMovie.Synopsis || '',
+            trailerUrl: apiMovie.trailerLink || apiMovie.Trailer_Link || '',
+            status: apiMovie.status || apiMovie.Status || 'now-showing',
+            // UI-specific fields (for backward compatibility)
+            englishTitle: apiMovie.originalTitle || apiMovie.English_Title,
+            backgroundImage: apiMovie.poster || apiMovie.Poster_URL || '',
+            genres: apiMovie.genre ? [apiMovie.genre] : (apiMovie.Genre ? [apiMovie.Genre] : []),
+            description: apiMovie.synopsis || apiMovie.Synopsis || '',
+            ageRating: apiMovie.rating || apiMovie.Rating || 'T13',
+            isComingSoon: apiMovie.status === 'coming-soon' || apiMovie.Status === 'Coming Soon',
             isHot: false,
-            isNew: apiMovie.status === 'now-showing',
+            isNew: apiMovie.status === 'now-showing' || apiMovie.Status === 'Now Showing',
             gallery: [],
-            trailerUrl: apiMovie.trailerLink || '',
             reviews: [],
             // Initialize showtime fields
             showtimes: [],
@@ -123,14 +139,9 @@ const MovieList: React.FC = () => {
         // Fetch now showing movies
         try {
           const nowShowingData = await movieService.getNowShowingMovies();
-          if (nowShowingData && nowShowingData.length > 0) {
-            console.log('Kết quả API phim đang chiếu:', nowShowingData);
-            const mappedMovies = nowShowingData.map(mapApiMovieToUIMovie);
-            setNowShowingMovies(mappedMovies);
-          } else {
-            console.log('API không trả về dữ liệu phim đang chiếu');
-            setNowShowingMovies([]);
-          }
+          console.log('Kết quả API phim đang chiếu:', nowShowingData);
+          const mappedMovies = nowShowingData.map(mapApiMovieToUIMovie);
+          setNowShowingMovies(mappedMovies);
         } catch (err) {
           console.error('Lỗi khi tải danh sách phim đang chiếu:', err);
           setNowShowingMovies([]);
@@ -139,14 +150,9 @@ const MovieList: React.FC = () => {
         // Fetch coming soon movies
         try {
           const comingSoonData = await movieService.getComingSoonMovies();
-          if (comingSoonData && comingSoonData.length > 0) {
-            console.log('Kết quả API phim sắp chiếu:', comingSoonData);
-            const mappedMovies = comingSoonData.map(mapApiMovieToUIMovie);
-            setComingSoonMovies(mappedMovies);
-          } else {
-            console.log('API không trả về dữ liệu phim sắp chiếu');
-            setComingSoonMovies([]);
-          }
+          console.log('Kết quả API phim sắp chiếu:', comingSoonData);
+          const mappedMovies = comingSoonData.map(mapApiMovieToUIMovie);
+          setComingSoonMovies(mappedMovies);
         } catch (err) {
           console.error('Lỗi khi tải danh sách phim sắp chiếu:', err);
           setComingSoonMovies([]);
@@ -161,80 +167,6 @@ const MovieList: React.FC = () => {
 
     fetchMovies();
   }, []);
-
-  // Function to fetch showtimes and cinemas for a specific movie
-  const fetchMovieShowtimes = async (movieId: number) => {
-    try {
-      console.log(`Fetching showtimes for movie ${movieId}`);
-
-      // Update loading state
-      const updateMovieInState = (movies: MovieWithShowtimes[], movieId: number, updates: Partial<MovieWithShowtimes>) => {
-        return movies.map(movie =>
-          movie.id === movieId ? { ...movie, ...updates } : movie
-        );
-      };
-
-      setNowShowingMovies(prev => updateMovieInState(prev, movieId, { showtimesLoading: true }));
-      setComingSoonMovies(prev => updateMovieInState(prev, movieId, { showtimesLoading: true }));
-
-      // Fetch both showtimes and cinemas in parallel
-      const [showtimesData, cinemasData] = await Promise.all([
-        movieService.getMovieShowtimes(movieId),
-        movieService.getMovieCinemas(movieId)
-      ]);
-
-      console.log(`Showtimes for movie ${movieId}:`, showtimesData);
-      console.log(`Cinemas for movie ${movieId}:`, cinemasData);
-
-      // Process showtimes data
-      const processedShowtimes: ShowtimeInfo[] = showtimesData.map((showtime: any) => ({
-        id: showtime.id || showtime.Showtime_ID || '',
-        startTime: showtime.startTime || showtime.Start_Time || '',
-        endTime: showtime.endTime || showtime.End_Time || '',
-        showDate: showtime.showDate || showtime.Show_Date || '',
-        price: showtime.price || showtime.Base_Price,
-        availableSeats: showtime.availableSeats || showtime.Available_Seats || 0,
-        totalSeats: showtime.totalSeats || showtime.Total_Seats || 100,
-        cinemaName: showtime.cinemaName || showtime.Cinema_Name || '',
-        roomName: showtime.roomName || showtime.Room_Name || ''
-      }));
-
-      // Process cinemas data
-      const processedCinemas: CinemaInfo[] = cinemasData.map((cinema: any) => ({
-        Cinema_ID: cinema.Cinema_ID || cinema.id || 0,
-        Cinema_Name: cinema.Cinema_Name || cinema.name || '',
-        Address: cinema.Address || cinema.address || '',
-        City: cinema.City || cinema.city || '',
-        Phone_Number: cinema.Phone_Number || cinema.phoneNumber || ''
-      }));
-
-      // Update state with fetched data
-      const movieUpdates = {
-        showtimes: processedShowtimes,
-        cinemas: processedCinemas,
-        showtimesLoading: false
-      };
-
-      setNowShowingMovies(prev => updateMovieInState(prev, movieId, movieUpdates));
-      setComingSoonMovies(prev => updateMovieInState(prev, movieId, movieUpdates));
-
-      return { showtimes: processedShowtimes, cinemas: processedCinemas };
-    } catch (error) {
-      console.error(`Error fetching showtimes for movie ${movieId}:`, error);
-
-      // Update loading state on error
-      const updateMovieInState = (movies: MovieWithShowtimes[], movieId: number, updates: Partial<MovieWithShowtimes>) => {
-        return movies.map(movie =>
-          movie.id === movieId ? { ...movie, ...updates } : movie
-        );
-      };
-
-      setNowShowingMovies(prev => updateMovieInState(prev, movieId, { showtimesLoading: false }));
-      setComingSoonMovies(prev => updateMovieInState(prev, movieId, { showtimesLoading: false }));
-
-      return { showtimes: [], cinemas: [] };
-    }
-  };
 
   // Update URL when filters change
   useEffect(() => {
@@ -281,7 +213,7 @@ const MovieList: React.FC = () => {
       if (filters.search) {
         const searchLower = filters.search.toLowerCase();
         const titleMatch = movie.title?.toLowerCase().includes(searchLower) || false;
-        const castMatch = movie.cast?.some(actor => actor.toLowerCase().includes(searchLower)) || false;
+        const castMatch = movie.cast ? movie.cast.toLowerCase().includes(searchLower) : false;
         const directorMatch = movie.director?.toLowerCase().includes(searchLower) || false;
 
         if (!titleMatch && !castMatch && !directorMatch) {
@@ -297,7 +229,8 @@ const MovieList: React.FC = () => {
       // Rating filter
       if (filters.rating && movie.rating) {
         const ratingThreshold = parseFloat(filters.rating);
-        if (movie.rating < ratingThreshold) {
+        const movieRating = typeof movie.rating === 'string' ? parseFloat(movie.rating) : movie.rating;
+        if (movieRating < ratingThreshold) {
           return false;
         }
       }
@@ -320,10 +253,18 @@ const MovieList: React.FC = () => {
         filtered.sort((a, b) => new Date(b.releaseDate || 0).getTime() - new Date(a.releaseDate || 0).getTime());
         break;
       case 'popular':
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        filtered.sort((a, b) => {
+          const aRating = typeof a.rating === 'string' ? parseFloat(a.rating) || 0 : (a.rating || 0);
+          const bRating = typeof b.rating === 'string' ? parseFloat(b.rating) || 0 : (b.rating || 0);
+          return bRating - aRating;
+        });
         break;
       case 'rating':
-        filtered.sort((a, b) => (b.rating || 0) - (a.rating || 0));
+        filtered.sort((a, b) => {
+          const aRating = typeof a.rating === 'string' ? parseFloat(a.rating) || 0 : (a.rating || 0);
+          const bRating = typeof b.rating === 'string' ? parseFloat(b.rating) || 0 : (b.rating || 0);
+          return bRating - aRating;
+        });
         break;
       case 'a-z':
         filtered.sort((a, b) => (a.title || '').localeCompare(b.title || ''));
@@ -622,7 +563,7 @@ const MovieList: React.FC = () => {
                 <AnimatePresence mode="popLayout">
                   {paginatedMoviesForTab.map((movie, index) => (
                     <motion.div
-                      key={movie.id}
+                      key={movie.Movie_ID || movie.id}
                       layout
                       initial={{ opacity: 0, y: 20 }}
                       animate={{ opacity: 1, y: 0 }}
@@ -630,7 +571,7 @@ const MovieList: React.FC = () => {
                       transition={{ duration: 0.3, delay: index * 0.02 }}
                       className="group relative"
                     >
-                      <Link to={`/movies/${movie.id}`} className="block">
+                      <Link to={`/movies/${movie.Movie_ID || movie.id}`} className="block">
                         <div className="relative aspect-[2/3] rounded-lg overflow-hidden bg-slate-800/50 border border-slate-700/50 group-hover:border-[#FFD875]/50 transition-all duration-300 group-hover:shadow-[0_0_30px_rgba(255,216,117,0.6)] transform group-hover:scale-105">
                           {/* Movie Poster */}
                           <img
@@ -649,7 +590,7 @@ const MovieList: React.FC = () => {
                                   <StarSolid className="w-3 h-3 mr-1" />
                                   {movie.rating || 'N/A'}
                                 </span>
-                                <span className="text-gray-300 text-xs">{movie.duration}</span>
+                                <span className="text-gray-300 text-xs">{movie.duration} phút</span>
                               </div>
                             </div>
                           </div>
@@ -668,19 +609,6 @@ const MovieList: React.FC = () => {
                           {movie.isHot && (
                             <div className="absolute top-2 right-2 px-2 py-1 bg-[#FFD875] text-black text-xs font-bold rounded flex items-center gap-1">
                               <span className="animate-pulse">🔥</span>
-                            </div>
-                          )}
-
-                          {/* Ranking Number (if in top 8) */}
-                          {index < 8 && (
-                            <div className="absolute bottom-0 left-0 z-10">
-                              <span className="text-[80px] font-black text-white/20 leading-none"
-                                style={{
-                                  WebkitTextStroke: '2px rgba(255,216,117,0.8)',
-                                  textShadow: '0 0 20px rgba(255,216,117,0.5)'
-                                }}>
-                                {index + 1}
-                              </span>
                             </div>
                           )}
                         </div>

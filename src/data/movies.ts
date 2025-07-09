@@ -2,37 +2,20 @@ import type { Movie } from '../types';
 
 export const sampleMovies: Movie[] = [
   {
-    id: 1,
+    id: "1",
     title: "Spider-Man: No Way Home",
-    englishTitle: "Spider-Man: No Way Home",
     poster: "https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
-    backgroundImage: "https://image.tmdb.org/t/p/original/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg",
-    rating: 8.4,
+    rating: "8.4",
     genre: "Hành Động",
-    genres: ["Hành Động", "Phiêu Lưu", "Khoa Học Viễn Tưởng"],
-    duration: "148 phút",
+    duration: 148,
     releaseDate: "2021-12-17",
-    description: "Peter Parker phải đối mặt với những thách thức lớn nhất khi danh tính Spider-Man của anh bị tiết lộ. Khi anh nhờ Doctor Strange giúp đỡ, mọi thứ trở nên nguy hiểm hơn bao giờ hết.",
-    cast: ["Tom Holland", "Zendaya", "Benedict Cumberbatch", "Jacob Batalon", "Jon Favreau"],
+    cast: "Tom Holland, Zendaya, Benedict Cumberbatch, Jacob Batalon, Jon Favreau",
     director: "Jon Watts",
-    ageRating: "T13",
-    trailerUrl: "https://www.youtube.com/embed/JfVOs4VSpmA",
-    isComingSoon: false,
+    premiereDate: "2021-12-17",
+    endDate: "2022-01-17",
+    productionCompany: "Sony Pictures",
     country: "Mỹ",
-    language: "Tiếng Anh",
-    reviews: [
-      {
-        id: 1,
-        author: "Nguyễn Văn A",
-        rating: 9,
-        comment: "Phim hay nhất của Spider-Man từ trước đến nay!",
-        date: "2024-01-15"
-      }
-    ],
-    gallery: [
-      "https://image.tmdb.org/t/p/original/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg",
-      "https://image.tmdb.org/t/p/original/VlHt27nCqOuTnuX6bku8QZapzO.jpg"
-    ]
+    language: "Tiếng Anh"
   },
   {
     id: 2,

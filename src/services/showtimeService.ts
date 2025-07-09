@@ -1,6 +1,5 @@
 import apiClient from './apiClient';
-import type { Showtime, ShowtimeFormData, ShowtimeWithDetails } from '../types/showtime';
-import type { Cinema } from '../types/cinema';
+import type { Showtime, ShowtimeFormData } from '../types/showtime';
 
 
 export interface ApiResponse<T> {
@@ -11,39 +10,6 @@ export interface ApiResponse<T> {
 
 
 // Interface cho dữ liệu từ API backend
-interface BackendShowtime {
-    Showtime_ID: number;
-    Movie_ID: number;
-    Cinema_Room_ID: number;
-    Room_Name: string;
-    Show_Date: string;
-    Start_Time: string;
-    End_Time: string;
-    Status: string;
-    AvailableSeats?: number;
-    TotalSeats?: number;
-    Room?: {
-        Cinema_Room_ID: number;
-        Room_Name: string;
-        Room_Type: string;
-    };
-    Movie?: {
-        Movie_ID: number;
-        Movie_Name: string;
-        Duration: number;
-        Poster_URL: string;
-    };
-    CinemaRoom?: {
-        Cinema_Room_ID: number;
-        Room_Name: string;
-        Room_Type: string;
-        Cinema?: {
-            Cinema_ID: number;
-            Cinema_Name: string;
-            Location: string;
-        }
-    };
-}
 
 
 // Ánh xạ ID phim với tên phim
@@ -343,7 +309,7 @@ export const getAllShowtimes = async () => {
                     }
                 } as Showtime;
             })
-            .filter((item): item is Showtime => item !== null);
+            .filter((item: Showtime | null): item is Showtime => item !== null);
     } catch (error: any) {
         return [];
     }
@@ -634,6 +600,59 @@ export const getShowtimesByMovie = async (movieId: string) => {
     } catch (error) {
         console.error(`Error fetching showtimes for movie ID ${movieId}:`, error);
         return [];
+    }
+};
+
+
+// Lấy danh sách suất chiếu theo phim và ngày
+export const getShowtimesByMovieAndDate = async (movieId: string, date: string) => {
+    console.log(`showtimeService - Fetching showtimes for movie ID: ${movieId} on date: ${date}`);
+    try {
+        // Try to get showtimes with date filter
+        const response = await apiClient.get(`/showtimes/movie/${movieId}`, {
+            params: { date }
+        });
+
+        if (response.data && Array.isArray(response.data)) {
+            return response.data.map(item => transformBackendShowtime(item)).filter(Boolean);
+        } else if (response.data && response.data.dates) {
+            // Process complex structure from API and filter by date
+            const result: Showtime[] = [];
+            response.data.dates.forEach((dateInfo: any) => {
+                if (dateInfo.Show_Date === date && dateInfo.Showtimes && Array.isArray(dateInfo.Showtimes)) {
+                    dateInfo.Showtimes.forEach((showtime: any) => {
+                        const transformed = transformBackendShowtime({
+                            ...showtime,
+                            Show_Date: dateInfo.Show_Date,
+                            Movie_ID: response.data.movie_id,
+                            Movie: {
+                                Movie_Name: response.data.movie_name,
+                                Duration: response.data.duration,
+                                Poster_URL: '/placeholder.jpg'
+                            }
+                        });
+                        if (transformed) result.push(transformed);
+                    });
+                }
+            });
+            return result;
+        }
+
+        return [];
+    } catch (error) {
+        console.error(`Error fetching showtimes for movie ID ${movieId} on date ${date}:`, error);
+        // Fallback: get all showtimes for the movie and filter by date
+        try {
+            const allShowtimes = await getShowtimesByMovie(movieId);
+            return allShowtimes.filter(showtime => {
+                if (!showtime || !showtime.startTime) return false;
+                const showtimeDate = new Date(showtime.startTime).toISOString().split('T')[0];
+                return showtimeDate === date;
+            });
+        } catch (fallbackError) {
+            console.error(`Fallback also failed:`, fallbackError);
+            return [];
+        }
     }
 };
 
@@ -1051,7 +1070,6 @@ export interface ShowtimeSeatsResponse {
     message: string;
 }
 
-
 // Gọi API để lấy thông tin ghế của một showtime
 export const getShowtimeSeatsInfo = async (showtimeId: string): Promise<ShowtimeSeatsResponse> => {
     try {
@@ -1182,9 +1200,9 @@ export const getMoviesByCinema = async (cinemaId: string) => {
         
         // Lọc suất chiếu theo rạp và lấy unique movies
         const moviesAtCinema = allShowtimes
-            .filter(showtime => showtime.cinemaId === cinemaId && showtime.status !== 'cancelled')
-            .reduce((movies, showtime) => {
-                if (!movies.some(movie => movie.id === showtime.movieId)) {
+            .filter((showtime: any) => showtime.cinemaId === cinemaId && showtime.status !== 'cancelled')
+            .reduce((movies: any[], showtime: any) => {
+                if (!movies.some((movie: any) => movie.id === showtime.movieId)) {
                     movies.push({
                         id: showtime.movieId,
                         title: showtime.movieTitle,
@@ -1209,18 +1227,18 @@ export const getShowDatesForMovieAtCinema = async (movieId: string, cinemaId: st
         
         // Lọc suất chiếu theo phim và rạp
         const showtimesForMovieAtCinema = allShowtimes
-            .filter(showtime => 
+            .filter((showtime: any) => 
                 showtime.movieId === movieId && 
                 showtime.cinemaId === cinemaId && 
                 showtime.status !== 'cancelled' &&
                 new Date(showtime.showDate) >= today
             )
-            .map(showtime => showtime.showDate)
-            .filter((date, index, self) => self.indexOf(date) === index) // Remove duplicates
-            .sort((a, b) => new Date(a).getTime() - new Date(b).getTime()) // Sort by date
+            .map((showtime: any) => showtime.showDate)
+            .filter((date: string, index: number, self: string[]) => self.indexOf(date) === index) // Remove duplicates
+            .sort((a: string, b: string) => new Date(a).getTime() - new Date(b).getTime()) // Sort by date
             .slice(0, 3); // Lấy 3 ngày gần nhất
             
-        return showtimesForMovieAtCinema.map(date => ({
+        return showtimesForMovieAtCinema.map((date: string) => ({
             date,
             displayDate: new Date(date).toLocaleDateString('vi-VN', {
                 weekday: 'short',
@@ -1241,7 +1259,7 @@ export const getShowtimesForMovieAtCinemaOnDate = async (movieId: string, cinema
         
         // Lọc suất chiếu theo phim, rạp và ngày
         const showtimesForDay = allShowtimes
-            .filter(showtime => 
+            .filter((showtime: any) => 
                 showtime.movieId === movieId && 
                 showtime.cinemaId === cinemaId && 
                 showtime.showDate === date &&
@@ -1250,7 +1268,7 @@ export const getShowtimesForMovieAtCinemaOnDate = async (movieId: string, cinema
         
         // Lấy thông tin ghế cho mỗi suất chiếu
         const showtimesWithSeatsInfo = await Promise.all(
-            showtimesForDay.map(async (showtime) => {
+            showtimesForDay.map(async (showtime: any) => {
                 try {
                     // Gọi API lấy thông tin ghế
                     const seatsInfo = await getShowtimeSeatsInfo(showtime.id);
@@ -1322,6 +1340,7 @@ const showtimeService = {
     getAllShowtimes,
     getShowtimeById,
     getShowtimesByMovie,
+    getShowtimesByMovieAndDate,
     getShowtimesByCinema,
     createShowtime,
     updateShowtime,

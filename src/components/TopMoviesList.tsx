@@ -229,11 +229,11 @@ const TopMoviesList: React.FC<TopMoviesListProps> = ({
         }
 
         return {
-          id: movie.id,
+          id: movie.Movie_ID || movie.movieID || 0,
           title: movie.title,
           year: yearValue,
           genre: Array.isArray(movie.genres) ? movie.genres[0] : typeof movie.genre === 'string' ? movie.genre : 'Drama',
-          rating: movie.rating,
+          rating: typeof movie.rating === 'number' ? movie.rating : parseFloat(String(movie.rating)) || 0,
           poster: movie.poster,
           badges: [
             ...(movie.isNew ? ["MỚI"] : []),
@@ -260,10 +260,6 @@ const TopMoviesList: React.FC<TopMoviesListProps> = ({
     };
   }, [movies]);
 
-  // Function to create shimmer loading effect
-  const ShimmerEffect = () => (
-    <div className="animate-shimmer absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full"></div>
-  );
 
   if (loading) {
     return (

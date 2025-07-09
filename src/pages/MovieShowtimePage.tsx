@@ -2,24 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   CalendarIcon,
-  MapPinIcon,
   ClockIcon,
   ArrowLeftIcon,
   StarIcon,
   TicketIcon,
   BuildingOfficeIcon,
-  ChevronRightIcon,
   InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import { HeartIcon } from '@heroicons/react/24/solid';
 import Header from '../components/Header';
-import { sampleMovies, sampleCinemas, sampleShowtimes } from '../data/movies';
+import { movieService } from '../services/movieService';
+import { getCinemas, getShowtimesByMovieAndDate } from '../services/showtimeService';
 import type { Movie, Cinema, Showtime } from '../types';
 
 const MovieShowtimePage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [movie, setMovie] = useState<Movie | null>(null);
+  const [cinemas, setCinemas] = useState<Map<string, any>>(new Map());
+  const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   const [selectedCinemaId, setSelectedCinemaId] = useState<number | null>(null);
@@ -33,44 +33,80 @@ const MovieShowtimePage: React.FC = () => {
   });
 
   useEffect(() => {
-    if (id) {
+    const loadData = async () => {
+      if (!id) {
+        navigate('/movies');
+        return;
+      }
+
       setLoading(true);
-
-      // Simulate API call
-      const timer = setTimeout(() => {
-        try {
-          // Tìm phim trong sampleMovies
-          const foundMovie = sampleMovies.find(m => m.id === parseInt(id));
-
-          if (foundMovie) {
-            setMovie(foundMovie);
-          } else {
-            navigate('/movies');
-          }
-
-          setLoading(false);
-
-          // Delay hiệu ứng hiển thị nội dung
-          setTimeout(() => {
-            setIsContentLoaded(true);
-          }, 300);
-        } catch (err) {
-          console.error("Lỗi khi tải dữ liệu phim:", err);
-          setLoading(false);
+      
+      try {
+        // Load movie data
+        const movieData = await movieService.getMovieById(id);
+        if (movieData) {
+          // Map backend data to frontend Movie type
+          const mappedMovie: Movie = {
+            Movie_ID: movieData.Movie_ID,
+            id: movieData.Movie_ID?.toString() || id,
+            title: movieData.Movie_Name || movieData.title || '',
+            poster: movieData.Poster_URL || movieData.poster || '',
+            duration: movieData.Duration || movieData.duration || 0,
+            releaseDate: movieData.Release_Date || movieData.releaseDate || '',
+            premiereDate: movieData.Premiere_Date || movieData.premiereDate,
+            endDate: movieData.End_Date || movieData.endDate,
+            productionCompany: movieData.Production_Company || movieData.productionCompany,
+            director: movieData.Director || movieData.director || '',
+            cast: movieData.Cast || movieData.cast || '',
+            genre: movieData.Genre || movieData.genre || '',
+            rating: movieData.Rating || movieData.rating,
+            language: movieData.Language || movieData.language,
+            country: movieData.Country || movieData.country,
+            synopsis: movieData.Synopsis || movieData.synopsis,
+            trailerLink: movieData.Trailer_Link || movieData.trailerLink,
+            status: movieData.Status || movieData.status
+          };
+          setMovie(mappedMovie);
+        } else {
           navigate('/movies');
+          return;
         }
-      }, 1000);
 
-      return () => clearTimeout(timer);
-    }
-  }, [id, navigate]);
+        // Load cinemas data
+        const cinemaMap = await getCinemas();
+        setCinemas(cinemaMap);
+
+        // Load showtimes for the selected date
+        const dateStr = selectedDate.toISOString().split('T')[0];
+        const showtimesData = await getShowtimesByMovieAndDate(id, dateStr);
+        if (Array.isArray(showtimesData)) {
+          setShowtimes(showtimesData.filter((s): s is Showtime => s !== null));
+        }
+
+        setLoading(false);
+        
+        // Delay hiệu ứng hiển thị nội dung
+        setTimeout(() => {
+          setIsContentLoaded(true);
+        }, 300);
+        
+      } catch (error) {
+        console.error("Lỗi khi tải dữ liệu phim:", error);
+        setLoading(false);
+        navigate('/movies');
+      }
+    };
+
+    loadData();
+  }, [id, selectedDate, navigate]);
 
   // Lọc suất chiếu theo ngày và rạp đã chọn
-  const filteredShowtimes = sampleShowtimes.filter((showtime) => {
+  const filteredShowtimes = showtimes.filter((showtime) => {
     // Kiểm tra phim
-    if (movie && showtime.movieId !== movie.id) return false;
+    if (movie && showtime.movieId !== movie.Movie_ID?.toString() && showtime.movieId !== movie.id) return false;
 
-    // Kiểm tra ngày (giả định showtime.date là chuỗi ISO)
+    // Kiểm tra ngày
+    if (!showtime.startTime) return false;
     const showtimeDate = new Date(showtime.startTime);
     const isSameDate =
       showtimeDate.getDate() === selectedDate.getDate() &&
@@ -80,7 +116,7 @@ const MovieShowtimePage: React.FC = () => {
     if (!isSameDate) return false;
 
     // Kiểm tra rạp nếu đã chọn
-    if (selectedCinemaId !== null && showtime.cinemaId !== selectedCinemaId) {
+    if (selectedCinemaId !== null && parseInt(showtime.cinemaId) !== selectedCinemaId) {
       return false;
     }
 
@@ -88,7 +124,7 @@ const MovieShowtimePage: React.FC = () => {
   });
 
   // Nhóm suất chiếu theo rạp
-  const showtimesByCinema: Record<number, Showtime[]> = {};
+  const showtimesByCinema: Record<string, Showtime[]> = {};
   filteredShowtimes.forEach((showtime) => {
     if (!showtimesByCinema[showtime.cinemaId]) {
       showtimesByCinema[showtime.cinemaId] = [];
@@ -97,7 +133,8 @@ const MovieShowtimePage: React.FC = () => {
   });
 
   // Format thời gian
-  const formatTime = (dateString: string) => {
+  const formatTime = (dateString: string | Date | null) => {
+    if (!dateString) return '';
     return new Date(dateString).toLocaleTimeString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit'
@@ -123,7 +160,19 @@ const MovieShowtimePage: React.FC = () => {
   };
 
   // Xử lý khi chọn suất chiếu
-  const handleSelectShowtime = (showtime: Showtime, cinema: Cinema) => {
+  const handleSelectShowtime = (showtime: Showtime, cinemaData: any) => {
+    // Convert cinema data to proper Cinema type
+    const cinema: Cinema = {
+      Cinema_ID: parseInt(cinemaData.id),
+      Cinema_Name: cinemaData.name,
+      Address: cinemaData.address,
+      City: cinemaData.city || '',
+      Phone_Number: cinemaData.phoneNumber,
+      Email: cinemaData.email,
+      Description: cinemaData.description,
+      Status: cinemaData.status as 'Active' | 'Maintenance' | 'Closed' | 'Deleted'
+    };
+
     navigate(`/seat-selection`, {
       state: {
         movie,
@@ -298,11 +347,11 @@ const MovieShowtimePage: React.FC = () => {
                     Tất cả rạp
                   </button>
 
-                  {sampleCinemas.map((cinema, index) => (
+                  {Array.from(cinemas.values()).map((cinema, index) => (
                     <button
                       key={cinema.id}
-                      onClick={() => setSelectedCinemaId(cinema.id)}
-                      className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-300 ${selectedCinemaId === cinema.id
+                      onClick={() => setSelectedCinemaId(parseInt(cinema.id))}
+                      className={`px-4 py-2 rounded-lg whitespace-nowrap transition-all duration-300 ${selectedCinemaId === parseInt(cinema.id)
                           ? 'bg-[#FFD875]/20 text-[#FFD875] border border-[#FFD875]/50 shadow-[0_0_15px_rgba(255,216,117,0.2)]'
                           : 'bg-gray-800 text-gray-300 border border-gray-700 hover:bg-gray-700'
                         }`}
@@ -323,14 +372,13 @@ const MovieShowtimePage: React.FC = () => {
 
                 {Object.keys(showtimesByCinema).length > 0 ? (
                   Object.entries(showtimesByCinema).map(([cinemaIdStr, cinemaShowtimes], index) => {
-                    const cinemaId = parseInt(cinemaIdStr);
-                    const cinema = sampleCinemas.find(c => c.id === cinemaId);
+                    const cinema = cinemas.get(cinemaIdStr);
 
                     if (!cinema) return null;
 
                     return (
                       <div
-                        key={cinemaId}
+                        key={cinemaIdStr}
                         className="glass-dark rounded-2xl p-6 border border-gray-700/50 hover:shadow-[0_0_20px_rgba(255,216,117,0.15)] transition-all duration-500"
                         style={{ animationDelay: `${index * 200 + 500}ms` }}
                       >
@@ -341,14 +389,7 @@ const MovieShowtimePage: React.FC = () => {
                           </div>
 
                           <div className="flex items-center space-x-2">
-                            {cinema.facilities?.slice(0, 3).map((facility, idx) => (
-                              <span
-                                key={idx}
-                                className="px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-300"
-                              >
-                                {facility}
-                              </span>
-                            ))}
+                            {/* Cinema info or features could go here */}
                           </div>
                         </div>
 
@@ -358,10 +399,11 @@ const MovieShowtimePage: React.FC = () => {
                           {(() => {
                             const roomMap: Record<string, Showtime[]> = {};
                             cinemaShowtimes.forEach(showtime => {
-                              if (!roomMap[showtime.roomName]) {
-                                roomMap[showtime.roomName] = [];
+                              const room = showtime.roomName || `Phòng ${showtime.roomId || 'Unknown'}`;
+                              if (!roomMap[room]) {
+                                roomMap[room] = [];
                               }
-                              roomMap[showtime.roomName].push(showtime);
+                              roomMap[room].push(showtime);
                             });
 
                             return Object.entries(roomMap).map(([roomName, roomShowtimes]) => (
@@ -369,7 +411,7 @@ const MovieShowtimePage: React.FC = () => {
                                 <div className="flex items-center mb-3">
                                   <h5 className="text-white font-medium">{roomName}</h5>
                                   <span className="ml-2 px-2 py-0.5 bg-gray-800 rounded text-xs text-gray-300">
-                                    {roomShowtimes[0].format}
+                                    {roomShowtimes[0].format || '2D'}
                                   </span>
                                 </div>
 
@@ -385,13 +427,13 @@ const MovieShowtimePage: React.FC = () => {
                                           {formatTime(showtime.startTime)}
                                         </span>
                                         <span className="text-xs px-1.5 py-0.5 rounded bg-gray-700 text-gray-300">
-                                          {showtime.language}
+                                          {showtime.language || 'Phụ đề'}
                                         </span>
                                       </div>
                                       <div className="flex justify-between items-center text-xs text-gray-400">
                                         <span className="flex items-center">
                                           <TicketIcon className="w-3 h-3 mr-1" />
-                                          {showtime.availableSeats} ghế
+                                          {showtime.availableSeats || showtime.totalSeats || 0} ghế
                                         </span>
                                       </div>
                                     </button>

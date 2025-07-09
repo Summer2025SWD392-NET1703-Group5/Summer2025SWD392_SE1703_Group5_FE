@@ -1,6 +1,5 @@
 import api from '../config/api';
 import type { Movie, MovieFormData, MovieResponse } from '../types/movie';
-import type { Movie as MovieIndex } from '../types';
 
 // API Configuration
 
@@ -76,26 +75,6 @@ const isHtmlResponse = (data: any): boolean => {
     return false;
 };
 
-// Helper để chuyển đổi Movie từ types/index.ts sang Movie từ types/movie.ts
-const convertSampleMovieToMovieType = (movie: MovieIndex): Movie => {
-    return {
-        id: String(movie.id), // Chuyển number thành string
-        title: movie.title,
-        poster: movie.poster,
-        duration: typeof movie.duration === 'string' ? parseInt(movie.duration) || 0 : 0,
-        releaseDate: movie.releaseDate,
-        director: movie.director,
-        cast: Array.isArray(movie.cast) ? movie.cast.join(', ') : movie.cast || '',
-        genre: movie.genre || (movie.genres && movie.genres.length > 0 ? movie.genres[0] : ''),
-        rating: movie.ageRating || String(movie.rating) || '',
-        synopsis: movie.description,
-        trailerLink: movie.trailerUrl,
-        language: movie.language,
-        country: movie.country,
-        status: movie.isComingSoon ? 'coming-soon' : 'now-showing',
-    };
-};
-
 // Directly return the API response format for admin pages
 const processApiResponse = (response: any): any[] => {
     if (!response) return [];
@@ -150,28 +129,8 @@ export const movieService = {
             }
         }
 
-        // Nếu tất cả các endpoint đều thất bại, sử dụng dữ liệu mẫu
-        const { sampleMovies } = await import('../data/movies');
-        return sampleMovies.map(movie => ({
-            Movie_ID: movie.id,
-            Movie_Name: movie.title,
-            Release_Date: movie.releaseDate,
-            Premiere_Date: movie.releaseDate,
-            End_Date: null,
-            Duration: movie.duration,
-            Director: movie.director,
-            Cast: movie.cast.join(', '),
-            Genre: movie.genres.join(', '),
-            Rating: movie.rating,
-            Language: movie.language || 'English',
-            Country: movie.country || 'USA',
-            Synopsis: movie.description,
-            Poster_URL: movie.poster,
-            Trailer_Link: movie.trailerUrl,
-            Status: movie.isComingSoon ? 'Coming Soon' : 'Now Showing',
-            Average_Rating: movie.rating,
-            Rating_Count: Math.floor(Math.random() * 1000)
-        }));
+        // Nếu tất cả các endpoint đều thất bại, trả về mảng rỗng
+        throw new Error('Unable to fetch movies from any endpoint');
     },
 
     /**
@@ -402,11 +361,8 @@ export const movieService = {
             }
         }
 
-        // Nếu tất cả các endpoint đều thất bại, sử dụng dữ liệu mẫu
-        const { sampleMovies } = await import('../data/movies');
-        return sampleMovies
-            .filter(movie => !movie.isComingSoon)
-            .map(convertSampleMovieToMovieType);
+        // Nếu tất cả các endpoint đều thất bại, trả về mảng rỗng
+        throw new Error('Unable to fetch now showing movies from any endpoint');
     },
 
     /**
@@ -444,11 +400,8 @@ export const movieService = {
             }
         }
 
-        // Nếu tất cả các endpoint đều thất bại, sử dụng dữ liệu mẫu
-        const { sampleMovies } = await import('../data/movies');
-        return sampleMovies
-            .filter(movie => movie.isComingSoon)
-            .map(convertSampleMovieToMovieType);
+        // Nếu tất cả các endpoint đều thất bại, trả về mảng rỗng
+        throw new Error('Unable to fetch coming soon movies from any endpoint');
     },
 
     /**

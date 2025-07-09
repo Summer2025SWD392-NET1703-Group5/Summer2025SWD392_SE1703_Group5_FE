@@ -1,15 +1,5 @@
 import api from '../config/api';
-
-
-export interface Seat {
-    id: string;
-    row: string;
-    column: number;
-    type: 'regular' | 'vip' | 'couple' | 'disabled';
-    status: 'available' | 'reserved' | 'booked' | 'held' | 'disabled';
-    price: number;
-    showtimeId: string;
-}
+import type { Seat } from '../types/booking';
 
 
 export interface ApiResponse<T> {

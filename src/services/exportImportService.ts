@@ -1,12 +1,5 @@
 
-
 import apiClient from './apiClient';
-
-interface ExportResponse {
-    success: boolean;
-    message: string;
-    filename?: string;
-}
 
 interface ImportResponse {
     success: boolean;

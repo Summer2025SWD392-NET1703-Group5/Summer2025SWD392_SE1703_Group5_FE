@@ -1,6 +1,6 @@
 import apiClient from './apiClient';
 import api from '../config/api';
-import type { Ticket, BookingInfo, ScanResult, ScanListItem } from '../types/ticket';
+import type { BookingInfo, ScanResult, ScanListItem } from '../types/ticket';
 
 export interface MovieInfo {
     movie_id: number;

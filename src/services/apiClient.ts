@@ -1,5 +1,5 @@
 import axios from 'axios';
-import type { AxiosRequestConfig, AxiosResponse } from 'axios';
+import type { AxiosRequestConfig } from 'axios';
 
 // Cờ DEBUG - có thể thay đổi hoặc ghi đè bởi biến môi trường
 const DEBUG = process.env.NODE_ENV === 'development';
@@ -22,7 +22,7 @@ const apiClient = axios.create({
     },
     // Thêm transformRequest để xử lý dữ liệu trước khi gửi đi
     transformRequest: [
-        (data, headers) => {
+        (data, _headers) => {
             // Nếu data là object và không phải FormData, chuyển đổi để tránh circular structure
             if (data && typeof data === 'object' && !(data instanceof FormData)) {
                 try {

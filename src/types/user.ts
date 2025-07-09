@@ -1,6 +1,6 @@
 // src/types/user.ts
-export type UserStatus = 'active' | 'inactive' | 'banned';
-export type UserRole = 'admin' | 'customer' | 'manager' | 'staff';
+export type UserStatus = 'Active' | 'Inactive' | 'Pending_Verification' | 'Deleted';
+export type UserRole = 'Customer' | 'Staff' | 'Admin' | 'Manager';
 
 export interface User {
   id: number;
@@ -11,11 +11,35 @@ export interface User {
   dateOfBirth?: string;
   sex?: 'Male' | 'Female' | 'Other';
   avatar?: string;
-  role: string;
-  accountStatus?: string;
+  role: 'Customer' | 'Staff' | 'Admin' | 'Manager';
+  accountStatus?: 'Active' | 'Inactive' | 'Pending_Verification' | 'Deleted';
   createdAt?: string;
   updatedAt?: string;
   lastLoginAt?: string;
+  
+  // Additional backwards compatibility properties
+  User_ID?: number; // Maps to id
+  Full_Name?: string; // Maps to fullName
+  Phone_Number?: string; // Maps to phoneNumber
+  Cinema_ID?: number; // For staff assignment
+  Cinema_Name?: string; // For staff assignment
+  total_points?: number; // For customer points
+  username?: string; // Legacy username field
+  firstName?: string; // Legacy firstName field
+  lastName?: string; // Legacy lastName field
+  phone?: string; // Alternative phone field
+  gender?: 'Male' | 'Female' | 'Other'; // Alternative gender field
+  status?: string; // Alternative status field
+  Name?: string; // Alternative name field
+  preferences?: {
+    language: string;
+    notifications: {
+      email: boolean;
+      sms: boolean;
+      push: boolean;
+    };
+    favoriteGenres: string[];
+  };
 }
 
 export interface UserFormData {
@@ -25,9 +49,9 @@ export interface UserFormData {
   lastName: string;
   phone: string;
   dateOfBirth: Date | null;
-  gender: 'male' | 'female' | 'other';
-  role: 'admin' | 'staff' | 'customer';
-  status: 'active' | 'inactive' | 'banned';
+  gender: 'Male' | 'Female' | 'Other';
+  role: UserRole;
+  status: UserStatus;
   preferences: {
     language: string;
     notifications: {

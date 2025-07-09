@@ -1,3 +1,23 @@
+/**
+ * Backend Ticket model interface based on actual database structure
+ */
+export interface TicketModel {
+  Ticket_ID: number;
+  Booking_ID: number;
+  Seat_ID: number;
+  Showtime_ID: number;
+  Base_Price: number;
+  Discount_Amount: number;
+  Final_Price: number;
+  Ticket_Code: string;
+  Is_Checked_In: boolean;
+  Check_In_Time?: string; // ISO date string
+  Status?: string;
+}
+
+/**
+ * Frontend Ticket interface (adapted for QR scanning and display)
+ */
 export interface Ticket {
     ticketCode: string;
     bookingId: string;

@@ -1,11 +1,39 @@
 // src/types/movie.ts
 
 /**
- * Định nghĩa kiểu dữ liệu cho một bộ phim nhận từ API
+ * Backend Movie model interface based on actual database structure
+ */
+export interface MovieModel {
+  Movie_ID: number;
+  Movie_Name: string;
+  Release_Date: string; // ISO date string
+  Premiere_Date?: string; // ISO date string
+  End_Date?: string; // ISO date string
+  Production_Company?: string;
+  Director?: string;
+  Cast?: string;
+  Duration?: number;
+  Genre?: string;
+  Rating?: string;
+  Language?: string;
+  Country?: string;
+  Synopsis?: string;
+  Poster_URL?: string;
+  Trailer_Link?: string;
+  Status: string;
+  Created_By?: number;
+  Created_At?: string; // ISO date string
+  Updated_At?: string; // ISO date string
+}
+
+/**
+ * Frontend Movie interface (converted from backend)
  * (thuộc tính theo kiểu camelCase sau khi chuyển đổi từ snake_case của backend)
  */
 export interface Movie {
-  id: string;
+  Movie_ID?: number; // Primary key from backend - made optional for backward compatibility
+  id?: string; // Legacy field for backward compatibility
+  movieID?: number; // Alternative camelCase field name
   title: string;
   poster: string;
   duration: number;
@@ -16,7 +44,7 @@ export interface Movie {
   director?: string;
   cast?: string;
   genre?: string;
-  rating?: string;
+  rating?: string | number; // Can be string or number
   language?: string;
   country?: string;
   synopsis?: string;
@@ -27,6 +55,28 @@ export interface Movie {
   ratingAverage?: number;
   ratingCount?: number;
   ratingDistribution?: number[];
+  
+  // Additional frontend-only properties for backwards compatibility
+  movieName?: string; // Maps to title
+  englishTitle?: string;
+  originalTitle?: string;
+  genres?: string[]; // For components expecting array
+  year?: number;
+  description?: string; // Maps to synopsis
+  trailerUrl?: string; // Maps to trailerLink
+  isComingSoon?: boolean;
+  isHot?: boolean;
+  isNew?: boolean;
+  quality?: string;
+  subtitle?: string;
+  views?: number;
+  posterURL?: string; // Maps to poster
+  backgroundImage?: string;
+  backdrop?: string; // For legacy components
+  gallery?: string[];
+  trailer?: string; // Legacy field
+  reviews?: any[];
+  ageRating?: string; // For age rating display
 }
 
 /**

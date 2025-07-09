@@ -3,73 +3,37 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   StarIcon,
   ClockIcon,
-  CalendarDaysIcon,
   PlayIcon,
-  ShareIcon,
   HeartIcon,
   UserGroupIcon,
   FilmIcon,
-  GlobeAltIcon,
   ChatBubbleLeftRightIcon,
   CalendarIcon
 } from '@heroicons/react/24/solid';
-import {
-  HeartIcon as HeartOutlineIcon,
-  ShareIcon as ShareOutlineIcon
-} from '@heroicons/react/24/outline';
 import Header from '../components/Header';
 import Breadcrumb from '../components/Breadcrumb';
-import MovieCard from '../components/MovieCard';
 import TrailerModal from '../components/TrailerModal';
 import ImageGallery from '../components/ImageGallery';
 import ReviewSection from '../components/ReviewSection';
 import ShowtimeSection from '../components/ShowtimeSection';
 import FullScreenLoader from '../components/FullScreenLoader';
-import type { Movie } from '../types';
+import type { Movie } from '../types/movie';
 import { movieService } from '../services/movieService';
-import showtimeService from '../services/showtimeService';
-import api from '../config/api';
 import type { Cinema } from '../types/cinema';
 import type { Showtime } from '../types/showtime';
 import { toast } from 'react-hot-toast';
-import { motion } from 'framer-motion';
-
-// Interface cho dữ liệu API trả về
-interface ShowtimeAPIItem {
-  Showtime_ID: number;
-  Start_Time: string;
-  End_Time: string;
-  Room_Name: string;
-  Room_Type: string;
-  Capacity_Available: number;
-  Show_Date?: string;
-  Cinema_ID?: number;
-  Cinema_Name?: string;
-}
-
-interface ShowtimesByDateGroup {
-  Date: string;
-  Showtimes: ShowtimeAPIItem[];
-}
-
-interface ShowtimesAPIResponse {
-  Movie_ID: number;
-  Movie_Name: string;
-  Cinema_ID: number;
-  Cinema_Name: string;
-  ShowtimesByDate: ShowtimesByDateGroup[];
-}
 
 // Helper function to process movie data from API
 const processMovieData = (apiMovie: any): Movie => {
   // Normalize data from different API formats
   const movie: Movie = {
-    id: apiMovie.id || apiMovie.movieId || apiMovie.Movie_ID,
+    Movie_ID: apiMovie.Movie_ID || apiMovie.id || apiMovie.movieId,
+    id: (apiMovie.id || apiMovie.movieId || apiMovie.Movie_ID)?.toString(),
     title: apiMovie.title || apiMovie.movieName || apiMovie.Movie_Name || '',
     englishTitle: apiMovie.englishTitle || apiMovie.originalTitle || apiMovie.title || '',
     poster: apiMovie.poster || apiMovie.posterUrl || apiMovie.Poster_URL || '',
     backgroundImage: apiMovie.backgroundImage || apiMovie.poster || apiMovie.Poster_URL || '',
-    duration: apiMovie.duration || `${apiMovie.Duration || 120} phút`,
+    duration: typeof apiMovie.duration === 'number' ? apiMovie.duration : (apiMovie.Duration || 120),
     genres: Array.isArray(apiMovie.genres)
       ? apiMovie.genres
       : apiMovie.genre
@@ -79,10 +43,8 @@ const processMovieData = (apiMovie: any): Movie => {
           : ['Chưa phân loại'],
     director: apiMovie.director || apiMovie.Director || 'Chưa cập nhật',
     cast: Array.isArray(apiMovie.cast)
-      ? apiMovie.cast
-      : apiMovie.Cast
-        ? apiMovie.Cast.split(',').map((c: string) => c.trim())
-        : [],
+      ? apiMovie.cast.join(', ')
+      : (apiMovie.Cast || apiMovie.cast || 'Chưa cập nhật'),
     description: apiMovie.description || apiMovie.synopsis || apiMovie.Synopsis || 'Chưa có mô tả',
     releaseDate: apiMovie.releaseDate || apiMovie.Release_Date || new Date().toISOString().split('T')[0],
     rating: apiMovie.rating || apiMovie.ratingAverage || apiMovie.Rating_Summary?.Average_Rating || 0,
@@ -91,7 +53,7 @@ const processMovieData = (apiMovie: any): Movie => {
     ageRating: apiMovie.ageRating || apiMovie.Rating || 'P',
     isComingSoon: apiMovie.isComingSoon || apiMovie.Status === 'Coming Soon' || false,
     trailerUrl: apiMovie.trailerUrl || apiMovie.Trailer_Link || '',
-    gallery: apiMovie.gallery || [],
+    gallery: Array.isArray(apiMovie.gallery) ? apiMovie.gallery : [],
     reviews: Array.isArray(apiMovie.Ratings) 
       ? apiMovie.Ratings.map((rating: any) => ({
           id: rating.Rating_ID || rating.id || Date.now() + Math.random(),
@@ -120,24 +82,12 @@ const MovieDetail: React.FC = () => {
   const [isContentLoaded, setIsContentLoaded] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<'overview' | 'showtimes' | 'reviews' | 'gallery'>('overview');
   const [showTrailerModal, setShowTrailerModal] = useState(false);
-  const [showZoomedImage, setShowZoomedImage] = useState(false);
-  const [zoomedImageUrl, setZoomedImageUrl] = useState('');
   const [showFullGallery, setShowFullGallery] = useState(false);
 
   // State cho cinemas và showtimes
   const [cinemas, setCinemas] = useState<Cinema[]>([]);
   const [showtimes, setShowtimes] = useState<Showtime[]>([]);
   const [cinemasLoading, setCinemasLoading] = useState<boolean>(false);
-  const [showtimesLoading, setShowtimesLoading] = useState<boolean>(false);
-
-  // State cho user interactions
-  const [isLiked, setIsLiked] = useState(false);
-  const [isBookmarked, setIsBookmarked] = useState(false);
-  const [ratingSubmitting, setRatingSubmitting] = useState(false);
-  const [submissionResult, setSubmissionResult] = useState<{ success: boolean, message: string }>({
-    success: false,
-    message: ''
-  });
 
   // State cho similar movies
   const [similarMovies, setSimilarMovies] = useState<Movie[]>([]);
@@ -145,8 +95,6 @@ const MovieDetail: React.FC = () => {
 
   // Thêm state để lưu tất cả dữ liệu lịch chiếu theo từng rạp
   const [allCinemasShowtimes, setAllCinemasShowtimes] = useState<{ [key: string]: Showtime[] }>({});
-  const [selectedCinemaId, setSelectedCinemaId] = useState<number | null>(null);
-  const [allShowtimeDates, setAllShowtimeDates] = useState<Set<string>>(new Set());
 
   // Define types for the tabs
   const tabs = [
@@ -160,7 +108,6 @@ const MovieDetail: React.FC = () => {
     if (!id) return false;
 
     try {
-      setRatingSubmitting(true);
       console.log(`Gửi đánh giá cho phim ${id}: ${rating} sao, nội dung: ${content}`);
 
       // Gọi API đánh giá phim thực
@@ -169,11 +116,6 @@ const MovieDetail: React.FC = () => {
       if (result.success) {
         // Hiển thị toast thành công
         toast.success(result.message || 'Cảm ơn bạn đã đánh giá phim!');
-        
-        setSubmissionResult({
-          success: true,
-          message: result.message
-        });
 
         // Refresh lại movie data để cập nhật reviews
         try {
@@ -188,25 +130,10 @@ const MovieDetail: React.FC = () => {
           console.error('Error refreshing movie data:', refreshError);
         }
 
-        // Auto hide message after 3 seconds
-        setTimeout(() => {
-          setSubmissionResult({ success: false, message: '' });
-        }, 3000);
-
         return true;
       } else {
         // Hiển thị toast lỗi
         toast.error(result.message || 'Không thể gửi đánh giá. Vui lòng thử lại sau.');
-        
-        setSubmissionResult({
-          success: false,
-          message: result.message
-        });
-
-        // Auto hide message after 3 seconds
-        setTimeout(() => {
-          setSubmissionResult({ success: false, message: '' });
-        }, 3000);
 
         return false;
       }
@@ -215,20 +142,8 @@ const MovieDetail: React.FC = () => {
       
       const errorMessage = 'Không thể gửi đánh giá. Vui lòng thử lại sau.';
       toast.error(errorMessage);
-      
-      setSubmissionResult({
-        success: false,
-        message: errorMessage
-      });
-
-      // Auto hide message after 3 seconds
-      setTimeout(() => {
-        setSubmissionResult({ success: false, message: '' });
-      }, 3000);
 
       return false;
-    } finally {
-      setRatingSubmitting(false);
     }
   };
 
@@ -240,7 +155,6 @@ const MovieDetail: React.FC = () => {
   // Xử lý khi người dùng chọn rạp
   const handleCinemaSelect = (cinemaId: number) => {
     console.log(`Người dùng chọn rạp với ID: ${cinemaId}`);
-    setSelectedCinemaId(cinemaId);
 
     if (cinemaId === 0) {
       // Nếu chọn "Tất cả rạp", hiển thị toàn bộ lịch chiếu
@@ -340,7 +254,7 @@ const MovieDetail: React.FC = () => {
   // Effect để fetch similar movies
   useEffect(() => {
     const fetchSimilarMovies = async () => {
-      if (movie && movie.genres.length > 0) {
+      if (movie && movie.genres && movie.genres.length > 0) {
         setSimilarLoading(true);
         try {
           // Fetch now showing movies and filter by genre
@@ -351,7 +265,7 @@ const MovieDetail: React.FC = () => {
 
           // Filter similar movies by genre
           const similar = allMovies
-            .filter(m => m.id !== movie.id && movie.genres.some(g => m.genres && m.genres.includes(g)))
+            .filter(m => m.id !== movie.id && movie.genres && movie.genres.some(g => m.genres && m.genres.includes(g)))
             .slice(0, 8);
 
           setSimilarMovies(similar);
@@ -371,7 +285,6 @@ const MovieDetail: React.FC = () => {
   const fetchAllCinemas = async () => {
     try {
       setCinemasLoading(true);
-      setShowtimesLoading(true);
       console.log(`MovieDetail - Đang gọi API lấy danh sách rạp chiếu phim ${id}...`);
 
       // Use direct API call to match the expected response structure
@@ -460,7 +373,6 @@ const MovieDetail: React.FC = () => {
           // Update state with processed data
           setAllCinemasShowtimes(allShowtimes);
           setShowtimes(combinedShowtimes);
-          setAllShowtimeDates(allDates);
 
           console.log('Processed cinemas:', formattedCinemas.length);
           console.log('Processed showtimes by cinema:', allShowtimes);
@@ -512,7 +424,6 @@ const MovieDetail: React.FC = () => {
       setShowtimes([]);
     } finally {
       setCinemasLoading(false);
-      setShowtimesLoading(false);
     }
   };
 
@@ -558,19 +469,6 @@ const MovieDetail: React.FC = () => {
       month: '2-digit',
       year: 'numeric'
     });
-  };
-
-  const handleShare = () => {
-    if (navigator.share) {
-      navigator.share({
-        title: movie.title,
-        text: movie.description,
-        url: window.location.href,
-      });
-    } else {
-      navigator.clipboard.writeText(window.location.href);
-      // Show toast notification
-    }
   };
 
   const handleBookNow = () => {
@@ -664,7 +562,7 @@ const MovieDetail: React.FC = () => {
 
                 {/* Genres */}
                 <div className="flex flex-wrap gap-2 animate-fadeInUp animation-delay-500">
-                  {movie.genres.map((genre, index) => (
+                  {movie.genres && movie.genres.map((genre, index) => (
                     <span
                       key={index}
                       className="bg-gray-800 text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-[#FFD875]/20 hover:text-[#FFD875] transition-colors duration-300 cursor-pointer"
@@ -752,13 +650,13 @@ const MovieDetail: React.FC = () => {
                         <div>
                           <h4 className="font-semibold text-[#FFD875] mb-2">Diễn viên:</h4>
                           <div className="flex flex-wrap gap-2">
-                            {movie.cast.map((actor, index) => (
+                            {movie.cast && movie.cast.split(',').map((actor, index) => (
                               <span
                                 key={index}
                                 className="bg-gray-700 text-gray-300 px-3 py-1 rounded-full text-sm hover:bg-[#FFD875]/20 hover:text-[#FFD875] transition-all duration-300 cursor-pointer transform hover:scale-105"
                                 style={{ animationDelay: `${index * 100}ms` }}
                               >
-                                {actor}
+                                {actor.trim()}
                               </span>
                             ))}
                           </div>
@@ -781,7 +679,7 @@ const MovieDetail: React.FC = () => {
                       <div className="space-y-3 text-sm">
                         <div className="flex justify-between p-2 hover:bg-slate-700/30 rounded-lg transition-colors">
                           <span className="text-gray-400">Thể loại:</span>
-                          <span className="text-white">{movie.genres.join(", ")}</span>
+                          <span className="text-white">{movie.genres?.join(", ") || "Chưa phân loại"}</span>
                         </div>
 
                         <div className="flex justify-between p-2 hover:bg-slate-700/30 rounded-lg transition-colors">
@@ -816,7 +714,7 @@ const MovieDetail: React.FC = () => {
 
               {activeTab === "showtimes" && (
                 <ShowtimeSection
-                  movieId={movie.id}
+                  movieId={movie.id || movie.Movie_ID?.toString() || ''}
                   cinemas={cinemas}
                   showtimes={showtimes}
                   onCinemaSelect={handleCinemaSelect}
@@ -827,13 +725,13 @@ const MovieDetail: React.FC = () => {
               {activeTab === "reviews" && (
                 <>
                   {console.log("Rendering ReviewSection with reviews:", movie.reviews)}
-                  <ReviewSection movieId={movie.id} reviews={movie.reviews || []} onSubmitReview={handleRateMovie} />
+                  <ReviewSection movieId={movie.id || movie.Movie_ID?.toString() || ''} reviews={movie.reviews || []} onSubmitReview={handleRateMovie} />
                 </>
               )}
 
               {activeTab === "gallery" && (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {[movie.poster, movie.backgroundImage, ...movie.gallery].map((image, index) => (
+                  {[movie.poster, movie.backgroundImage, ...(movie.gallery || [])].filter(Boolean).map((image, index) => (
                     <div
                       key={index}
                       className="relative aspect-video rounded-lg overflow-hidden cursor-pointer group transform transition-all duration-300 hover:scale-105 hover:shadow-[0_0_15px_rgba(255,216,117,0.3)]"
@@ -998,8 +896,7 @@ const MovieDetail: React.FC = () => {
 
       {showFullGallery && (
         <ImageGallery
-          images={[movie.poster, movie.backgroundImage, ...movie.gallery]}
-          movieTitle={movie.title}
+          images={[movie.poster, movie.backgroundImage, ...(movie.gallery || [])].filter(Boolean) as string[]}
           onClose={() => setShowFullGallery(false)}
         />
       )}

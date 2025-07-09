@@ -3,11 +3,8 @@ import { Link } from 'react-router-dom';
 import {
   CalendarIcon,
   ClockIcon,
-  GlobeAltIcon,
   ChevronRightIcon,
   ChevronLeftIcon,
-  PlayIcon,
-  StarIcon
 } from '@heroicons/react/24/outline';
 import { PlayIcon as PlayIconSolid, StarIcon as StarIconSolid, FireIcon } from '@heroicons/react/24/solid';
 import type { Movie } from '../types';
@@ -29,83 +26,7 @@ const ComingSoonSection: React.FC<ComingSoonSectionProps> = ({
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const sliderRef = useRef<HTMLDivElement>(null);
 
-  // Fallback mock data nếu không có movies
-  const mockMovies: Movie[] = [
-    {
-      id: 1001,
-      title: "Avatar: Fire and Ash",
-      poster: "https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg",
-      backdrop: "https://image.tmdb.org/t/p/w1280/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg",
-      genre: "Sci-Fi, Phiêu lưu",
-      rating: 4.2,
-      duration: "190 phút",
-      ageRating: "13+",
-      description: "Jake Sully và gia đình khám phá những vùng đất mới trên Pandora, đối mặt với các mối đe dọa từ tộc người mới.",
-      releaseDate: "2025-12-18",
-      isNew: true,
-      isHot: true,
-      language: "Tiếng Anh",
-      cast: ["Sam Worthington", "Zoe Saldana", "Sigourney Weaver"],
-      director: "James Cameron",
-      trailer: "https://www.youtube.com/watch?v=d9MyW72ELq0"
-    },
-    {
-      id: 1002,
-      title: "Fantastic Four: First Steps",
-      poster: "https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg",
-      backdrop: "https://image.tmdb.org/t/p/w1280/14QbnygCuTO0vl7CAFmPf1fgZfV.jpg",
-      genre: "Siêu anh hùng, Hành động",
-      rating: 4.5,
-      duration: "125 phút",
-      ageRating: "13+",
-      description: "Bộ tứ siêu nhân bắt đầu hành trình bảo vệ trái đất khỏi các mối đe dọa từ không gian.",
-      releaseDate: "2025-07-25",
-      isNew: true,
-      isHot: true,
-      language: "Tiếng Anh",
-      cast: ["Pedro Pascal", "Vanessa Kirby", "Joseph Quinn"],
-      director: "Matt Shakman",
-      trailer: "https://www.youtube.com/watch?v=NYnQnNO_s0g"
-    },
-    {
-      id: 1003,
-      title: "John Wick: Chapter 5",
-      poster: "https://image.tmdb.org/t/p/w500/qAZ0pzat24kLdO3o8ejmbLxyOac.jpg",
-      backdrop: "https://image.tmdb.org/t/p/w1280/keIxh0wPr2Ymj0Btjh4gW7JJ89e.jpg",
-      genre: "Hành động, Tội phạm",
-      rating: 4.4,
-      duration: "140 phút",
-      ageRating: "18+",
-      description: "John Wick tiếp tục cuộc chiến của mình chống lại High Table sau các sự kiện của phần 4.",
-      releaseDate: "2026-02-14",
-      isNew: true,
-      isHot: true,
-      language: "Tiếng Anh",
-      cast: ["Keanu Reeves", "Donnie Yen", "Laurence Fishburne"],
-      director: "Chad Stahelski",
-      trailer: "https://www.youtube.com/watch?v=qEVUtrk8_B4"
-    },
-    {
-      id: 1004,
-      title: "Indiana Jones: The New Era",
-      poster: "https://image.tmdb.org/t/p/w500/9Gtg2DzBhmYamXBS1hKAhiwbBKS.jpg",
-      backdrop: "https://image.tmdb.org/t/p/w1280/wcKFYIiVDvRURrzglV9kGu7fpfY.jpg",
-      genre: "Phiêu lưu, Hành động",
-      rating: 4.0,
-      duration: "135 phút",
-      ageRating: "13+",
-      description: "Một thế hệ mới của nhà khảo cổ học phiêu lưu tiếp nối di sản của Indiana Jones.",
-      releaseDate: "2025-06-30",
-      isNew: true,
-      isHot: false,
-      language: "Tiếng Anh",
-      cast: ["Chris Pratt", "Phoebe Waller-Bridge", "Harrison Ford"],
-      director: "James Mangold",
-      trailer: "https://www.youtube.com/watch?v=eQfMbSe7F2g"
-    }
-  ];
-
-  const displayMovies = movies.length > 0 ? movies : mockMovies;
+  const displayMovies = movies;
   const visibleMovies = 4; // Number of movies visible at once
   const maxIndex = Math.max(0, displayMovies.length - visibleMovies);
 
@@ -321,7 +242,7 @@ const ComingSoonSection: React.FC<ComingSoonSectionProps> = ({
                         >
                           Chi tiết
                         </Link>
-                        {movie.trailer && (
+                        {(movie.trailerLink || movie.trailerUrl) && (
                           <button
                             onClick={() => onTrailerClick?.(movie)}
                             className="flex items-center justify-center bg-slate-700/80 hover:bg-slate-600 text-white py-2 px-4 rounded transition-colors"

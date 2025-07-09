@@ -53,34 +53,6 @@ const RoomSeatMap: React.FC<SeatMapProps> = ({
     }
   };
 
-  const getSeatClassName = (seatId: string, row: string, col: number) => {
-    let className = 'seat';
-
-    if (disabledSeats.includes(seatId)) {
-      className += ' seat-disabled';
-    } else if (occupiedSeats?.includes(seatId)) {
-      className += ' seat-occupied';
-    } else if (selectedSeats.includes(seatId)) {
-      className += ' seat-selected';
-    } else {
-      className += ' seat-available';
-    }
-
-    if (vipSeats.includes(seatId)) {
-      className += ' seat-vip';
-    }
-
-    if (coupleSeats.includes(seatId)) {
-      className += ' seat-couple';
-    }
-
-    // Add hover effect for entire row/column
-    if (!readOnly && (hoveredRow === row || hoveredCol === col)) {
-      className += ' seat-hover';
-    }
-
-    return className;
-  };
 
   const getSeatColor = (seatId: string) => {
     if (disabledSeats.includes(seatId)) {

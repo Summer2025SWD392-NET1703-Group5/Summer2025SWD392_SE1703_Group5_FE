@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Calendar, Clock, Star, Info, Heart, Share2, Volume2, VolumeX, ArrowRight, Maximize, Minimize, X } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Play, Calendar, Clock, Star, Heart, Share2, Volume2, VolumeX, Maximize, Minimize, X } from 'lucide-react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import type { Movie } from '../types'; // THÊM import
@@ -50,7 +49,6 @@ const MovieHero: React.FC<MovieHeroProps> = ({
   ageRating = "T13",
   relatedMovies = [],
   onMovieSelect, // THÊM PROP MỚI
-  onTrailerClick
 }) => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(true);
@@ -183,24 +181,26 @@ const MovieHero: React.FC<MovieHeroProps> = ({
         // Update content
         if (onMovieSelect) {
           const fullMovie: Movie = {
-            id: movie.id,
+            id: movie.id.toString(),
             title: movie.title,
-            englishTitle: movie.title,
             poster: movie.poster,
-            backgroundImage: movie.poster,
-            rating: 4.0,
+            rating: "4.0",
             genre: "Hành Động",
-            genres: ["Hành Động"],
-            duration: "120 phút",
+            duration: 120,
             releaseDate: "2024-01-01",
             description: `Mô tả cho phim ${movie.title}`,
-            cast: ["Diễn viên 1", "Diễn viên 2"],
+            cast: "Diễn viên 1, Diễn viên 2",
             director: "Đạo diễn",
             ageRating: "T13",
-            trailerUrl: movie.trailerUrl || "",
+            trailerLink: movie.trailerUrl || "",
             isComingSoon: false,
             country: "Mỹ",
             language: "Tiếng Anh",
+            // Backwards compatibility fields
+            englishTitle: movie.title,
+            backgroundImage: movie.poster,
+            genres: ["Hành Động"],
+            trailerUrl: movie.trailerUrl || "",
             reviews: [],
             gallery: []
           };
@@ -510,7 +510,7 @@ const MovieHero: React.FC<MovieHeroProps> = ({
         {relatedMovies.length > 0 && (!isVideoPlaying || !isFullscreen) && (
           <div ref={thumbnailsRef} className="absolute bottom-[102px] right-8 z-20">
             <div className="flex space-x-2 max-w-2xl overflow-x-auto scrollbar-hide pr-16">
-              {relatedMovies.slice(0, 6).map((movie, index) => (
+              {relatedMovies.slice(0, 6).map((movie) => (
                 <button
                   key={movie.id}
                   onClick={() => handleThumbnailClick(movie)}

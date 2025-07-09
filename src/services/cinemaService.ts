@@ -110,21 +110,6 @@ interface MoviesResponse {
 }
 
 
-interface SeatInfo {
-    total: number;
-    available: number;
-    booked: number;
-    seats: any[];
-}
-
-
-interface SeatInfoResponse {
-    success: boolean;
-    data: SeatInfo;
-    message?: string;
-}
-
-
 class CinemaService {
     /**
      * Get all cinemas

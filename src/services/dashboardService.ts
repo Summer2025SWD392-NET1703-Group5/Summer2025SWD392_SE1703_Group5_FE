@@ -22,14 +22,14 @@ class DashboardService {
   /**
    * Ghi log lỗi tiếng Việt
    */
-  private logError(methodName: string, error: unknown): void {
+  private logError(_methodName: string, _error: unknown): void {
     // Removed console.log for performance
   }
 
   /**
    * Ghi log thành công
    */
-  private logSuccess(methodName: string, data: unknown): void {
+  private logSuccess(_methodName: string, _data: unknown): void {
     // Removed console.log for performance
   }
 
@@ -453,10 +453,9 @@ class DashboardService {
 
       // Log các lỗi nếu có
       const results = [overview, realtime, bookingStats, topMovies];
-      const methodNames = ['getDashboardOverview', 'getRealtimeData', 'getBookingStatistics', 'getTopMovies'];
       
       // Log các lỗi nếu có  
-      results.forEach((result, index) => {
+      results.forEach((result, _index) => {
         if (result.status === 'rejected') {
           // Removed console.warn for performance
         }

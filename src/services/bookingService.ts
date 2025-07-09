@@ -1,6 +1,4 @@
 import api from '../config/api';
-import { toast } from 'react-hot-toast';
-import axios from 'axios';
 import type { BookingResponse } from '../types/booking';
 
 // Interface cho request tạo booking
@@ -112,15 +110,21 @@ class BookingService {
                 discount = data.points * 1000;
             }
 
+            // Return a BookingResponse that matches the updated type
             return {
                 id: bookingId,
-                showtimeId: responseData?.show_date || '',
-                userId: responseData?.user_id?.toString() || '',
-                status: responseData?.status || 'pending',
-                totalPrice: responseData?.discounted_total_amount || 0,
-                seats: [],
+                showtimeId: responseData?.Showtime_ID?.toString() || responseData?.showtimeId || '',
+                userId: responseData?.User_ID?.toString() || responseData?.userId || '',
+                status: responseData?.Status || responseData?.status || 'pending',
+                totalPrice: responseData?.Discounted_Total_Amount || responseData?.discounted_total_amount || 0,
+                seats: responseData?.Seats || [],
                 discount: discount,
-                createdAt: responseData?.booking_date || new Date().toISOString()
+                createdAt: responseData?.Booking_Date || responseData?.booking_date || new Date().toISOString(),
+                // Add any additional fields for compatibility
+                success: responseData?.success,
+                booking: responseData?.booking,
+                message: responseData?.message,
+                discount_amount: responseData?.discount_amount,
             };
         } catch (error: any) {
             // Fallback response
@@ -133,7 +137,7 @@ class BookingService {
                 totalPrice: 0,
                 seats: [],
                 discount: mockDiscount,
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
             };
         }
     }
