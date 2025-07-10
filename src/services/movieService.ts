@@ -45,6 +45,8 @@ const keysToCamel = (o: any): any => {
             if (key === 'Status') camelKey = 'status';
             if (key === 'Created_At') camelKey = 'createdAt';
             if (key === 'Updated_At') camelKey = 'updatedAt';
+            if (key === 'MovieRatings') camelKey = 'movieRatings';
+            if (key === 'User_ID') camelKey = 'userID';
 
             // Xử lý Rating_Summary
             if (key === 'Rating_Summary') {

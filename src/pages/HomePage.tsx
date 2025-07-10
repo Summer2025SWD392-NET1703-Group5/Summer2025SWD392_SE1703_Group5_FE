@@ -9,37 +9,29 @@ import {
   MapPinIcon,
   TicketIcon,
   FilmIcon,
-  FireIcon,
   TrophyIcon,
   GiftIcon,
   UsersIcon,
   ChevronRightIcon,
-  MagnifyingGlassIcon,
   BuildingOfficeIcon,
   SparklesIcon,
   XMarkIcon,
+  FireIcon,
 } from "@heroicons/react/24/outline";
 import {
   PlayIcon as PlayIconSolid,
   StarIcon as StarIconSolid,
-  HeartIcon as HeartIconSolid,
 } from "@heroicons/react/24/solid";
 import { movieService } from "../services/movieService";
 import { promotionService } from "../services/promotionService";
 import { cinemaService } from "../services/cinemaService";
-import {
-  getMoviesByCinema,
-  getShowDatesForMovieAtCinema,
-  getShowtimesForMovieAtCinemaOnDate,
-  getCinemas,
-  getShowtimeSeatsInfo,
-} from "../services/showtimeService";
 import type { Cinema } from "../types/cinema";
 import FullScreenLoader from "../components/FullScreenLoader";
 import { toast } from "react-hot-toast";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import PromoDetailsModal from "../components/PromoDetailsModal";
 import type { Promotion } from "../types/promotion";
+import { DiscountBadge } from "../components/promotion/DiscountBadge";
 
 // Định nghĩa kiểu dữ liệu cho Movie trong HomePage
 interface HomePageMovie {
@@ -65,6 +57,7 @@ interface HomePagePromotion {
   discount: string;
   image: string;
   endDate: string;
+  originalData?: any; // Store original API data for proper conversion
 }
 
 // Định nghĩa kiểu dữ liệu cho phim từ API
@@ -133,7 +126,6 @@ const HomePage: React.FC = () => {
 
   // Dynamic data for quick booking
   const [availableMovies, setAvailableMovies] = useState<{ id: string; title: string; poster: string }[]>([]);
-  const [availableDates, setAvailableDates] = useState<{ date: string; displayDate: string }[]>([]);
   const [availableShowtimes, setAvailableShowtimes] = useState<
     {
       id: string;
@@ -155,7 +147,6 @@ const HomePage: React.FC = () => {
   const [modalSelectedCinemaId, setModalSelectedCinemaId] = useState("");
   const [modalSelectedDate, setModalSelectedDate] = useState("");
   const [modalSelectedShowtimeId, setModalSelectedShowtimeId] = useState("");
-  const [modalAvailableDates, setModalAvailableDates] = useState<{ date: string; displayDate: string }[]>([]);
   const [modalAvailableShowtimes, setModalAvailableShowtimes] = useState<
     {
       id: string;
@@ -185,21 +176,79 @@ const HomePage: React.FC = () => {
         ]);
 
         // Chuyển đổi dữ liệu phim sang định dạng HomePageMovie
-        const mapToHomePageMovie = (movie: any): HomePageMovie => ({
-          id: typeof movie.id === "string" ? parseInt(movie.id) : movie.id || 0,
-          title: movie.title || "",
-          poster: movie.poster || "",
-          backdrop: movie.backdrop || movie.poster || "",
-          description: movie.synopsis || movie.description || "",
-          rating: typeof movie.rating === "string" ? parseFloat(movie.rating) || 4.5 : movie.rating || 4.5,
-          duration: typeof movie.duration === "number" ? `${movie.duration} phút` : movie.duration || "120 phút",
-          genre: movie.genre || "",
-          releaseDate: movie.releaseDate || new Date().toISOString(),
-          trailer: movie.trailerLink || "",
-          ageRating: movie.rating || "P",
-          isHot: Math.random() > 0.5,
-          isNew: new Date(movie.releaseDate || Date.now()).getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000,
-        });
+        const mapToHomePageMovie = (movie: any): HomePageMovie => {
+          // Calculate rating using the same logic as MovieDetail with proper validation
+          let calculatedRating = 4.5; // Default rating
+          
+          // First, try to use pre-calculated rating from Rating_Summary (for MovieDetail compatibility)
+          if (movie.Rating_Summary?.Average_Rating !== undefined && 
+              movie.Rating_Summary?.Average_Rating !== null &&
+              !isNaN(Number(movie.Rating_Summary.Average_Rating)) &&
+              Number(movie.Rating_Summary.Average_Rating) > 0) {
+            const ratingValue = Number(movie.Rating_Summary.Average_Rating);
+            calculatedRating = ratingValue;
+          }
+          // For HomePage API, calculate from MovieRatings array (the main logic for HomePage)
+          else if ((movie.MovieRatings && Array.isArray(movie.MovieRatings) && movie.MovieRatings.length > 0) ||
+                   (movie.movieRatings && Array.isArray(movie.movieRatings) && movie.movieRatings.length > 0)) {
+            // Use movieRatings (camelCase) if available, otherwise use MovieRatings
+            const ratingsArray = movie.movieRatings || movie.MovieRatings;
+            
+            const validRatings = ratingsArray.filter((rating: any) => {
+              // Check both Rating (original) and rating (camelCase) fields
+              const ratingValue = rating.Rating || rating.rating;
+              return ratingValue !== null && 
+                     ratingValue !== undefined && 
+                     !isNaN(Number(ratingValue)) && 
+                     Number(ratingValue) > 0;
+            });
+            
+            if (validRatings.length > 0) {
+              const totalRating = validRatings.reduce((sum: number, rating: any) => {
+                const ratingValue = rating.Rating || rating.rating;
+                return sum + Number(ratingValue);
+              }, 0);
+              const averageRating = totalRating / validRatings.length;
+              
+              if (!isNaN(averageRating) && averageRating > 0) {
+                calculatedRating = Number(averageRating.toFixed(1));
+              }
+            }
+          }
+          // If not available, try other rating fields (fallback)
+          else if ((movie.rating !== undefined && movie.rating !== null) || (movie.ratingAverage !== undefined && movie.ratingAverage !== null)) {
+            const ratingValue = Number(movie.rating || movie.ratingAverage);
+            if (!isNaN(ratingValue) && ratingValue > 0) {
+              calculatedRating = ratingValue;
+            }
+          }
+          
+          // Final validation to ensure we always have a valid number
+          if (isNaN(calculatedRating) || calculatedRating <= 0) {
+            calculatedRating = 4.5;
+          }
+
+          const fullDescription = movie.synopsis || movie.description || movie.Synopsis || movie.Description || "";
+          const truncatedDescription = fullDescription.length > 150 
+            ? fullDescription.substring(0, 150) + "..."
+            : fullDescription;
+
+          return {
+            id: typeof movie.id === "string" ? parseInt(movie.id) : movie.id || movie.Movie_ID || 0,
+            title: movie.title || movie.Movie_Name || "",
+            poster: movie.poster || movie.Poster_URL || "",
+            backdrop: movie.backdrop || movie.Poster_URL || "",
+            description: truncatedDescription,
+            rating: calculatedRating,
+            duration: typeof movie.duration === "number" ? `${movie.duration} phút` : movie.Duration ? `${movie.Duration} phút` : "120 phút",
+            genre: movie.genre || movie.Genre || "",
+            releaseDate: movie.releaseDate || movie.Release_Date || new Date().toISOString(),
+            trailer: movie.trailerLink || movie.Trailer_Link || "",
+            ageRating: movie.ageRating || movie.Rating || "P",
+            // Use Premiere_Date to determine if movie is new (premiered within last 14 days)
+            isNew: new Date(movie.premiereDate || movie.Premiere_Date || movie.releaseDate || movie.Release_Date || Date.now()).getTime() > Date.now() - 14 * 24 * 60 * 60 * 1000,
+          };
+        };
 
         const nowShowingMoviesData = nowShowingResponse.map(mapToHomePageMovie);
         const comingSoonMoviesData = comingSoonResponse.map(mapToHomePageMovie);
@@ -207,44 +256,23 @@ const HomePage: React.FC = () => {
         setNowShowingMovies(nowShowingMoviesData.slice(0, 12));
         setComingSoonMovies(comingSoonMoviesData.slice(0, 8));
 
-        // Chuyển đổi dữ liệu khuyến mãi
+        // Chuyển đổi dữ liệu khuyến mãi - preserve service data
         const formattedPromotions = availablePromotions.map((promo: any) => ({
           id: promo.id || promo.Promotion_ID || 0,
-          title: promo.title || promo.Promotion_Name || "",
+          title: promo.title || promo.Title || promo.Promotion_Name || "",
           description: promo.description || promo.Description || "",
-          discount: promo.discount || promo.Discount_Amount + "%" || "10%",
+          discount: promo.discount || promo.Discount_Description || (promo.Discount_Value ? `${promo.Discount_Type === 'Percentage' ? promo.Discount_Value + '%' : new Intl.NumberFormat('vi-VN').format(promo.Discount_Value) + ' VND'}` : "10%"),
           image: promo.image || promo.Image_URL || "/promotion-placeholder.jpg",
           endDate: promo.endDate || promo.End_Date || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          // Store original API data for proper conversion
+          originalData: promo,
         }));
 
         setPromotions(formattedPromotions.slice(0, 6));
         setCinemas(activeCinemas);
       } catch (error) {
         console.error("Lỗi khi tải dữ liệu trang chủ:", error);
-        // Fallback data nếu API lỗi
-        setCinemas([
-          {
-            Cinema_ID: 1,
-            Cinema_Name: "Galaxy Nguyễn Du",
-            Address: "Quận 1, TP.HCM",
-            City: "TP.HCM",
-            Status: "Active",
-          },
-          {
-            Cinema_ID: 2,
-            Cinema_Name: "Galaxy Tân Bình",
-            Address: "Quận Tân Bình, TP.HCM",
-            City: "TP.HCM",
-            Status: "Active",
-          },
-          {
-            Cinema_ID: 3,
-            Cinema_Name: "Galaxy Bảo Lộc",
-            Address: "Bảo Lộc, Lâm Đồng",
-            City: "Lâm Đồng",
-            Status: "Active",
-          },
-        ]);
+        toast.error("Không thể tải dữ liệu. Vui lòng thử lại sau.");
       } finally {
         setLoading(false);
       }
@@ -270,7 +298,6 @@ const HomePage: React.FC = () => {
     setSelectedDate("");
     setSelectedShowtimeId("");
     setAvailableMovies([]);
-    setAvailableDates([]);
     setAvailableShowtimes([]);
 
     if (cinemaId) {
@@ -298,14 +325,12 @@ const HomePage: React.FC = () => {
     setSelectedMovieId(movieId);
     setSelectedDate("");
     setSelectedShowtimeId("");
-    setAvailableDates([]);
     setAvailableShowtimes([]);
 
     if (movieId && selectedCinemaId) {
       try {
         // Gọi API lấy danh sách ngày chiếu
         const response = await cinemaService.getCinemaShowtimesByDate(selectedCinemaId, "");
-        console.log("Dữ liệu suất chiếu:", response);
 
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = response.filter(
@@ -322,28 +347,11 @@ const HomePage: React.FC = () => {
           if (showDate) uniqueDates.add(showDate);
         });
 
-        // Định dạng ngày để hiển thị từ API
-        const formattedDates = Array.from(uniqueDates).map((date) => {
-          const dateObj = new Date(date);
-          return {
-            date: date,
-            displayDate: dateObj.toLocaleDateString("vi-VN", {
-              weekday: "long",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }),
-          };
-        });
-
-        // Sắp xếp ngày theo thứ tự tăng dần
-        formattedDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        setAvailableDates(formattedDates);
+        // Log available dates for debugging
+        console.log("Ngày chiếu có sẵn:", Array.from(uniqueDates));
       } catch (error) {
         console.error("Lỗi khi lấy ngày chiếu:", error);
         toast.error("Không thể tải lịch chiếu. Vui lòng thử lại sau.");
-        setAvailableDates([]);
       }
     }
   };
@@ -357,7 +365,6 @@ const HomePage: React.FC = () => {
       try {
         // Gọi API lấy suất chiếu theo rạp, ngày
         const allShowtimes = await cinemaService.getCinemaShowtimesByDate(selectedCinemaId, date);
-        console.log("Suất chiếu theo ngày:", allShowtimes);
 
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = allShowtimes.filter(
@@ -480,123 +487,17 @@ const HomePage: React.FC = () => {
           return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
         });
 
-        // Nếu không có suất chiếu hợp lệ hoặc validShowtimes rỗng, sử dụng dữ liệu mẫu
+        // Nếu không có suất chiếu hợp lệ
         if (validShowtimes.length === 0) {
-          console.log("Không có suất chiếu hợp lệ, sử dụng dữ liệu mẫu");
-
-          // Tạo dữ liệu suất chiếu mẫu dựa trên ngày đã chọn
-          const sampleShowtimes = [
-            {
-              id: "sample_1",
-              startTime: "09:30",
-              endTime: "11:30",
-              roomName: "Phòng 1",
-              roomType: "2D",
-              availableSeats: 45,
-              totalSeats: 50,
-              price: 90000,
-              seatStatus: "5/50",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_2",
-              startTime: "13:45",
-              endTime: "15:45",
-              roomName: "Phòng 2",
-              roomType: "3D",
-              availableSeats: 30,
-              totalSeats: 50,
-              price: 120000,
-              seatStatus: "20/50",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_3",
-              startTime: "17:15",
-              endTime: "19:15",
-              roomName: "Phòng VIP",
-              roomType: "2D",
-              availableSeats: 10,
-              totalSeats: 30,
-              price: 150000,
-              seatStatus: "20/30",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_4",
-              startTime: "20:30",
-              endTime: "22:30",
-              roomName: "Phòng 3",
-              roomType: "2D",
-              availableSeats: 0,
-              totalSeats: 50,
-              price: 90000,
-              seatStatus: "50/50",
-              isSoldOut: true,
-            },
-          ];
-
-          setAvailableShowtimes(sampleShowtimes);
+          console.log("Không có suất chiếu hợp lệ");
+          setAvailableShowtimes([]);
         } else {
           setAvailableShowtimes(validShowtimes);
         }
       } catch (error) {
         console.error("Lỗi khi lấy suất chiếu:", error);
         toast.error("Không thể tải suất chiếu. Vui lòng thử lại sau.");
-
-        // Khi có lỗi, cũng sử dụng dữ liệu mẫu
-        const sampleShowtimes = [
-          {
-            id: "sample_1",
-            startTime: "09:30",
-            endTime: "11:30",
-            roomName: "Phòng 1",
-            roomType: "2D",
-            availableSeats: 45,
-            totalSeats: 50,
-            price: 90000,
-            seatStatus: "5/50",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_2",
-            startTime: "13:45",
-            endTime: "15:45",
-            roomName: "Phòng 2",
-            roomType: "3D",
-            availableSeats: 30,
-            totalSeats: 50,
-            price: 120000,
-            seatStatus: "20/50",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_3",
-            startTime: "17:15",
-            endTime: "19:15",
-            roomName: "Phòng VIP",
-            roomType: "2D",
-            availableSeats: 10,
-            totalSeats: 30,
-            price: 150000,
-            seatStatus: "20/30",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_4",
-            startTime: "20:30",
-            endTime: "22:30",
-            roomName: "Phòng 3",
-            roomType: "2D",
-            availableSeats: 0,
-            totalSeats: 50,
-            price: 90000,
-            seatStatus: "50/50",
-            isSoldOut: true,
-          },
-        ];
-
-        setAvailableShowtimes(sampleShowtimes);
+        setAvailableShowtimes([]);
       }
     }
   };
@@ -630,12 +531,10 @@ const HomePage: React.FC = () => {
 
   // Promotion carousel navigation
   const handlePromotionNext = () => {
-    console.log("Chuyển đến promotion tiếp theo");
     setCurrentPromotionIndex((prev) => (prev + 1 >= promotions.length ? 0 : prev + 1));
   };
 
   const handlePromotionPrev = () => {
-    console.log("Chuyển đến promotion trước đó");
     setCurrentPromotionIndex((prev) => (prev === 0 ? promotions.length - 1 : prev - 1));
   };
 
@@ -646,40 +545,55 @@ const HomePage: React.FC = () => {
 
   // Convert HomePagePromotion to Promotion for modal
   const convertToPromotion = (homePromotion: HomePagePromotion): Promotion => {
+    // Use the same helper function to get discount type and value
+    const discountInfo = getDiscountTypeAndValue(homePromotion);
+    const originalData = homePromotion.originalData;
+
+    // Calculate prices based on discount type and value
+    const originalPrice = 100000; // Default values
+    let discountedPrice = originalPrice;
+    let discountPercentage = 0;
+
+    if (discountInfo.type === 'Percentage') {
+      discountPercentage = discountInfo.value;
+      discountedPrice = originalPrice * (1 - discountPercentage / 100);
+    } else { // Fixed discount
+      discountedPrice = Math.max(0, originalPrice - discountInfo.value);
+      discountPercentage = Math.round((discountInfo.value / originalPrice) * 100);
+    }
+
     return {
       id: homePromotion.id,
       title: homePromotion.title,
       description: homePromotion.description,
       image: homePromotion.image,
-      originalPrice: 100000, // Default values
-      discountedPrice: 80000,
-      discountPercentage: parseInt(homePromotion.discount.replace("%", "")) || 20,
+      originalPrice,
+      discountedPrice,
+      discountPercentage,
       validUntil: homePromotion.endDate,
       category: "special" as const,
       badge: "HOT" as const,
       isActive: true,
       terms: ["Áp dụng theo điều kiện và điều khoản của rạp"],
       code: `PROMO${homePromotion.id}`,
-      usageLimit: 100,
-      currentUsage: 10,
-      remainingUsage: 90,
-      discountType: "Percentage",
-      discountValue: parseInt(homePromotion.discount.replace("%", "")) || 20,
-      minimumPurchase: 50000,
+      usageLimit: originalData?.Usage_Limit || originalData?.usageLimit || 100,
+      currentUsage: originalData?.Current_Usage || originalData?.currentUsage || 10,
+      remainingUsage: originalData?.Usage_Remaining || originalData?.remainingUsage || 90,
+      discountType: discountInfo.type,
+      discountValue: discountInfo.value,
+      minimumPurchase: originalData?.Minimum_Purchase || originalData?.minimumPurchase || 50000,
       isUsed: false,
     };
   };
 
   // Promotion modal handlers
   const handlePromotionClick = (promotion: HomePagePromotion) => {
-    console.log("Mở chi tiết promotion:", promotion.title);
     const convertedPromotion = convertToPromotion(promotion);
     setSelectedPromotion(convertedPromotion);
     setIsPromotionModalOpen(true);
   };
 
   const handleClosePromotionModal = () => {
-    console.log("Đóng modal promotion");
     setIsPromotionModalOpen(false);
     setSelectedPromotion(null);
   };
@@ -687,7 +601,6 @@ const HomePage: React.FC = () => {
   // Apply promotion code (for PromoDetailsModal)
   const handleApplyPromotionCode = async (code: string) => {
     try {
-      console.log("Áp dụng mã khuyến mãi:", code);
       toast.success(`Đã áp dụng mã khuyến mãi: ${code}`);
       // Here you can add logic to apply the promotion code
       // For now, we'll just show a success message
@@ -704,7 +617,6 @@ const HomePage: React.FC = () => {
     setModalSelectedCinemaId("");
     setModalSelectedDate("");
     setModalSelectedShowtimeId("");
-    setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
   };
 
@@ -714,7 +626,6 @@ const HomePage: React.FC = () => {
     setModalSelectedCinemaId("");
     setModalSelectedDate("");
     setModalSelectedShowtimeId("");
-    setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
   };
 
@@ -734,14 +645,12 @@ const HomePage: React.FC = () => {
     setModalSelectedCinemaId(cinemaId);
     setModalSelectedDate("");
     setModalSelectedShowtimeId("");
-    setModalAvailableDates([]);
     setModalAvailableShowtimes([]);
 
     if (cinemaId && bookingMovie) {
       try {
         // Gọi API lấy danh sách ngày chiếu
         const response = await cinemaService.getCinemaShowtimesByDate(cinemaId, "");
-        console.log("Dữ liệu suất chiếu modal:", response);
 
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = response.filter(
@@ -750,7 +659,7 @@ const HomePage: React.FC = () => {
             String(showtime.movie_id) === bookingMovie.id.toString()
         );
 
-        // Trích xuất các ngày chiếu duy nhất
+        // Log available dates for debugging
         const uniqueDates = new Set<string>();
         filteredShowtimes.forEach((showtime: ApiShowtimeData) => {
           const showDate =
@@ -760,28 +669,10 @@ const HomePage: React.FC = () => {
           if (showDate) uniqueDates.add(showDate);
         });
 
-        // Định dạng ngày để hiển thị từ API
-        const formattedDates = Array.from(uniqueDates).map((date) => {
-          const dateObj = new Date(date);
-          return {
-            date: date,
-            displayDate: dateObj.toLocaleDateString("vi-VN", {
-              weekday: "long",
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            }),
-          };
-        });
-
-        // Sắp xếp ngày theo thứ tự tăng dần
-        formattedDates.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-        setModalAvailableDates(formattedDates);
+        console.log("Ngày chiếu có sẵn cho modal:", Array.from(uniqueDates));
       } catch (error) {
         console.error("Lỗi khi lấy ngày chiếu cho modal:", error);
         toast.error("Không thể tải lịch chiếu. Vui lòng thử lại sau.");
-        setModalAvailableDates([]);
       }
     }
   };
@@ -795,7 +686,6 @@ const HomePage: React.FC = () => {
       try {
         // Gọi API lấy suất chiếu theo rạp, ngày
         const allShowtimes = await cinemaService.getCinemaShowtimesByDate(modalSelectedCinemaId, date);
-        console.log("Suất chiếu theo ngày modal:", allShowtimes);
 
         // Lọc các suất chiếu của phim đã chọn
         const filteredShowtimes = allShowtimes.filter(
@@ -919,123 +809,17 @@ const HomePage: React.FC = () => {
           return timeA[0] * 60 + timeA[1] - (timeB[0] * 60 + timeB[1]);
         });
 
-        // Nếu không có suất chiếu hợp lệ hoặc validShowtimes rỗng, sử dụng dữ liệu mẫu
+        // Nếu không có suất chiếu hợp lệ
         if (validShowtimes.length === 0) {
-          console.log("Không có suất chiếu hợp lệ cho modal, sử dụng dữ liệu mẫu");
-
-          // Tạo dữ liệu suất chiếu mẫu dựa trên ngày đã chọn
-          const sampleShowtimes = [
-            {
-              id: "sample_modal_1",
-              startTime: "10:00",
-              endTime: "12:00",
-              roomName: "Phòng 1",
-              roomType: "2D",
-              availableSeats: 40,
-              totalSeats: 50,
-              price: 90000,
-              seatStatus: "10/50",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_modal_2",
-              startTime: "14:15",
-              endTime: "16:15",
-              roomName: "Phòng 2",
-              roomType: "3D",
-              availableSeats: 25,
-              totalSeats: 50,
-              price: 120000,
-              seatStatus: "25/50",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_modal_3",
-              startTime: "18:30",
-              endTime: "20:30",
-              roomName: "Phòng VIP",
-              roomType: "2D",
-              availableSeats: 5,
-              totalSeats: 30,
-              price: 150000,
-              seatStatus: "25/30",
-              isSoldOut: false,
-            },
-            {
-              id: "sample_modal_4",
-              startTime: "21:45",
-              endTime: "23:45",
-              roomName: "Phòng 3",
-              roomType: "2D",
-              availableSeats: 0,
-              totalSeats: 50,
-              price: 90000,
-              seatStatus: "50/50",
-              isSoldOut: true,
-            },
-          ];
-
-          setModalAvailableShowtimes(sampleShowtimes);
+          console.log("Không có suất chiếu hợp lệ cho modal");
+          setModalAvailableShowtimes([]);
         } else {
           setModalAvailableShowtimes(validShowtimes);
         }
       } catch (error) {
         console.error("Lỗi khi lấy suất chiếu modal:", error);
         toast.error("Không thể tải suất chiếu. Vui lòng thử lại sau.");
-
-        // Khi có lỗi, cũng sử dụng dữ liệu mẫu
-        const sampleShowtimes = [
-          {
-            id: "sample_modal_1",
-            startTime: "10:00",
-            endTime: "12:00",
-            roomName: "Phòng 1",
-            roomType: "2D",
-            availableSeats: 40,
-            totalSeats: 50,
-            price: 90000,
-            seatStatus: "10/50",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_modal_2",
-            startTime: "14:15",
-            endTime: "16:15",
-            roomName: "Phòng 2",
-            roomType: "3D",
-            availableSeats: 25,
-            totalSeats: 50,
-            price: 120000,
-            seatStatus: "25/50",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_modal_3",
-            startTime: "18:30",
-            endTime: "20:30",
-            roomName: "Phòng VIP",
-            roomType: "2D",
-            availableSeats: 5,
-            totalSeats: 30,
-            price: 150000,
-            seatStatus: "25/30",
-            isSoldOut: false,
-          },
-          {
-            id: "sample_modal_4",
-            startTime: "21:45",
-            endTime: "23:45",
-            roomName: "Phòng 3",
-            roomType: "2D",
-            availableSeats: 0,
-            totalSeats: 50,
-            price: 90000,
-            seatStatus: "50/50",
-            isSoldOut: true,
-          },
-        ];
-
-        setModalAvailableShowtimes(sampleShowtimes);
+        setModalAvailableShowtimes([]);
       }
     }
   };
@@ -1051,11 +835,56 @@ const HomePage: React.FC = () => {
     }
   };
 
+  // Handle trailer viewing
+  const handleTrailerPlay = (movie: HomePageMovie) => {
+    if (movie.trailer) {
+      // Open trailer in new window/tab
+      window.open(movie.trailer, '_blank');
+    } else {
+      toast.error('Trailer không khả dụng cho phim này');
+    }
+  };
+
   if (loading) {
     return <FullScreenLoader />;
   }
 
   const heroMovie = nowShowingMovies[heroMovieIndex];
+
+  // Helper function to get discount type and value from promotion data
+  const getDiscountTypeAndValue = (promotion: HomePagePromotion): { type: string; value: number } => {
+    const originalData = promotion.originalData;
+    
+    // First, try to get from the properly mapped promotion service data
+    if (originalData && originalData.discountType && originalData.discountValue !== undefined) {
+      return {
+        type: originalData.discountType,
+        value: originalData.discountValue
+      };
+    }
+    
+    // Second, try to get from API data if available
+    if (originalData && originalData.Discount_Value !== undefined && originalData.Discount_Type) {
+      return {
+        type: originalData.Discount_Type,
+        value: originalData.Discount_Value
+      };
+    }
+    
+    // Fallback: parse from discount text
+    if (promotion.discount.includes('%')) {
+      const value = parseInt(promotion.discount.replace(/[^\d]/g, '')) || 10;
+      return { type: 'Percentage', value };
+    } else if (promotion.discount.includes('VND') || promotion.discount.includes('.') || promotion.discount.includes(',')) {
+      // Handle different number formats like "100.000 VND" or "100,000 VND"
+      const numericValue = promotion.discount.replace(/[^\d]/g, '');
+      const value = parseInt(numericValue) || 50000;
+      return { type: 'Fixed', value };
+    }
+    
+    // Default fallback
+    return { type: 'Percentage', value: 10 };
+  };
 
   return (
     <>
@@ -1096,18 +925,12 @@ const HomePage: React.FC = () => {
                       >
                         {/* Movie Badges */}
                         <div className="flex items-center gap-3">
-                          {heroMovie.isHot && (
-                            <span className="px-3 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-bold rounded-full flex items-center gap-1 shadow-lg">
-                              <FireIcon className="w-4 h-4" />
-                              HOT
-                            </span>
-                          )}
                           <span className="px-3 py-1 bg-gradient-to-r from-[#FFD875] to-[#FFA500] text-black text-sm font-bold rounded-full shadow-lg">
                             ĐANG CHIẾU
                           </span>
                           <div className="flex items-center gap-1 text-[#FFD875]">
                             <StarIconSolid className="w-5 h-5" />
-                            <span className="font-semibold">{heroMovie.rating || 4.5}</span>
+                            <span className="font-semibold">{heroMovie.rating && !isNaN(heroMovie.rating) ? heroMovie.rating : 4.5}</span>
                           </div>
                         </div>
 
@@ -1147,16 +970,23 @@ const HomePage: React.FC = () => {
                             ĐẶT VÉ NGAY
                           </button>
 
+                          <button
+                            onClick={() => navigate(`/movies/${heroMovie.id}`)}
+                            className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transform hover:-translate-y-1 transition-all duration-300 flex items-center gap-3"
+                          >
+                            <FilmIcon className="w-6 h-6" />
+                            XEM CHI TIẾT
+                          </button>
+
                           {heroMovie.trailer && (
-                            <button className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transform hover:-translate-y-1 transition-all duration-300 flex items-center gap-3">
+                            <button
+                              onClick={() => handleTrailerPlay(heroMovie)}
+                              className="px-8 py-4 bg-white/10 backdrop-blur-md border border-white/20 text-white font-bold rounded-xl hover:bg-white/20 transform hover:-translate-y-1 transition-all duration-300 flex items-center gap-3"
+                            >
                               <PlayIconSolid className="w-6 h-6" />
                               XEM TRAILER
                             </button>
                           )}
-
-                          <button className="p-4 bg-white/10 backdrop-blur-md border border-white/20 text-white rounded-xl hover:bg-white/20 hover:text-red-400 transform hover:-translate-y-1 transition-all duration-300">
-                            <HeartIconSolid className="w-6 h-6" />
-                          </button>
                         </div>
                       </motion.div>
                     </div>
@@ -1489,7 +1319,10 @@ const HomePage: React.FC = () => {
                       viewport={{ once: true }}
                       className="flex-shrink-0 w-full sm:w-1/2 lg:w-1/4 px-2 sm:px-3"
                     >
-                      <div className="group relative bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-500 border border-slate-700 hover:border-yellow-400/50 transform hover:-translate-y-2">
+                      <div 
+                        className="group relative bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-yellow-500/20 transition-all duration-500 border border-slate-700 hover:border-yellow-400/50 transform hover:-translate-y-2 cursor-pointer"
+                        onClick={() => navigate(`/movies/${movie.id}`)}
+                      >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
                             src={movie.poster}
@@ -1500,29 +1333,74 @@ const HomePage: React.FC = () => {
                           {/* Overlay gradient */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                          {/* Release Date Badge */}
-                          <div className="absolute top-3 left-3">
-                            <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center shadow-lg">
-                              {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
+                          {/* Hot Badge */}
+                          {movie.isHot && (
+                            <div className="absolute top-3 left-3">
+                              <span className="px-2 py-1 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold rounded-lg flex items-center gap-1 shadow-lg">
+                                <FireIcon className="w-3 h-3" />
+                                HOT
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Rating Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-yellow-400 text-xs font-bold rounded-lg flex items-center gap-1 shadow-lg">
+                              <StarIconSolid className="w-3 h-3" />
+                              {movie.rating && !isNaN(movie.rating) ? movie.rating : 4.5}
                             </span>
                           </div>
 
-                          {/* Hover Play Button */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-                              <PlayIcon className="w-8 h-8 text-white ml-1" />
-                            </div>
+                          {/* Hover Action Buttons */}
+                          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {/* Play Trailer Button */}
+                            {movie.trailer && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTrailerPlay(movie);
+                                }}
+                                className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all duration-300 hover:scale-110"
+                                title="Xem trailer"
+                              >
+                                <PlayIcon className="w-6 h-6 text-white ml-0.5" />
+                              </button>
+                            )}
+
+                            {/* View Details Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/movies/${movie.id}`);
+                              }}
+                              className="w-12 h-12 bg-yellow-400/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-yellow-400/30 hover:bg-yellow-400/30 transition-all duration-300 hover:scale-110"
+                              title="Xem chi tiết"
+                            >
+                              <FilmIcon className="w-6 h-6 text-yellow-400" />
+                            </button>
                           </div>
                         </div>
 
                         {/* Movie Info */}
                         <div className="p-4 bg-slate-800">
-                          <h3 className="text-gray-100 font-bold text-sm mb-3 line-clamp-2 min-h-[40px] group-hover:text-yellow-400 transition-colors duration-300">
+                          <h3 className="text-gray-100 font-bold text-sm mb-2 line-clamp-2 min-h-[40px] group-hover:text-yellow-400 transition-colors duration-300">
                             {movie.title.toUpperCase()}
                           </h3>
 
+                          {/* Movie Details */}
+                          <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+                            <span className="flex items-center gap-1">
+                              <ClockIcon className="w-3 h-3" />
+                              {movie.duration}
+                            </span>
+                            <span>{movie.genre}</span>
+                          </div>
+
                           <button
-                            onClick={() => handleOpenBookingModal(movie)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenBookingModal(movie);
+                            }}
                             className="w-full py-3 bg-gradient-to-r from-yellow-400 to-yellow-500 text-black font-bold text-sm rounded-xl hover:from-yellow-500 hover:to-yellow-600 transition-all duration-300 shadow-lg hover:shadow-yellow-400/40 transform hover:scale-105"
                           >
                             MUA VÉ
@@ -1537,7 +1415,7 @@ const HomePage: React.FC = () => {
 
             <div className="text-center mt-12">
               <Link
-                to="/movies/now-showing"
+                to="/movies"
                 className="inline-block px-8 py-3 border-2 border-yellow-400 text-yellow-400 font-bold rounded hover:bg-yellow-400 hover:text-black transition-all duration-300"
               >
                 XEM THÊM
@@ -1602,7 +1480,10 @@ const HomePage: React.FC = () => {
                       viewport={{ once: true }}
                       className="flex-shrink-0 w-full sm:w-1/2 lg:w-1/4 px-2 sm:px-3"
                     >
-                      <div className="group relative bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 border border-slate-700 hover:border-blue-400/50 transform hover:-translate-y-2">
+                      <div 
+                        className="group relative bg-slate-800 rounded-xl overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-blue-500/20 transition-all duration-500 border border-slate-700 hover:border-blue-400/50 transform hover:-translate-y-2 cursor-pointer"
+                        onClick={() => navigate(`/movies/${movie.id}`)}
+                      >
                         <div className="relative aspect-[2/3] overflow-hidden">
                           <img
                             src={movie.poster}
@@ -1613,32 +1494,73 @@ const HomePage: React.FC = () => {
                           {/* Overlay gradient */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
 
-                          {/* Release Date Badge */}
+                          {/* Coming Soon Badge */}
                           <div className="absolute top-3 left-3">
                             <span className="px-2 py-1 bg-blue-500 text-white text-xs font-bold rounded-lg flex items-center shadow-lg">
-                              {new Date(movie.releaseDate).toLocaleDateString("vi-VN")}
+                              SẮP CHIẾU
                             </span>
                           </div>
 
-                          {/* Hover Play Button */}
-                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300">
-                            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30">
-                              <PlayIcon className="w-8 h-8 text-white ml-1" />
-                            </div>
+                          {/* Rating Badge */}
+                          <div className="absolute top-3 right-3">
+                            <span className="px-2 py-1 bg-black/60 backdrop-blur-sm text-yellow-400 text-xs font-bold rounded-lg flex items-center gap-1 shadow-lg">
+                              <StarIconSolid className="w-3 h-3" />
+                              {movie.rating && !isNaN(movie.rating) ? movie.rating : 4.5}
+                            </span>
+                          </div>
+
+                          {/* Hover Action Buttons */}
+                          <div className="absolute inset-0 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300">
+                            {/* Play Trailer Button */}
+                            {movie.trailer && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleTrailerPlay(movie);
+                                }}
+                                className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-white/30 hover:bg-white/30 transition-all duration-300 hover:scale-110"
+                                title="Xem trailer"
+                              >
+                                <PlayIcon className="w-6 h-6 text-white ml-0.5" />
+                              </button>
+                            )}
+
+                            {/* View Details Button */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/movies/${movie.id}`);
+                              }}
+                              className="w-12 h-12 bg-blue-400/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-blue-400/30 hover:bg-blue-400/30 transition-all duration-300 hover:scale-110"
+                              title="Xem chi tiết"
+                            >
+                              <FilmIcon className="w-6 h-6 text-blue-400" />
+                            </button>
                           </div>
                         </div>
 
                         {/* Movie Info */}
                         <div className="p-4 bg-slate-800">
-                          <h3 className="text-gray-100 font-bold text-sm mb-3 line-clamp-2 min-h-[40px] group-hover:text-blue-400 transition-colors duration-300">
+                          <h3 className="text-gray-100 font-bold text-sm mb-2 line-clamp-2 min-h-[40px] group-hover:text-blue-400 transition-colors duration-300">
                             {movie.title.toUpperCase()}
                           </h3>
 
+                          <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+                            <span className="flex items-center gap-1 pr-5">
+                              <CalendarDaysIcon className="w-3 h-3" />
+                              {new Date(movie.releaseDate).toLocaleDateString('vi-VN')}
+                            </span>
+                            <span>{movie.genre}</span>
+                          </div>
+
                           <button
-                            onClick={() => handleOpenBookingModal(movie)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/movies/${movie.id}`);
+                            }}
                             className="w-full py-3 bg-gradient-to-r from-blue-400 to-blue-500 text-white font-bold text-sm rounded-xl hover:from-blue-500 hover:to-blue-600 transition-all duration-300 shadow-lg hover:shadow-blue-400/40 transform hover:scale-105"
                           >
-                            ĐẶT VÉ TRƯỚC
+                            XEM CHI TIẾT
                           </button>
                         </div>
                       </div>
@@ -1650,7 +1572,7 @@ const HomePage: React.FC = () => {
 
             <div className="text-center mt-12">
               <Link
-                to="/movies/coming-soon"
+                to="/movies"
                 className="inline-block px-8 py-3 border-2 border-yellow-400 text-yellow-400 font-bold rounded hover:bg-yellow-400 hover:text-black transition-all duration-300"
               >
                 XEM THÊM
@@ -1711,16 +1633,19 @@ const HomePage: React.FC = () => {
                     transform: `translateX(-${currentPromotionIndex * (getPromotionCardWidth() + 24)}px)`,
                   }}
                 >
-                  {promotions.map((promotion, index) => (
-                    <motion.div
-                      key={`promotion-${index}`}
-                      initial={{ y: 50, opacity: 0 }}
-                      whileInView={{ y: 0, opacity: 1 }}
-                      transition={{ duration: 0.6, delay: index * 0.1 }}
-                      viewport={{ once: true }}
-                      className="flex-shrink-0 w-72 sm:w-80 h-44 sm:h-48 rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300 group cursor-pointer hover:scale-105"
-                      onClick={() => handlePromotionClick(promotion)}
-                    >
+                  {promotions.map((promotion, index) => {
+                    const discountInfo = getDiscountTypeAndValue(promotion);
+                    return (
+                      <motion.div
+                        key={`promotion-${index}`}
+                        initial={{ y: 50, opacity: 0 }}
+                        whileInView={{ y: 0, opacity: 1 }}
+                        transition={{ duration: 0.6, delay: index * 0.1 }}
+                        viewport={{ once: true }}
+                        whileHover={{ scale: 1.05, y: -5 }}
+                        className="flex-shrink-0 w-72 sm:w-80 h-44 sm:h-48 rounded-2xl overflow-hidden shadow-lg hover:shadow-2xl hover:shadow-red-500/20 transition-all duration-300 group cursor-pointer relative"
+                        onClick={() => handlePromotionClick(promotion)}
+                      >
                       <div className="relative w-full h-full">
                         <img
                           src={promotion.image}
@@ -1731,21 +1656,39 @@ const HomePage: React.FC = () => {
                         {/* Overlay với thông tin */}
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
 
-                        {/* Discount Badge */}
-                        <div className="absolute top-4 right-4">
-                          <span className="px-3 py-1 bg-red-500 text-white text-sm font-bold rounded-full">
-                            {promotion.discount}
+                        
+
+                        {/* Hot Badge - if applicable */}
+                        <div className="absolute top-4 left-4">
+                          <span className="px-3 py-1 bg-gradient-to-r from-yellow-400 to-orange-500 text-black text-xs font-bold rounded-full shadow-lg animate-pulse">
+                            HOT
                           </span>
                         </div>
 
                         {/* Content */}
                         <div className="absolute bottom-4 left-4 right-4">
                           <h3 className="text-white font-bold text-lg mb-2 line-clamp-1">{promotion.title}</h3>
-                          <p className="text-gray-300 text-sm line-clamp-2">{promotion.description}</p>
+                          <p className="text-gray-300 text-sm line-clamp-2 mb-2">{promotion.description}</p>
+                          
+                          {/* Discount highlight - Using DiscountBadge component */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-gray-400">Giảm giá:</span>
+                              <DiscountBadge 
+                                type={discountInfo.type} 
+                                value={discountInfo.value} 
+                              />
+                            </div>
+                            <div className="flex items-center text-xs text-gray-400">
+                              <GiftIcon className="w-4 h-4 mr-1" />
+                              <span>Xem chi tiết</span>
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </motion.div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
 
@@ -1972,7 +1915,7 @@ const HomePage: React.FC = () => {
                         </div>
                         <div className="flex items-center gap-2">
                           <StarIconSolid className="w-4 h-4 text-[#FFD875]" />
-                          <span>{bookingMovie.rating || 4.5}</span>
+                          <span>{bookingMovie.rating && !isNaN(bookingMovie.rating) ? bookingMovie.rating : 4.5}</span>
                         </div>
                       </div>
                       <div className="inline-flex items-center gap-3 mb-4">
