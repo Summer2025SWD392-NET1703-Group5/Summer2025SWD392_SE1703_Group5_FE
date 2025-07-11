@@ -20,7 +20,7 @@ import {
   FilmIcon
 } from '@heroicons/react/24/outline';
 import { getAllBookings, exportBookingsToExcel } from '../../../services/admin/bookingManagementServices';
-import type { Booking, PaginatedResponse } from '../../../services/admin/bookingManagementServices';
+import type { Booking, BookingApiResponse } from '../../../services/admin/bookingManagementServices';
 
 const BookingsList: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -31,28 +31,34 @@ const BookingsList: React.FC = () => {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
-  const limit = 10;
+  const limit = 10; // Đặt limit = 10 để hiển thị 10 vé mỗi trang
 
   // Fetch bookings from API
   const fetchBookings = async () => {
     setLoading(true);
     setError(null);
     try {
+      console.log(`Đang tải danh sách đặt vé - Trang ${page}, Filter: ${statusFilter}, Search: ${searchTerm}`);
+      
       const response = await getAllBookings(page, limit, searchTerm, statusFilter);
 
-      if (response) {
+      if (response && response.success) {
         setBookings(response.data);
-        setTotalItems(response.totalItems);
-        setTotalPages(response.totalPages);
+        setTotalItems(response.pagination.totalCount);
+        setTotalPages(response.pagination.totalPages);
+        
+        console.log(`Tải thành công ${response.data.length} đơn đặt vé`);
+        console.log(`Tổng số: ${response.pagination.totalCount}, Trang ${response.pagination.currentPage}/${response.pagination.totalPages}`);
       } else {
         setError('Không nhận được phản hồi từ server');
         setBookings([]);
         setTotalItems(0);
         setTotalPages(1);
+        console.error('API response không hợp lệ:', response);
       }
     } catch (err) {
       setError('Đã xảy ra lỗi khi tải dữ liệu đặt vé');
-      console.error('Error fetching bookings:', err);
+      console.error('Lỗi khi tải danh sách đặt vé:', err);
       setBookings([]);
       setTotalItems(0);
       setTotalPages(1);
@@ -64,27 +70,32 @@ const BookingsList: React.FC = () => {
   // Export bookings to Excel
   const handleExportExcel = async () => {
     try {
+      console.log('Đang xuất dữ liệu ra Excel...');
       await exportBookingsToExcel(searchTerm, statusFilter);
+      console.log('Xuất Excel thành công');
     } catch (err) {
       setError('Đã xảy ra lỗi khi xuất file Excel');
-      console.error('Error exporting to Excel:', err);
+      console.error('Lỗi khi xuất Excel:', err);
     }
   };
 
   // Handle refresh
   const handleRefresh = () => {
+    console.log('Làm mới danh sách đặt vé');
     fetchBookings();
   };
 
   // Handle pagination
   const handlePreviousPage = () => {
     if (page > 1) {
+      console.log(`Chuyển đến trang trước: ${page - 1}`);
       setPage(page - 1);
     }
   };
 
   const handleNextPage = () => {
     if (page < totalPages) {
+      console.log(`Chuyển đến trang tiếp theo: ${page + 1}`);
       setPage(page + 1);
     }
   };
@@ -116,6 +127,7 @@ const BookingsList: React.FC = () => {
   // Debounced search
   useEffect(() => {
     const timer = setTimeout(() => {
+      console.log(`Tìm kiếm với từ khóa: "${searchTerm}"`);
       setPage(1); // Reset to first page when search changes
       fetchBookings();
     }, 500);
@@ -169,7 +181,7 @@ const BookingsList: React.FC = () => {
       // Fallback to just the date
       return format(new Date(booking.Show_Date), 'dd/MM/yyyy');
     } catch (e) {
-      console.error('Error formatting date:', e);
+      console.error('Lỗi khi format ngày:', e);
       return 'Không hợp lệ';
     }
   };
@@ -195,6 +207,7 @@ const BookingsList: React.FC = () => {
     }
   };
 
+  // Fixed framer-motion variants
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: {
@@ -211,7 +224,7 @@ const BookingsList: React.FC = () => {
       y: 0,
       opacity: 1,
       transition: {
-        type: "spring",
+        type: "spring" as const,
         stiffness: 100
       }
     }
@@ -462,6 +475,9 @@ const BookingsList: React.FC = () => {
             <SparklesIcon className="w-5 h-5 text-[#FFD875]" />
             <span className="text-sm text-slate-300">
               Hiển thị <span className="font-bold text-[#FFD875]">{bookings ? bookings.length : 0}</span> trong tổng số <span className="font-bold text-[#FFD875]">{totalItems}</span> đơn
+            </span>
+            <span className="text-xs text-slate-400 ml-2">
+              (Trang {page}/{totalPages})
             </span>
           </div>
 

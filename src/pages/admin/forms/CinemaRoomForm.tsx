@@ -1,639 +1,546 @@
-// src/components/admin/forms/CinemaRoomForm.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useForm, Controller } from 'react-hook-form';
+import { yupResolver } from '@hookform/resolvers/yup';
+import * as yup from 'yup';
+import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import {
-  CubeIcon,
-  BuildingOfficeIcon,
-  UserGroupIcon,
-  CurrencyDollarIcon,
-  Cog6ToothIcon,
-  PlusIcon,
-  XMarkIcon,
+    CubeIcon,
+    UserGroupIcon,
+    Cog6ToothIcon,
+    ExclamationCircleIcon,
+    ArrowPathIcon,
+    ViewColumnsIcon,
+    ArrowLeftIcon,
+    CogIcon
 } from '@heroicons/react/24/outline';
+import type { CinemaRoom, CinemaRoomFormData, CinemaRoomFormStatus } from '../../../types/cinemaRoom';
+import SeatLayoutConfig from '../cinema-rooms/SeatLayoutConfig';
 
-interface CinemaRoomFormData {
-  name: string;
-  cinemaId: string;
-  type: 'standard' | 'vip' | 'imax' | '4dx' | 'premium';
-  totalSeats: number;
-  rows: number;
-  seatsPerRow: number;
-  status: 'active' | 'maintenance' | 'inactive';
-  facilities: string[];
-  screenSize: string;
-  soundSystem: string;
-  projectorType: string;
-  basePrice: number;
-  vipPrice: number;
-  description: string;
+const roomSchema = yup.object({
+    Room_Name: yup.string()
+        .required('Tên phòng là bắt buộc')
+        .min(2, 'Tên phòng phải có ít nhất 2 ký tự')
+        .max(50, 'Tên phòng không được vượt quá 50 ký tự'),
+    Room_Type: yup.string()
+        .oneOf(['2D', '3D', 'IMAX', 'VIP'], 'Loại phòng không hợp lệ')
+        .required('Loại phòng là bắt buộc'),
+    Seat_Quantity: yup.number()
+        .required('Số ghế là bắt buộc')
+        .min(20, 'Số ghế phải ít nhất là 20')
+        .max(300, 'Số ghế không được vượt quá 300')
+        .integer('Số ghế phải là số nguyên'),
+    Status: yup.string()
+        .oneOf(['Active', 'Inactive'] as CinemaRoomFormStatus[], 'Trạng thái không hợp lệ')
+        .required('Trạng thái là bắt buộc'),
+    Notes: yup.string()
+        .max(500, 'Ghi chú không được vượt quá 500 ký tự')
+        .optional(),
+});
+
+interface SeatLayout {
+    Layout_ID: number;
+    Row_Label: string;
+    Column_Number: number;
+    Seat_Type: string;
+    Is_Active: boolean;
 }
 
-interface Cinema {
-  id: string;
-  name: string;
+interface SeatLayoutResponse {
+    success: boolean;
+    message: string;
+    data: {
+        cinema_room: {
+            Cinema_Room_ID: number;
+            Room_Name: string;
+            Room_Type: string;
+        };
+        rows: Array<{
+            Row: string;
+            Seats: SeatLayout[];
+        }>;
+        dimensions: {
+            rows: number;
+            columns: number;
+        };
+        stats: {
+            total_seats: number;
+            seat_types: Array<{
+                SeatType: string;
+                Count: number;
+            }>;
+        };
+        can_modify: boolean;
+    };
 }
 
 interface CinemaRoomFormProps {
-  mode: 'create' | 'edit';
+    room?: CinemaRoom;
+    onSubmit: (data: CinemaRoomFormData) => Promise<void>;
+    onCancel: () => void;
+    loading?: boolean;
 }
 
-const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ mode }) => {
-  const navigate = useNavigate();
-  const { id } = useParams();
-  const [loading, setLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<CinemaRoomFormData>>({});
-  const [cinemas, setCinemas] = useState<Cinema[]>([]);
-  const [newFacility, setNewFacility] = useState('');
-  
-  const [formData, setFormData] = useState<CinemaRoomFormData>({
-    name: '',
-    cinemaId: '',
-    type: 'standard',
-    totalSeats: 0,
-    rows: 0,
-    seatsPerRow: 0,
-    status: 'active',
-    facilities: [],
-    screenSize: '',
-    soundSystem: '',
-    projectorType: '',
-    basePrice: 100000,
-    vipPrice: 150000,
-    description: '',
-  });
+const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCancel, loading = false }) => {
+    const [duplicateNameError, setDuplicateNameError] = useState<string | null>(null);
+    const [suggestedName, setSuggestedName] = useState<string | null>(null);
+    const [showSeatConfig, setShowSeatConfig] = useState(false);
+    const [seatLayout, setSeatLayout] = useState<SeatLayoutResponse['data'] | null>(null);
+    const [seatLayoutLoading, setSeatLayoutLoading] = useState(false);
 
-  const roomTypes = [
-    { value: 'standard', label: 'Standard', description: 'Phòng chiếu tiêu chuẩn' },
-    { value: 'vip', label: 'VIP', description: 'Phòng VIP với ghế cao cấp' },
-    { value: 'imax', label: 'IMAX', description: 'Phòng IMAX với màn hình lớn' },
-    { value: '4dx', label: '4DX', description: 'Phòng 4DX với hiệu ứng đặc biệt' },
-    { value: 'premium', label: 'Premium', description: 'Phòng Premium với dịch vụ cao cấp' },
-  ];
+    const {
+        control,
+        handleSubmit,
+        formState: { errors },
+        setValue,
+        watch,
+    } = useForm<CinemaRoomFormData>({
+        resolver: yupResolver(roomSchema),
+        defaultValues: {
+            Room_Name: room?.Room_Name || '',
+            Room_Type: room?.Room_Type || '2D',
+            Seat_Quantity: room?.Seat_Quantity || 50,
+            Status: room?.Status === 'Deleted' || room?.Status === 'Closed' || room?.Status === 'Maintenance' ? 'Inactive' : (room?.Status || 'Active'),
+            Notes: room?.Notes || '',
+        },
+    });
 
-  const commonFacilities = [
-    'Air Conditioning', 'Dolby Atmos', 'Reclining Seats', 'Cup Holders',
-    'LED Lighting', 'Emergency Exit', 'Wheelchair Access', 'Sound Isolation',
-    'Digital Projection', 'Premium Sound', 'VIP Service', 'Food Service'
-  ];
+    const roomTypes = [
+        { value: '2D', label: '2D', color: 'text-white' },
+        { value: '3D', label: '3D', color: 'text-blue-400' },
+        { value: 'IMAX', label: 'IMAX', color: 'text-purple-400' },
+        { value: 'VIP', label: 'VIP', color: 'text-[#FFD875]' },
+    ];
 
-  const soundSystems = [
-    'Dolby Atmos 7.1', 'Dolby Digital 5.1', 'DTS-X', 'THX Certified',
-    'Dolby Surround', '4DX Surround', 'IMAX Enhanced'
-  ];
+    const seatQuantity = watch('Seat_Quantity');
+    const roomType = watch('Room_Type');
 
-  const projectorTypes = [
-    'Digital 4K', 'Digital 2K', 'IMAX Laser', '4DX Digital', 
-    'Dolby Vision', 'HDR10', 'Premium Digital'
-  ];
+    // Fetch seat layout from API
+    const fetchSeatLayout = async (roomId: number) => {
+        try {
+            setSeatLayoutLoading(true);
+            const response = await fetch(`/api/seat-layouts/room/${roomId}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
 
-  useEffect(() => {
-    fetchCinemas();
-    if (mode === 'edit' && id) {
-      fetchCinemaRoom(id);
-    }
-  }, [mode, id]);
+            if (response.ok) {
+                const data: SeatLayoutResponse = await response.json();
+                setSeatLayout(data.data);
+            } else {
+                // If no seat layout found, set to null (will show empty state)
+                setSeatLayout(null);
+            }
+        } catch (error) {
+            console.error('Error fetching seat layout:', error);
+            setSeatLayout(null);
+        } finally {
+            setSeatLayoutLoading(false);
+        }
+    };
 
-  useEffect(() => {
-    // Auto calculate total seats when rows or seatsPerRow changes
-    if (formData.rows > 0 && formData.seatsPerRow > 0) {
-      setFormData(prev => ({
-        ...prev,
-        totalSeats: prev.rows * prev.seatsPerRow,
-      }));
-    }
-  }, [formData.rows, formData.seatsPerRow]);
+    // Load seat layout when room changes
+    useEffect(() => {
+        if (room?.Cinema_Room_ID) {
+            fetchSeatLayout(room.Cinema_Room_ID);
+        }
+    }, [room?.Cinema_Room_ID]);
 
-  const fetchCinemas = async () => {
-    try {
-      const mockCinemas: Cinema[] = [
-        { id: '1', name: 'CGV Vincom Center' },
-        { id: '2', name: 'Lotte Cinema Landmark' },
-        { id: '3', name: 'Galaxy Nguyễn Du' },
-        { id: '4', name: 'BHD Star Bitexco' },
-        { id: '5', name: 'CGV Aeon Mall' },
-      ];
-      setCinemas(mockCinemas);
-    } catch (error) {
-      console.error('Error fetching cinemas:', error);
-    }
-  };
+    const handleFormSubmit = async (data: CinemaRoomFormData) => {
+        setDuplicateNameError(null);
+        setSuggestedName(null);
 
-  const fetchCinemaRoom = async (roomId: string) => {
-    try {
-      setLoading(true);
-      // Mock data for edit mode
-      const mockRoom = {
-        name: 'Phòng 1 - IMAX',
-        cinemaId: '1',
-        type: 'imax' as const,
-        totalSeats: 150,
-        rows: 12,
-        seatsPerRow: 15,
-        status: 'active' as const,
-        facilities: ['IMAX Screen', 'Dolby Atmos', 'Reclining Seats', 'Air Conditioning'],
-        screenSize: '22m x 16m',
-        soundSystem: 'Dolby Atmos 7.1',
-        projectorType: 'IMAX Laser',
-        basePrice: 150000,
-        vipPrice: 200000,
-        description: 'Phòng chiếu IMAX với công nghệ tiên tiến nhất',
-      };
-      
-      setFormData(mockRoom);
-    } catch (error) {
-      console.error('Error fetching cinema room:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+        try {
+            await onSubmit(data);
+        } catch (error: any) {
+            console.error('Error submitting cinema room form:', error);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: ['totalSeats', 'rows', 'seatsPerRow', 'basePrice', 'vipPrice'].includes(name) 
-        ? Number(value) 
-        : value,
-    }));
-    
-    if (errors[name as keyof CinemaRoomFormData]) {
-      setErrors(prev => ({
-        ...prev,
-        [name]: undefined,
-      }));
-    }
-  };
+            const errorMessage = error.message || '';
+            if (errorMessage.includes('đã tồn tại trong rạp này') && errorMessage.includes('Bạn có thể sử dụng tên')) {
+                setDuplicateNameError(errorMessage);
 
-  const addFacility = () => {
-    if (newFacility.trim() && !formData.facilities.includes(newFacility.trim())) {
-      setFormData(prev => ({
-        ...prev,
-        facilities: [...prev.facilities, newFacility.trim()],
-      }));
-      setNewFacility('');
-    }
-  };
+                const match = errorMessage.match(/Bạn có thể sử dụng tên '([^']+)'/);
+                if (match && match[1]) {
+                    setSuggestedName(match[1]);
+                }
+            }
+        }
+    };
 
-  const removeFacility = (facility: string) => {
-    setFormData(prev => ({
-      ...prev,
-      facilities: prev.facilities.filter(f => f !== facility),
-    }));
-  };
+    const useSuggestedName = () => {
+        if (suggestedName) {
+            setValue('Room_Name', suggestedName, { shouldValidate: true });
+            setDuplicateNameError(null);
+            setSuggestedName(null);
+        }
+    };
 
-  const addCommonFacility = (facility: string) => {
-    if (!formData.facilities.includes(facility)) {
-      setFormData(prev => ({
-        ...prev,
-        facilities: [...prev.facilities, facility],
-      }));
-    }
-  };
+    const handleSeatConfigSuccess = () => {
+        setShowSeatConfig(false);
+        // Refresh seat layout after successful configuration
+        if (room?.Cinema_Room_ID) {
+            fetchSeatLayout(room.Cinema_Room_ID);
+        }
+    };
 
-  const validateForm = (): boolean => {
-    const newErrors: Partial<CinemaRoomFormData> = {};
+    const getSeatTypeIcon = (seatType: string) => {
+        switch (seatType) {
+            case 'VIP': return '👑';
+            case 'Couple': return '💕';
+            default: return '💺';
+        }
+    };
 
-    if (!formData.name.trim()) {
-      newErrors.name = 'Tên phòng không được để trống';
-    }
+    const getSeatTypeColor = (seatType: string) => {
+        switch (seatType) {
+            case 'VIP': return 'bg-yellow-500/20 border-yellow-500/50 text-yellow-400';
+            case 'Couple': return 'bg-pink-500/20 border-pink-500/50 text-pink-400';
+            default: return 'bg-blue-500/20 border-blue-500/50 text-blue-400';
+        }
+    };
 
-    if (!formData.cinemaId) {
-      newErrors.cinemaId = 'Vui lòng chọn rạp chiếu';
-    }
-
-    if (formData.rows <= 0) {
-      newErrors.rows = 'Số hàng ghế phải lớn hơn 0';
-    }
-
-    if (formData.seatsPerRow <= 0) {
-      newErrors.seatsPerRow = 'Số ghế mỗi hàng phải lớn hơn 0';
-    }
-
-    if (!formData.screenSize.trim()) {
-      newErrors.screenSize = 'Kích thước màn hình không được để trống';
-    }
-
-    if (!formData.soundSystem) {
-      newErrors.soundSystem = 'Vui lòng chọn hệ thống âm thanh';
-    }
-
-    if (!formData.projectorType) {
-      newErrors.projectorType = 'Vui lòng chọn loại máy chiếu';
-    }
-
-    if (formData.basePrice <= 0) {
-      newErrors.basePrice = 'Giá vé cơ bản phải lớn hơn 0';
-    }
-
-    if (formData.vipPrice <= 0) {
-      newErrors.vipPrice = 'Giá vé VIP phải lớn hơn 0';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-
-    try {
-      setLoading(true);
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      console.log('Form data:', formData);
-      navigate('/admin/cinema-rooms');
-    } catch (error) {
-      console.error('Error saving cinema room:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const selectedRoomType = roomTypes.find(type => type.value === formData.type);
-
-  return (
-    <div className="max-w-4xl mx-auto">
-      <div className="bg-slate-800 rounded-lg p-6">
-        <h2 className="text-xl font-bold text-white mb-6">
-          {mode === 'create' ? 'Thêm phòng chiếu mới' : 'Chỉnh sửa phòng chiếu'}
-        </h2>
-
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Room Name */}
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-300 mb-2">
-                Tên phòng chiếu *
-              </label>
-              <div className="relative">
-                <CubeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleInputChange}
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-700 text-white rounded-lg border ${
-                    errors.name ? 'border-red-500' : 'border-slate-600'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="Nhập tên phòng chiếu"
-                />
-              </div>
-              {errors.name && <p className="mt-1 text-sm text-red-500">{errors.name}</p>}
-            </div>
-
-            {/* Cinema */}
-            <div>
-              <label htmlFor="cinemaId" className="block text-sm font-medium text-gray-300 mb-2">
-                Rạp chiếu *
-              </label>
-              <select
-                id="cinemaId"
-                name="cinemaId"
-                value={formData.cinemaId}
-                onChange={handleInputChange}
-                className={`w-full px-4 py-2 bg-slate-700 text-white rounded-lg border ${
-                  errors.cinemaId ? 'border-red-500' : 'border-slate-600'
-                } focus:border-yellow-500 focus:outline-none`}
-              >
-                <option value="">Chọn rạp chiếu</option>
-                {cinemas.map(cinema => (
-                  <option key={cinema.id} value={cinema.id}>
-                    {cinema.name}
-                  </option>
-                ))}
-              </select>
-              {errors.cinemaId && <p className="mt-1 text-sm text-red-500">{errors.cinemaId}</p>}
-            </div>
-          </div>
-
-          {/* Room Type */}
-          <div>
-            <label htmlFor="type" className="block text-sm font-medium text-gray-300 mb-2">
-              Loại phòng chiếu *
-            </label>
-            <select
-              id="type"
-              name="type"
-              value={formData.type}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-yellow-500 focus:outline-none"
+    return (
+        <div className="p-6">
+            <motion.div
+                className="mb-6 flex items-center"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ duration: 0.3 }}
             >
-              {roomTypes.map(type => (
-                <option key={type.value} value={type.value}>
-                  {type.label} - {type.description}
-                </option>
-              ))}
-            </select>
-            {selectedRoomType && (
-              <p className="mt-1 text-sm text-gray-400">{selectedRoomType.description}</p>
-            )}
-          </div>
-
-          {/* Seating Configuration */}
-          <div className="bg-slate-700 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-4">Cấu hình ghế ngồi</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="rows" className="block text-sm font-medium text-gray-300 mb-2">
-                  Số hàng ghế *
-                </label>
-                <input
-                  type="number"
-                  id="rows"
-                  name="rows"
-                  value={formData.rows}
-                  onChange={handleInputChange}
-                  min="1"
-                  className={`w-full px-4 py-2 bg-slate-600 text-white rounded-lg border ${
-                    errors.rows ? 'border-red-500' : 'border-slate-500'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="Số hàng"
-                />
-                {errors.rows && <p className="mt-1 text-sm text-red-500">{errors.rows}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="seatsPerRow" className="block text-sm font-medium text-gray-300 mb-2">
-                  Ghế mỗi hàng *
-                </label>
-                <input
-                  type="number"
-                  id="seatsPerRow"
-                  name="seatsPerRow"
-                  value={formData.seatsPerRow}
-                  onChange={handleInputChange}
-                  min="1"
-                  className={`w-full px-4 py-2 bg-slate-600 text-white rounded-lg border ${
-                    errors.seatsPerRow ? 'border-red-500' : 'border-slate-500'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="Ghế/hàng"
-                />
-                {errors.seatsPerRow && <p className="mt-1 text-sm text-red-500">{errors.seatsPerRow}</p>}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-300 mb-2">
-                  Tổng số ghế
-                </label>
-                <div className="w-full px-4 py-2 bg-slate-600 text-yellow-400 rounded-lg border border-slate-500 font-medium">
-                  {formData.totalSeats} ghế
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Technical Specifications */}
-          <div className="bg-slate-700 rounded-lg p-4">
-            <h3 className="text-white font-medium mb-4">Thông số kỹ thuật</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label htmlFor="screenSize" className="block text-sm font-medium text-gray-300 mb-2">
-                  Kích thước màn hình *
-                </label>
-                <input
-                  type="text"
-                  id="screenSize"
-                  name="screenSize"
-                  value={formData.screenSize}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-2 bg-slate-600 text-white rounded-lg border ${
-                    errors.screenSize ? 'border-red-500' : 'border-slate-500'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="VD: 15m x 8m"
-                />
-                {errors.screenSize && <p className="mt-1 text-sm text-red-500">{errors.screenSize}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="soundSystem" className="block text-sm font-medium text-gray-300 mb-2">
-                  Hệ thống âm thanh *
-                </label>
-                <select
-                  id="soundSystem"
-                  name="soundSystem"
-                  value={formData.soundSystem}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-2 bg-slate-600 text-white rounded-lg border ${
-                    errors.soundSystem ? 'border-red-500' : 'border-slate-500'
-                  } focus:border-yellow-500 focus:outline-none`}
+                <button
+                    onClick={onCancel}
+                    className="mr-4 p-2 rounded-full hover:bg-slate-700 transition-all duration-200 text-gray-400 hover:text-white group"
                 >
-                  <option value="">Chọn hệ thống âm thanh</option>
-                  {soundSystems.map(system => (
-                    <option key={system} value={system}>
-                      {system}
-                    </option>
-                  ))}
-                </select>
-                {errors.soundSystem && <p className="mt-1 text-sm text-red-500">{errors.soundSystem}</p>}
-              </div>
-
-              <div>
-                <label htmlFor="projectorType" className="block text-sm font-medium text-gray-300 mb-2">
-                  Loại máy chiếu *
-                </label>
-                <select
-                  id="projectorType"
-                  name="projectorType"
-                  value={formData.projectorType}
-                  onChange={handleInputChange}
-                  className={`w-full px-4 py-2 bg-slate-600 text-white rounded-lg border ${
-                    errors.projectorType ? 'border-red-500' : 'border-slate-500'
-                  } focus:border-yellow-500 focus:outline-none`}
-                >
-                  <option value="">Chọn loại máy chiếu</option>
-                  {projectorTypes.map(type => (
-                    <option key={type} value={type}>
-                      {type}
-                    </option>
-                  ))}
-                </select>
-                {errors.projectorType && <p className="mt-1 text-sm text-red-500">{errors.projectorType}</p>}
-              </div>
-            </div>
-          </div>
-
-          {/* Pricing */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="basePrice" className="block text-sm font-medium text-gray-300 mb-2">
-                Giá vé cơ bản (VNĐ) *
-              </label>
-              <div className="relative">
-                <CurrencyDollarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="number"
-                  id="basePrice"
-                  name="basePrice"
-                  value={formData.basePrice}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1000"
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-700 text-white rounded-lg border ${
-                    errors.basePrice ? 'border-red-500' : 'border-slate-600'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="Nhập giá vé cơ bản"
-                />
-              </div>
-              {errors.basePrice && <p className="mt-1 text-sm text-red-500">{errors.basePrice}</p>}
-            </div>
-
-            <div>
-              <label htmlFor="vipPrice" className="block text-sm font-medium text-gray-300 mb-2">
-                Giá vé VIP (VNĐ) *
-              </label>
-              <div className="relative">
-                <CurrencyDollarIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-                <input
-                  type="number"
-                  id="vipPrice"
-                  name="vipPrice"
-                  value={formData.vipPrice}
-                  onChange={handleInputChange}
-                  min="0"
-                  step="1000"
-                  className={`w-full pl-10 pr-4 py-2 bg-slate-700 text-white rounded-lg border ${
-                    errors.vipPrice ? 'border-red-500' : 'border-slate-600'
-                  } focus:border-yellow-500 focus:outline-none`}
-                  placeholder="Nhập giá vé VIP"
-                />
-              </div>
-              {errors.vipPrice && <p className="mt-1 text-sm text-red-500">{errors.vipPrice}</p>}
-            </div>
-          </div>
-
-          {/* Status */}
-          <div>
-            <label htmlFor="status" className="block text-sm font-medium text-gray-300 mb-2">
-              Trạng thái *
-            </label>
-            <select
-              id="status"
-              name="status"
-              value={formData.status}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-yellow-500 focus:outline-none"
-            >
-              <option value="active">Hoạt động</option>
-              <option value="maintenance">Bảo trì</option>
-              <option value="inactive">Ngừng hoạt động</option>
-            </select>
-          </div>
-
-          {/* Facilities */}
-          <div>
-            <label className="block text-sm font-medium text-gray-300 mb-2">
-              Tiện ích phòng chiếu
-            </label>
-            
-            {/* Common Facilities */}
-            <div className="mb-4">
-              <p className="text-sm text-gray-400 mb-2">Tiện ích phổ biến:</p>
-              <div className="flex flex-wrap gap-2">
-                {commonFacilities.map(facility => (
-                  <button
-                    key={facility}
-                    type="button"
-                    onClick={() => addCommonFacility(facility)}
-                    disabled={formData.facilities.includes(facility)}
-                    className={`px-3 py-1 text-sm rounded-lg transition-colors ${
-                      formData.facilities.includes(facility)
-                        ? 'bg-green-600 text-white cursor-not-allowed'
-                        : 'bg-slate-600 text-gray-300 hover:bg-slate-500'
-                    }`}
-                  >
-                    {facility}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            {/* Add Custom Facility */}
-            <div className="flex gap-2 mb-4">
-              <input
-                type="text"
-                value={newFacility}
-                onChange={(e) => setNewFacility(e.target.value)}
-                placeholder="Thêm tiện ích khác..."
-                className="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-yellow-500 focus:outline-none"
-                onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addFacility())}
-              />
-              <button
-                type="button"
-                onClick={addFacility}
-                className="bg-yellow-500 hover:bg-yellow-600 text-black px-4 py-2 rounded-lg transition-colors flex items-center gap-2"
-              >
-                <PlusIcon className="w-4 h-4" />
-                Thêm
-              </button>
-            </div>
-
-            {/* Selected Facilities */}
-            {formData.facilities.length > 0 && (
-              <div>
-                <p className="text-sm text-gray-400 mb-2">Tiện ích đã chọn:</p>
-                <div className="flex flex-wrap gap-2">
-                  {formData.facilities.map(facility => (
-                    <span
-                      key={facility}
-                      className="bg-yellow-500 text-black px-3 py-1 rounded-lg text-sm flex items-center gap-2"
-                    >
-                      {facility}
-                      <button
-                        type="button"
-                        onClick={() => removeFacility(facility)}
-                        className="hover:bg-yellow-600 rounded-full p-1"
-                      >
-                        <XMarkIcon className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
+                    <ArrowLeftIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
+                </button>
+                <div>
+                    <h1 className="text-2xl font-bold text-white">
+                        {room ? 'Chỉnh sửa phòng chiếu' : 'Thêm phòng chiếu mới'}
+                    </h1>
+                    <p className="text-gray-400 mt-1">
+                        {room ? 'Cập nhật thông tin phòng chiếu' : 'Tạo phòng chiếu mới cho rạp'}
+                    </p>
                 </div>
-              </div>
+            </motion.div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Form Section */}
+                <motion.div
+                    className="bg-slate-800 rounded-lg p-6 border border-slate-700 shadow-lg"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.1 }}
+                >
+                    <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
+                        {/* Room Name */}
+                        <div className="relative group">
+                            <label htmlFor="Room_Name" className="block text-sm font-medium text-[#FFD875] mb-2">
+                                Tên phòng chiếu <span className="text-red-500">*</span>
+                            </label>
+                            <Controller
+                                name="Room_Name"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="relative">
+                                        <CubeIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875] w-5 h-5" />
+                                        <input
+                                            {...field}
+                                            type="text"
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-700 text-white rounded-lg border ${errors.Room_Name || duplicateNameError ? 'border-red-500' : 'border-[#FFD875]/30'
+                                                } focus:border-[#FFD875] focus:ring focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-[0_0_10px_0px_rgba(255,216,117,0.2)] focus:shadow-[0_0_15px_0px_rgba(255,216,117,0.4)]`}
+                                            placeholder="Ví dụ: Phòng 01, Screen A..."
+                                        />
+                                    </div>
+                                )}
+                            />
+                            {errors.Room_Name && <p className="mt-1 text-sm text-red-500">{errors.Room_Name.message}</p>}
+
+                            {/* Duplicate name error with suggestion */}
+                            {duplicateNameError && (
+                                <div className="mt-2 p-3 bg-red-900/30 border border-red-700 rounded-md">
+                                    <div className="flex items-start">
+                                        <ExclamationCircleIcon className="w-5 h-5 text-red-500 mr-2 mt-0.5 flex-shrink-0" />
+                                        <p className="text-sm text-red-400">{duplicateNameError}</p>
+                                    </div>
+
+                                    {suggestedName && (
+                                        <div className="mt-2 flex items-center">
+                                            <button
+                                                type="button"
+                                                onClick={useSuggestedName}
+                                                className="flex items-center text-sm bg-[#FFD875] hover:bg-[#e5c368] text-black px-3 py-1 rounded-md ml-7 shadow-[0_0_10px_0_rgba(255,216,117,0.3)] hover:shadow-[0_0_15px_0_rgba(255,216,117,0.5)] transition-all duration-300"
+                                            >
+                                                <ArrowPathIcon className="w-4 h-4 mr-1" />
+                                                Dùng tên "{suggestedName}"
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+
+                            {/* Glowing effect */}
+                            <div className="absolute -inset-0.5 bg-gradient-to-r from-[#FFD875]/0 via-[#FFD875]/20 to-[#FFD875]/0 rounded-lg blur opacity-0 group-hover:opacity-50 transition duration-1000 group-hover:duration-200 animate-gradient-x -z-10"></div>
+                        </div>
+
+                        {/* Room Type */}
+                        <div>
+                            <label htmlFor="Room_Type" className="block text-sm font-medium text-[#FFD875] mb-2">
+                                Loại phòng <span className="text-red-500">*</span>
+                            </label>
+                            <Controller
+                                name="Room_Type"
+                                control={control}
+                                render={({ field }) => (
+                                    <select
+                                        {...field}
+                                        className={`w-full px-4 py-3 bg-slate-700 text-white rounded-lg border ${errors.Room_Type ? 'border-red-500' : 'border-[#FFD875]/30'
+                                            } focus:border-[#FFD875] focus:ring focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-[0_0_10px_0px_rgba(255,216,117,0.2)] focus:shadow-[0_0_15px_0px_rgba(255,216,117,0.4)]`}
+                                    >
+                                        {roomTypes.map(type => (
+                                            <option key={type.value} value={type.value}>
+                                                {type.label}
+                                            </option>
+                                        ))}
+                                    </select>
+                                )}
+                            />
+                            {errors.Room_Type && <p className="mt-1 text-sm text-red-500">{errors.Room_Type.message}</p>}
+                        </div>
+
+                        {/* Seat Quantity */}
+                        <div>
+                            <label htmlFor="Seat_Quantity" className="block text-sm font-medium text-[#FFD875] mb-2">
+                                Tổng số ghế <span className="text-red-500">*</span>
+                            </label>
+                            <Controller
+                                name="Seat_Quantity"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="relative">
+                                        <UserGroupIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875] w-5 h-5" />
+                                        <input
+                                            {...field}
+                                            type="number"
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-700 text-white rounded-lg border ${errors.Seat_Quantity ? 'border-red-500' : 'border-[#FFD875]/30'
+                                                } focus:border-[#FFD875] focus:ring focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-[0_0_10px_0px_rgba(255,216,117,0.2)] focus:shadow-[0_0_15px_0px_rgba(255,216,117,0.4)]`}
+                                            placeholder="Nhập tổng số ghế (20 - 300)"
+                                            min="20"
+                                            max="300"
+                                        />
+                                    </div>
+                                )}
+                            />
+                            {errors.Seat_Quantity && <p className="mt-1 text-sm text-red-500">{errors.Seat_Quantity.message}</p>}
+                        </div>
+
+                        {/* Status */}
+                        <div>
+                            <label htmlFor="Status" className="block text-sm font-medium text-[#FFD875] mb-2">
+                                Trạng thái <span className="text-red-500">*</span>
+                            </label>
+                            <Controller
+                                name="Status"
+                                control={control}
+                                render={({ field }) => (
+                                    <div className="relative">
+                                        <Cog6ToothIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875] w-5 h-5" />
+                                        <select
+                                            {...field}
+                                            className={`w-full pl-10 pr-4 py-3 bg-slate-700 text-white rounded-lg border ${errors.Status ? 'border-red-500' : 'border-[#FFD875]/30'
+                                                } focus:border-[#FFD875] focus:ring focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-[0_0_10px_0px_rgba(255,216,117,0.2)] focus:shadow-[0_0_15px_0px_rgba(255,216,117,0.4)]`}
+                                        >
+                                            <option value="Active">Hoạt động</option>
+                                            <option value="Inactive">Không hoạt động</option>
+                                        </select>
+                                    </div>
+                                )}
+                            />
+                            {errors.Status && <p className="mt-1 text-sm text-red-500">{errors.Status.message}</p>}
+                        </div>
+
+                        {/* Notes */}
+                        <div>
+                            <label htmlFor="Notes" className="block text-sm font-medium text-[#FFD875] mb-2">
+                                Ghi chú
+                            </label>
+                            <Controller
+                                name="Notes"
+                                control={control}
+                                render={({ field }) => (
+                                    <textarea
+                                        {...field}
+                                        rows={4}
+                                        className={`w-full px-4 py-3 bg-slate-700 text-white rounded-lg border ${
+                                            errors.Notes ? 'border-red-500' : 'border-[#FFD875]/30'
+                                        } focus:border-[#FFD875] focus:ring focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-[0_0_10px_0px_rgba(255,216,117,0.2)] focus:shadow-[0_0_15px_0px_rgba(255,216,117,0.4)] resize-vertical`}
+                                        placeholder="Nhập ghi chú hoặc mô tả về phòng chiếu..."
+                                        maxLength={500}
+                                    />
+                                )}
+                            />
+                            {errors.Notes && <p className="mt-1 text-sm text-red-500">{errors.Notes.message}</p>}
+                        </div>
+
+                        {/* Submit Buttons */}
+                        <div className="flex gap-4 pt-6">
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="flex-1 bg-[#FFD875] hover:bg-[#e5c368] disabled:bg-gray-600 text-black font-medium py-3 px-4 rounded-lg transition-all duration-300 shadow-[0_0_15px_0_rgba(255,216,117,0.3)] hover:shadow-[0_0_20px_0_rgba(255,216,117,0.5)] disabled:shadow-none"
+                            >
+                                {loading ? 'Đang xử lý...' : room ? 'Cập nhật' : 'Tạo phòng chiếu'}
+                            </button>
+                            <button
+                                type="button"
+                                onClick={onCancel}
+                                className="flex-1 bg-slate-700 hover:bg-slate-600 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 border border-slate-600"
+                            >
+                                Hủy
+                            </button>
+
+                            {room && room.Cinema_Room_ID && (
+                                <Link
+                                    to={`/admin/cinema-rooms/${room.Cinema_Room_ID}/seats`}
+                                    className="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-4 rounded-lg transition-all duration-300 flex items-center gap-2 shadow-[0_0_15px_0_rgba(59,130,246,0.3)] hover:shadow-[0_0_20px_0_rgba(59,130,246,0.5)]"
+                                >
+                                    <ViewColumnsIcon className="w-5 h-5" />
+                                    Quản lý sơ đồ ghế
+                                </Link>
+                            )}
+                        </div>
+                    </form>
+                </motion.div>
+
+                {/* Seat Configuration Section */}
+                <motion.div
+                    className="bg-slate-800 rounded-lg p-6 border border-slate-700 shadow-lg"
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.2 }}
+                >
+                    <h3 className="text-lg font-bold text-white mb-4 flex items-center">
+                        <CogIcon className="w-5 h-5 mr-2 text-[#FFD875]" />
+                        Cấu hình sơ đồ ghế
+                    </h3>
+
+                    {room && room.Cinema_Room_ID ? (
+                        <div className="space-y-4">
+                            <div className="bg-slate-900 rounded-lg p-4">
+                                <div className="text-center mb-4">
+                                    <div className="inline-block bg-gradient-to-r from-[#FFD875]/20 to-[#FFD875]/10 border border-[#FFD875]/30 rounded-lg px-6 py-2 mb-4">
+                                        <p className="text-[#FFD875] font-semibold">MÀN HÌNH</p>
+                                    </div>
+                                </div>
+
+                                {seatLayoutLoading ? (
+                                    <div className="text-center py-8">
+                                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FFD875] mx-auto mb-2"></div>
+                                        <p className="text-gray-400 text-sm">Đang tải sơ đồ ghế...</p>
+                                    </div>
+                                ) : seatLayout ? (
+                                    <>
+                                        {/* Render actual seat layout from API */}
+                                        <div className="overflow-x-auto mb-4">
+                                            <div className="min-w-max mx-auto space-y-1">
+                                                {seatLayout.rows.map(row => (
+                                                    <div key={row.Row} className="flex items-center gap-2">
+                                                        <div className="w-6 text-center text-[#FFD875] font-semibold text-sm">{row.Row}</div>
+                                                        <div className="flex gap-1">
+                                                            {row.Seats.map(seat => (
+                                                                <div
+                                                                    key={seat.Layout_ID}
+                                                                    className={`w-6 h-6 rounded border-2 flex items-center justify-center text-xs ${getSeatTypeColor(seat.Seat_Type)} ${!seat.Is_Active ? 'opacity-50' : ''}`}
+                                                                    title={`${seat.Row_Label}${seat.Column_Number} - ${seat.Seat_Type}`}
+                                                                >
+                                                                    <span className="text-xs">{getSeatTypeIcon(seat.Seat_Type)}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div className="text-center text-sm text-gray-400">
+                                            Phòng chiếu đã được cấu hình
+                                            <br />
+                                            <span className="text-[#FFD875] font-medium">
+                                                {roomType} - {seatLayout.stats.total_seats} ghế
+                                            </span>
+                                            <div className="mt-2 flex justify-center gap-4 text-xs">
+                                                {seatLayout.stats.seat_types.map(type => (
+                                                    <span key={type.SeatType} className="flex items-center gap-1">
+                                                        <span>{getSeatTypeIcon(type.SeatType)}</span>
+                                                        <span>{type.SeatType}: {type.Count}</span>
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="text-center py-4 text-gray-400">
+                                        <p className="mb-2">Chưa có sơ đồ ghế</p>
+                                        <p className="text-sm">Sử dụng nút bên dưới để cấu hình</p>
+                                    </div>
+                                )}
+                            </div>
+
+                            <button
+                                onClick={() => setShowSeatConfig(true)}
+                                className="w-full bg-[#FFD875] hover:bg-[#e5c368] text-black font-medium py-3 px-4 rounded-lg transition-all duration-300 flex items-center justify-center gap-2 shadow-[0_0_15px_0_rgba(255,216,117,0.3)] hover:shadow-[0_0_20px_0_rgba(255,216,117,0.5)]"
+                            >
+                                <CogIcon className="w-5 h-5" />
+                                {seatLayout ? 'Cấu hình lại sơ đồ ghế' : 'Cấu hình sơ đồ ghế hàng loạt'}
+                            </button>
+
+                            <div className="text-sm text-gray-400 bg-slate-700/30 rounded-lg p-3">
+                                <p className="font-medium text-[#FFD875] mb-2">💡 Hướng dẫn:</p>
+                                <ul className="space-y-1 text-xs">
+                                    <li>• Cấu hình nhanh sơ đồ ghế cho phòng chiếu</li>
+                                    <li>• Chọn loại ghế: Thường, VIP, hoặc Đôi</li>
+                                    <li>• Thiết lập hàng ghế và lối đi</li>
+                                    <li>• Xem trước trước khi áp dụng</li>
+                                </ul>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-gray-400">
+                            <CogIcon className="w-16 h-16 mx-auto mb-4 text-gray-600" />
+                            <p className="text-lg font-medium mb-2">Tạo phòng chiếu trước</p>
+                            <p className="text-sm">
+                                Bạn cần tạo phòng chiếu trước khi có thể cấu hình sơ đồ ghế.
+                            </p>
+                        </div>
+                    )}
+                </motion.div>
+            </div>
+
+            {/* Seat Configuration Modal */}
+            {showSeatConfig && room?.Cinema_Room_ID && (
+                <SeatLayoutConfig
+                    roomId={room.Cinema_Room_ID}
+                    onClose={() => setShowSeatConfig(false)}
+                    onSuccess={handleSeatConfigSuccess}
+                />
             )}
-          </div>
-
-          {/* Description */}
-          <div>
-            <label htmlFor="description" className="block text-sm font-medium text-gray-300 mb-2">
-              Mô tả
-            </label>
-            <textarea
-              id="description"
-              name="description"
-              value={formData.description}
-              onChange={handleInputChange}
-              rows={4}
-              className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-yellow-500 focus:outline-none"
-              placeholder="Nhập mô tả về phòng chiếu..."
-            />
-          </div>
-
-          {/* Submit Buttons */}
-          <div className="flex gap-4 pt-6">
-            <button
-              type="submit"
-              disabled={loading}
-              className="flex-1 bg-yellow-500 hover:bg-yellow-600 disabled:bg-gray-600 text-black font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              {loading ? 'Đang xử lý...' : mode === 'create' ? 'Tạo phòng chiếu' : 'Cập nhật'}
-            </button>
-            <button
-              type="button"
-              onClick={() => navigate('/admin/cinema-rooms')}
-              className="flex-1 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition-colors"
-            >
-              Hủy
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
+        </div>
+    );
 };
 
 export default CinemaRoomForm;
 
+{/* Add Material Icons */ }
+<style jsx global>{`
+    @import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&icon_names=weekend');
+    
+    @keyframes gradient-x {
+        0%, 100% { transform: translateX(0%); }
+        50% { transform: translateX(100%); }
+    }
+    
+    .animate-gradient-x {
+        animation: gradient-x 3s ease infinite;
+        background-size: 200% 200%;
+    }
+`}</style> 

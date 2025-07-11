@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { XMarkIcon, FilmIcon, CalendarIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { cinemaService } from '../../../services/cinemaService';
-import FullScreenLoader from '../../FullScreenLoader';
+import LoadingSpinner from '../../LoadingSpinner';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
 
@@ -45,37 +45,63 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
 
         setLoading(true);
         try {
-            let fetchedShowtimes = await cinemaService.getCinemaShowtimes(cinema.Cinema_ID);
+            // Sử dụng getCinemaShowtimesByDate thay vì getCinemaShowtimes
+            const showtimesData = await cinemaService.getCinemaShowtimesByDate(cinema.Cinema_ID, dateFilter);
+            console.log('Fetched showtimes:', showtimesData);
+            
+            // Map data to match interface
+            const mappedShowtimes: Showtime[] = showtimesData.map((st: any) => ({
+                Showtime_ID: st.Showtime_ID || st.showtime_id,
+                Movie_ID: st.Movie_ID || st.movie_id,
+                Movie_Name: st.Movie_Name || st.movie_name,
+                Room_ID: st.Room_ID || st.room_id,
+                Room_Name: st.Room_Name || st.room_name,
+                Start_Time: st.Start_Time || st.start_time,
+                End_Time: st.End_Time || st.end_time,
+                Price: st.Price || 0,
+                Status: st.Status || 'Active',
+                Poster_URL: st.Poster_URL || st.poster_url
+            }));
+            
+            console.log('Sample showtime data:', mappedShowtimes[0]); // Debug log
 
-            // Filter showtimes by the selected date
-            if (dateFilter) {
-                fetchedShowtimes = fetchedShowtimes.filter(showtime => {
-                    const showtimeDate = new Date(showtime.Start_Time).toISOString().split('T')[0];
-                    return showtimeDate === dateFilter;
-                });
-            }
-
-            setShowtimes(fetchedShowtimes);
+            setShowtimes(mappedShowtimes);
         } catch (error) {
             console.error('Error fetching showtimes:', error);
+            setShowtimes([]);
         } finally {
             setLoading(false);
         }
     };
 
-    const formatTime = (dateString: string) => {
+    const formatTime = (timeString: string) => {
         try {
-            return format(new Date(dateString), 'HH:mm', { locale: vi });
+            // Nếu timeString chỉ là giờ (HH:mm hoặc HH:mm:ss)
+            if (/^\d{2}:\d{2}(:\d{2})?$/.test(timeString)) {
+                return timeString.substring(0, 5);
+            }
+            
+            // Nếu timeString là datetime đầy đủ
+            const date = new Date(timeString);
+            if (!isNaN(date.getTime())) {
+                return format(date, 'HH:mm', { locale: vi });
+            }
+            
+            return timeString;
         } catch {
-            return 'Invalid Date';
+            return timeString;
         }
     };
 
     const formatDate = (dateString: string) => {
         try {
-            return format(new Date(dateString), 'EEEE, dd/MM/yyyy', { locale: vi });
+            const date = new Date(dateString);
+            if (!isNaN(date.getTime())) {
+                return format(date, 'EEEE, dd/MM/yyyy', { locale: vi });
+            }
+            return dateString;
         } catch {
-            return 'Invalid Date';
+            return dateString;
         }
     };
 
@@ -111,7 +137,8 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
             date.setDate(today.getDate() + i);
             result.push({
                 value: format(date, 'yyyy-MM-dd'),
-                label: format(date, 'dd/MM (EEEE)', { locale: vi })
+                label: format(date, 'dd/MM', { locale: vi }),
+                dayName: format(date, 'EEEE', { locale: vi })
             });
         }
 
@@ -142,13 +169,14 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
                             {nextDays.map(day => (
                                 <button
                                     key={day.value}
-                                    className={`py-2 px-2 rounded-lg text-center text-sm transition-all ${dateFilter === day.value
+                                    className={`py-2 px-3 rounded-lg text-center text-sm transition-all ${dateFilter === day.value
                                             ? 'bg-[#FFD875] text-black font-medium'
                                             : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
                                         }`}
                                     onClick={() => setDateFilter(day.value)}
                                 >
-                                    {day.label}
+                                    <div className="font-medium">{day.label}</div>
+                                    <div className="text-xs">{day.dayName}</div>
                                 </button>
                             ))}
                         </div>
@@ -156,7 +184,7 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
 
                     {loading ? (
                         <div className="flex justify-center py-8">
-                            <FullScreenLoader variant="inline" text="Đang tải lịch chiếu..." />
+                            <LoadingSpinner />
                         </div>
                     ) : Object.values(showtimesByMovie).length > 0 ? (
                         <div className="space-y-6">
@@ -178,10 +206,6 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
                                         </div>
                                         <div>
                                             <h4 className="text-white font-semibold text-lg">{movie.Movie_Name}</h4>
-                                            <p className="text-gray-400 flex items-center text-sm">
-                                                <CalendarIcon className="w-4 h-4 mr-1" />
-                                                {formatDate(showtimes[0].Start_Time)}
-                                            </p>
                                         </div>
                                     </div>
 
@@ -201,9 +225,6 @@ const CinemaShowtimesModal: React.FC<CinemaShowtimesModalProps> = ({ isOpen, onC
                                                     </div>
                                                     <div className="text-sm text-gray-400 mt-1">
                                                         Phòng: {showtime.Room_Name}
-                                                    </div>
-                                                    <div className="text-sm text-[#FFD875] mt-1 text-right">
-                                                        {new Intl.NumberFormat('vi-VN').format(showtime.Price)}đ
                                                     </div>
                                                 </div>
                                             ))}
