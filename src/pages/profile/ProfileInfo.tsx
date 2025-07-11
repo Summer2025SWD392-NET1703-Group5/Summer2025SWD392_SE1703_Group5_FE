@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/SimpleAuthContext';
 import { userService } from '../../services/userService';
-import type { UpdateProfileData } from '../../types/user';
+import type { UpdateProfileData, User } from "../../types/user";
 import { toast } from 'react-hot-toast';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -98,10 +98,24 @@ const InfoField = ({ icon: Icon, label, value, isEditing, children, error, fullW
 );
 
 const ProfileInfo: React.FC = () => {
-  const { user, setUser, isLoading } = useAuth();
+  const [ user, setUser ] = useState<User>();
+  const {isLoading} = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      userService.getUserProfile()
+        .then(profile => {
+          setUser(profile);
+        })
+        .catch(err => {
+          console.error('Error loading user profile:', err);
+          toast.error('Không thể tải thông tin người dùng.');
+        });
+    }
+  }, []);
 
   const { control, handleSubmit, reset, setError, clearErrors, formState: { errors, isDirty } } = useForm<UpdateProfileData>({
     resolver: yupResolver(profileSchema),

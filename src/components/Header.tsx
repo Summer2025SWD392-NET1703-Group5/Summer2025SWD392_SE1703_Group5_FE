@@ -701,21 +701,6 @@ const Header: React.FC = () => {
 
           {/* Right Side Actions */}
           <div className="flex items-center space-x-4">
-            {/* Search Button */}
-            <button
-              onClick={() => setIsSearchOpen(!isSearchOpen)}
-              className="p-2 text-gray-300 hover:text-[#FFD875] transition-colors duration-300 relative"
-              aria-label="Search"
-            >
-              <MagnifyingGlassIcon className="w-6 h-6" />
-              {isSearchOpen && (
-                <span
-                  className="absolute top-0 left-0 w-full h-full bg-[#FFD875]/20 rounded-full animate-ping"
-                  style={{ animationDuration: "1s" }}
-                ></span>
-              )}
-            </button>
-
             {/* Notifications */}
             <div className="relative hidden md:block" ref={notificationRef}>
               <Popover className="relative">

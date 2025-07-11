@@ -477,24 +477,6 @@ const MovieList: React.FC = () => {
                     </select>
                   </div>
 
-                  {/* Rating */}
-                  <div>
-                    <label className="block text-sm font-medium text-[#FFD875] mb-2">
-                      Đánh Giá
-                    </label>
-                    <select
-                      value={filters.rating}
-                      onChange={(e) => handleFilterChange('rating', e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-lg text-white focus:outline-none focus:border-[#FFD875] focus:ring-2 focus:ring-[#FFD875]/20 transition-all duration-300"
-                    >
-                      <option value="">Tất cả đánh giá</option>
-                      <option value="8">8+ sao</option>
-                      <option value="7">7+ sao</option>
-                      <option value="6">6+ sao</option>
-                      <option value="5">5+ sao</option>
-                    </select>
-                  </div>
-
                   {/* Release Year */}
                   <div>
                     <label className="block text-sm font-medium text-[#FFD875] mb-2">
@@ -518,8 +500,6 @@ const MovieList: React.FC = () => {
                   <span className="text-sm font-medium text-gray-300">Sắp xếp theo:</span>
                   {[
                     { value: 'latest', label: 'Mới nhất', icon: CalendarIcon },
-                    { value: 'popular', label: 'Phổ biến', icon: SparklesIcon },
-                    { value: 'rating', label: 'Đánh giá', icon: StarIcon },
                     { value: 'a-z', label: 'A-Z', icon: null }
                   ].map(option => (
                     <motion.button
@@ -586,10 +566,6 @@ const MovieList: React.FC = () => {
                             <div className="absolute bottom-0 left-0 right-0 p-3">
                               <h3 className="text-white text-sm font-bold line-clamp-2 mb-1">{movie.title}</h3>
                               <div className="flex items-center justify-between">
-                                <span className="text-[#FFD875] text-xs flex items-center">
-                                  <StarSolid className="w-3 h-3 mr-1" />
-                                  {movie.rating || 'N/A'}
-                                </span>
                                 <span className="text-gray-300 text-xs">{movie.duration} phút</span>
                               </div>
                             </div>

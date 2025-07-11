@@ -1,7 +1,7 @@
 // services/webSocketService.ts
-import { io, Socket } from 'socket.io-client';
-import { toast } from 'react-hot-toast';
-import { sessionStorageService } from './sessionStorageService';
+import { io, Socket } from "socket.io-client";
+import { toast } from "react-hot-toast";
+import { sessionStorageService } from "./sessionStorageService";
 
 // Types cho WebSocket events
 export interface SeatSelectionEvent {
@@ -12,7 +12,7 @@ export interface SeatSelectionEvent {
 export interface SeatUpdateEvent {
   seatId: string;
   userId?: string;
-  status: 'available' | 'selected' | 'occupied';
+  status: "available" | "selected" | "occupied";
   expiresAt?: string;
 }
 
@@ -24,7 +24,7 @@ export interface SeatExpirationWarning {
 export interface SeatsStateEvent {
   seats: Array<{
     id: string;
-    status: 'available' | 'selected' | 'occupied';
+    status: "available" | "selected" | "occupied";
     userId?: string;
     expiresAt?: string;
   }>;
@@ -37,7 +37,7 @@ export interface BookingConfirmationEvent {
 }
 
 // WebSocket connection states
-export type ConnectionState = 'disconnected' | 'connecting' | 'connected' | 'reconnecting' | 'error';
+export type ConnectionState = "disconnected" | "connecting" | "connected" | "reconnecting" | "error";
 
 // WebSocket service configuration
 interface WebSocketConfig {
@@ -50,7 +50,7 @@ interface WebSocketConfig {
 
 // Default configuration
 const DEFAULT_CONFIG: WebSocketConfig = {
-  url: 'http://localhost:3000',
+  url: "http://localhost:3000",
   reconnectAttempts: 10,
   reconnectDelay: 1000,
   maxReconnectDelay: 30000,
@@ -64,7 +64,7 @@ const DEFAULT_CONFIG: WebSocketConfig = {
 class WebSocketService {
   private socket: Socket | null = null;
   private config: WebSocketConfig;
-  private connectionState: ConnectionState = 'disconnected';
+  private connectionState: ConnectionState = "disconnected";
   private reconnectAttempts = 0;
   private reconnectTimer: NodeJS.Timeout | null = null;
   private currentShowtimeId: string | null = null;
@@ -74,16 +74,18 @@ class WebSocketService {
   private eventListeners: Map<string, Set<Function>> = new Map();
 
   // Cross-tab communication
-  private storageKey = 'galaxy_cinema_seats';
-  private isInitialized = false;
+  private storageKey = "galaxy_cinema_seats";
   private broadcastChannel: BroadcastChannel | null = null;
-  
+
   // Fallback mode khi WebSocket không available
   private fallbackMode = false;
 
+  // Current user ID for session management
+  private userId: string | null = null;
+
   constructor(config?: Partial<WebSocketConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    console.log('🔌 WebSocketService initialized với config:', this.config);
+    console.log("🔌 WebSocketService initialized với config:", this.config);
 
     // 🔄 Setup cross-tab communication
     this.setupCrossTabSync();
@@ -93,7 +95,7 @@ class WebSocketService {
    * Setup cross-tab synchronization using BroadcastChannel
    */
   private setupCrossTabSync(): void {
-    console.log(`🔄 Setting up cross-tab sync (BroadcastChannel: ${typeof BroadcastChannel !== 'undefined'})`);
+    console.log(`🔄 Setting up cross-tab sync (BroadcastChannel: ${typeof BroadcastChannel !== "undefined"})`);
 
     // 🔧 FORCE localStorage fallback for debugging
     this.setupStorageFallback();
@@ -102,105 +104,62 @@ class WebSocketService {
 
     try {
       // 🔄 Initialize BroadcastChannel
-      this.broadcastChannel = new BroadcastChannel('galaxy_cinema_seats');
+      console.log(`🔧 [SETUP] Creating BroadcastChannel: galaxy_cinema_seats`);
+      this.broadcastChannel = new BroadcastChannel("galaxy_cinema_seats");
+      console.log(`✅ [SETUP] BroadcastChannel created successfully:`, this.broadcastChannel);
 
       // Listen for messages from other tabs
-      const messageHandler = (event) => {
+      const messageHandler = (event: MessageEvent) => {
+        console.log(`🔧 [BROADCAST_RECEIVE] Raw event received:`, event);
         const data = event.data;
+        console.log(`🔧 [BROADCAST_RECEIVE] Event data:`, data);
 
         // Check if data has required fields
-        if (!data || typeof data !== 'object') {
-          console.warn(`⚠️ Invalid cross-tab data:`, data);
+        if (!data || typeof data !== "object") {
+          console.warn(`⚠️ [BROADCAST_RECEIVE] Invalid cross-tab data:`, data);
           return;
         }
 
         // Only log important cross-tab events (not test messages)
         if (!data.test) {
-          console.log(`📡 Cross-tab ${data.action}: ${data.seatId} by user ${data.userId}`);
+          console.log(`📡 [BROADCAST_RECEIVE] Cross-tab ${data.action}: ${data.seatId} by user ${data.userId}`);
         }
-        this.emit('cross-tab-seat-update', {
+
+        console.log(`🔧 [BROADCAST_RECEIVE] Emitting cross-tab-seat-update event...`);
+        this.emit("cross-tab-seat-update", {
           seatId: data.seatId,
           userId: data.userId,
           showtimeId: data.showtimeId,
           action: data.action,
-          timestamp: data.timestamp
+          timestamp: data.timestamp,
         });
-        console.log(`✅ [RECEIVE] cross-tab-seat-update event emitted`);
-        console.log(`🔄 [RECEIVE] ===== END CROSS-TAB MESSAGE =====`);
+        console.log(`✅ [BROADCAST_RECEIVE] cross-tab-seat-update event emitted`);
+        console.log(`🔄 [BROADCAST_RECEIVE] ===== END CROSS-TAB MESSAGE =====`);
       };
 
-      this.broadcastChannel.addEventListener('message', messageHandler);
+      console.log(`🔧 [SETUP] Adding event listener to BroadcastChannel...`);
+      this.broadcastChannel.addEventListener("message", messageHandler);
+      console.log(`✅ [SETUP] Event listener added to BroadcastChannel`);
 
-      this.isInitialized = true;
-      console.log('✅ Cross-tab sync initialized với BroadcastChannel');
+      console.log("✅ [SETUP] Cross-tab sync initialized với BroadcastChannel");
+
+      // 🧪 Test BroadcastChannel immediately
+      setTimeout(() => {
+        console.log(`🧪 [TEST] Testing BroadcastChannel...`);
+        this.testBroadcastChannel();
+      }, 1000);
     } catch (error) {
-      console.error('❌ [SETUP] BroadcastChannel setup failed:', error);
-      console.warn('⚠️ [SETUP] BroadcastChannel không supported, fallback to localStorage');
+      console.error("❌ [SETUP] BroadcastChannel setup failed:", error);
+      console.warn("⚠️ [SETUP] BroadcastChannel không supported, fallback to localStorage");
       this.setupStorageFallback();
     }
-  }
-
-  /**
-   * Polling fallback as backup for localStorage
-   */
-  private setupPollingFallback(): void {
-    console.log(`🔄 [POLLING_SETUP] Setting up polling fallback as backup...`);
-
-    let lastPollingData: string | null = null;
-
-    const pollInterval = setInterval(() => {
-      try {
-        const currentData = localStorage.getItem(this.storageKey);
-
-        // Only process if data changed
-        if (currentData && currentData !== lastPollingData) {
-          console.log(`🔄 [POLLING_EVENT] Detected localStorage change via polling`);
-          console.log(`🔄 [POLLING_EVENT] New data:`, currentData);
-
-          const data = JSON.parse(currentData);
-          console.log(`🔄 [POLLING_RECEIVE] ===== CROSS-TAB MESSAGE VIA POLLING =====`);
-          console.log(`🔄 [POLLING_RECEIVE] Cross-tab ${data.action} for seat ${data.seatId} by user ${data.userId} in showtime ${data.showtimeId}`);
-          console.log(`🔄 [POLLING_RECEIVE] Current user: ${localStorage.getItem('userId')}`);
-          console.log(`🔄 [POLLING_RECEIVE] Event from user: ${data.userId}`);
-          console.log(`🔄 [POLLING_RECEIVE] Same user? ${localStorage.getItem('userId') === String(data.userId)}`);
-
-          // Skip if from same user
-          if (localStorage.getItem('userId') === String(data.userId)) {
-            console.log(`🔄 [POLLING_RECEIVE] Skipping - same user`);
-            lastPollingData = currentData;
-            return;
-          }
-
-          console.log(`🔄 [POLLING_RECEIVE] Emitting cross-tab-seat-update event...`);
-          this.emit('cross-tab-seat-update', {
-            seatId: data.seatId,
-            userId: data.userId,
-            showtimeId: data.showtimeId,
-            action: data.action,
-            timestamp: data.timestamp
-          });
-          console.log(`✅ [POLLING_RECEIVE] cross-tab-seat-update event emitted`);
-          console.log(`🔄 [POLLING_RECEIVE] ===== END CROSS-TAB MESSAGE VIA POLLING =====`);
-
-          lastPollingData = currentData;
-        }
-      } catch (error) {
-        // Silent error - polling should not spam console
-      }
-    }, 500); // Poll every 500ms
-
-    console.log(`✅ [POLLING_SETUP] Polling fallback initialized (500ms interval)`);
-
-    // Store interval for cleanup
-    (this as any).pollingInterval = pollInterval;
   }
 
   /**
    * Fallback to localStorage for older browsers
    */
   private setupStorageFallback(): void {
-
-    window.addEventListener('storage', (event) => {
+    window.addEventListener("storage", (event) => {
       if (event.key === this.storageKey && event.newValue) {
         try {
           const data = JSON.parse(event.newValue);
@@ -209,25 +168,24 @@ class WebSocketService {
           if (!data.test) {
             console.log(`📡 Cross-tab ${data.action}: ${data.seatId} by user ${data.userId}`);
           }
-          this.emit('cross-tab-seat-update', {
+          this.emit("cross-tab-seat-update", {
             seatId: data.seatId,
             userId: data.userId,
             showtimeId: data.showtimeId,
             action: data.action,
-            timestamp: data.timestamp
+            timestamp: data.timestamp,
           });
           console.log(`✅ [STORAGE_RECEIVE] cross-tab-seat-update event emitted`);
           console.log(`🔄 [STORAGE_RECEIVE] ===== END CROSS-TAB MESSAGE =====`);
         } catch (error) {
-          console.warn('⚠️ [STORAGE_RECEIVE] Failed to parse storage data:', error);
+          console.warn("⚠️ [STORAGE_RECEIVE] Failed to parse storage data:", error);
         }
       } else {
         console.log(`🔄 [STORAGE_EVENT] Ignoring event - key: ${event.key}, hasValue: ${!!event.newValue}`);
       }
     });
 
-    this.isInitialized = true;
-    console.log('✅ Cross-tab sync initialized với localStorage fallback');
+    console.log("✅ Cross-tab sync initialized với localStorage fallback");
 
     // 🚫 [STORAGE_TEST] DISABLED - WebSocket-only mode
     // setTimeout(() => {
@@ -255,44 +213,58 @@ class WebSocketService {
   /**
    * Broadcast seat update to other tabs
    */
-  private broadcastSeatUpdate(seatId: string, userId: string, showtimeId: string, action: 'selected' | 'deselected'): void {
-    // 🔧 FIX: Enable cross-tab broadcast cho CLEAR_ALL case
-    if (seatId === 'CLEAR_ALL' && action === 'deselected') {
-      const data = {
-        seatId,
-        userId,
-        showtimeId,
-        action,
-        timestamp: Date.now()
-      };
+  private broadcastSeatUpdate(
+    seatId: string,
+    userId: string,
+    showtimeId: string,
+    action: "selected" | "deselected" | "cancel_booking"
+  ): void {
+    const data = {
+      seatId,
+      userId,
+      showtimeId,
+      action,
+      timestamp: Date.now(),
+    };
 
-      // Use BroadcastChannel if available
-      if (this.broadcastChannel) {
-        try {
-          this.broadcastChannel.postMessage(data);
-          console.log(`📡 Broadcast ${action} seat ${seatId} to other tabs`);
-        } catch (error) {
-          console.error(`❌ [BROADCAST] Failed to send via BroadcastChannel:`, error);
-        }
-      } else {
-        console.warn(`⚠️ [BROADCAST] BroadcastChannel not available, using localStorage fallback`);
+    console.log(`🔧 [BROADCAST_DEBUG] Preparing to broadcast:`, data);
+    console.log(`🔧 [BROADCAST_DEBUG] BroadcastChannel available: ${!!this.broadcastChannel}`);
 
-        // Fallback to localStorage
+    // Ensure BroadcastChannel is available
+    if (!this.broadcastChannel && typeof BroadcastChannel !== "undefined") {
+      console.log(`🔧 [BROADCAST_DEBUG] Re-initializing BroadcastChannel...`);
+      this.setupCrossTabSync();
+    }
+
+    // Use BroadcastChannel if available
+    if (this.broadcastChannel) {
+      try {
+        this.broadcastChannel.postMessage(data);
+        console.log(`📡 [BROADCAST_SUCCESS] Sent via BroadcastChannel: ${action} seat ${seatId} to other tabs`);
+      } catch (error) {
+        console.error(`❌ [BROADCAST] Failed to send via BroadcastChannel:`, error);
+
+        // Fallback to localStorage on BroadcastChannel error
         try {
           localStorage.setItem(this.storageKey, JSON.stringify(data));
           setTimeout(() => localStorage.removeItem(this.storageKey), 100);
-          console.log(`✅ [BROADCAST] Successfully sent ${action} seat ${seatId} via localStorage`);
-        } catch (error) {
-          console.error(`❌ [BROADCAST] Failed to send via localStorage:`, error);
+          console.log(`✅ [BROADCAST_FALLBACK] Successfully sent ${action} seat ${seatId} via localStorage`);
+        } catch (fallbackError) {
+          console.error(`❌ [BROADCAST_FALLBACK] Failed to send via localStorage:`, fallbackError);
         }
       }
-      return;
-    }
+    } else {
+      console.warn(`⚠️ [BROADCAST] BroadcastChannel not available, using localStorage fallback`);
 
-    // For regular seat selection/deselection, keep disabled
-    console.log(`🚫 [BROADCAST] DISABLED for regular seats - WebSocket-only mode`);
-    console.log(`🚫 [BROADCAST] Skipping cross-tab broadcast for ${action} seat ${seatId} by user ${userId}`);
-    console.log(`🚫 [BROADCAST] WebSocket server will handle all synchronization`);
+      // Fallback to localStorage
+      try {
+        localStorage.setItem(this.storageKey, JSON.stringify(data));
+        setTimeout(() => localStorage.removeItem(this.storageKey), 100);
+        console.log(`✅ [BROADCAST] Successfully sent ${action} seat ${seatId} via localStorage`);
+      } catch (error) {
+        console.error(`❌ [BROADCAST] Failed to send via localStorage:`, error);
+      }
+    }
   }
 
   /**
@@ -301,25 +273,36 @@ class WebSocketService {
   async connect(authToken?: string): Promise<boolean> {
     try {
       if (this.socket?.connected) {
-        console.log('✅ WebSocket đã kết nối');
+        console.log("✅ WebSocket đã kết nối");
         return true;
       }
 
-      this.setConnectionState('connecting');
-      console.log('🔄 Đang kết nối WebSocket server...');
+      this.setConnectionState("connecting");
+      console.log("🔄 Đang kết nối WebSocket server...");
 
       // Lấy auth token từ localStorage nếu không được provide
-      const token = authToken || localStorage.getItem('accessToken');
+      const token = authToken || localStorage.getItem("accessToken");
 
-      console.log('🔑 [DEBUG] Auth token check:', {
+      // 🔧 Initialize userId từ localStorage hoặc decode từ token
+      this.userId = localStorage.getItem("userId");
+      if (!this.userId && token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          this.userId = payload?.id || payload?.userId || null;
+        } catch (e) {
+          console.warn("⚠️ Failed to decode userId from token");
+        }
+      }
+
+      console.log("🔑 [DEBUG] Auth token check:", {
         provided: !!authToken,
-        fromStorage: !!localStorage.getItem('accessToken'),
+        fromStorage: !!localStorage.getItem("accessToken"),
         tokenLength: token ? token.length : 0,
-        tokenPreview: token ? token.substring(0, 20) + '...' : 'null'
+        tokenPreview: token ? token.substring(0, 20) + "..." : "null",
       });
 
       if (!token) {
-        console.warn('⚠️ Không có auth token, sử dụng fallback mode');
+        console.warn("⚠️ Không có auth token, sử dụng fallback mode");
         this.enableFallbackMode();
         return false;
       }
@@ -328,10 +311,10 @@ class WebSocketService {
       this.socket = io(this.config.url, {
         auth: { token },
         extraHeaders: {
-          'Authorization': `Bearer ${token}`
+          Authorization: `Bearer ${token}`,
         },
         timeout: this.config.timeout,
-        transports: ['websocket', 'polling'],
+        transports: ["websocket", "polling"],
         forceNew: true,
         withCredentials: true,
         autoConnect: true,
@@ -343,30 +326,29 @@ class WebSocketService {
       // Đợi connection hoặc timeout
       return new Promise((resolve) => {
         const connectTimeout = setTimeout(() => {
-          console.error('❌ WebSocket connection timeout');
+          console.error("❌ WebSocket connection timeout");
           this.enableFallbackMode();
           resolve(false);
         }, this.config.timeout);
 
-        this.socket!.on('connect', () => {
+        this.socket!.on("connect", () => {
           clearTimeout(connectTimeout);
-          this.setConnectionState('connected');
+          this.setConnectionState("connected");
           this.reconnectAttempts = 0;
-          console.log('✅ WebSocket connected thành công');
+          console.log("✅ WebSocket connected thành công");
           console.log(`🔌 Client Socket ID: ${this.socket?.id}`);
           resolve(true);
         });
 
-        this.socket!.on('connect_error', (error) => {
+        this.socket!.on("connect_error", (error) => {
           clearTimeout(connectTimeout);
-          console.error('❌ WebSocket connection error:', error);
+          console.error("❌ WebSocket connection error:", error);
           this.handleConnectionError(error);
           resolve(false);
         });
       });
-
     } catch (error) {
-      console.error('❌ Lỗi khi kết nối WebSocket:', error);
+      console.error("❌ Lỗi khi kết nối WebSocket:", error);
       this.enableFallbackMode();
       return false;
     }
@@ -379,26 +361,26 @@ class WebSocketService {
     if (!this.socket) return;
 
     // Connection events
-    this.socket.on('disconnect', (reason) => {
-      console.warn('⚠️ WebSocket disconnected:', reason);
-      console.warn('📊 Disconnect details:', {
+    this.socket.on("disconnect", (reason) => {
+      console.warn("⚠️ WebSocket disconnected:", reason);
+      console.warn("📊 Disconnect details:", {
         reason,
         currentShowtime: this.currentShowtimeId,
         reconnectAttempts: this.reconnectAttempts,
         fallbackMode: this.fallbackMode,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
-      this.setConnectionState('disconnected');
+      this.setConnectionState("disconnected");
       this.handleDisconnection(reason);
     });
 
-    this.socket.on('reconnect', (attemptNumber) => {
+    this.socket.on("reconnect", (attemptNumber) => {
       console.log(`🔄 WebSocket reconnected sau ${attemptNumber} attempts`);
-      this.setConnectionState('connected');
+      this.setConnectionState("connected");
       this.reconnectAttempts = 0;
 
       // 🔧 QUAN TRỌNG: Setup lại event listeners sau reconnect
-      this.setupEventListeners();
+      this.setupSocketEventListeners();
 
       // Rejoin showtime room nếu có
       if (this.currentShowtimeId) {
@@ -406,15 +388,15 @@ class WebSocketService {
       }
     });
 
-    this.socket.on('reconnect_error', (error) => {
-      console.error('❌ Reconnection error:', error);
-      this.setConnectionState('error');
+    this.socket.on("reconnect_error", (error) => {
+      console.error("❌ Reconnection error:", error);
+      this.setConnectionState("error");
     });
 
     // Seat management events
-    this.socket.on('seats-state', (data: SeatsStateEvent) => {
+    this.socket.on("seats-state", (data: SeatsStateEvent) => {
       // 🔧 FIX: Backend gửi array trực tiếp, không phải object với property seats
-      const seatsArray = Array.isArray(data) ? data : (data?.seats || []);
+      const seatsArray = Array.isArray(data) ? data : data?.seats || [];
       // Only log first time or when seat count changes
       if (!this.lastSeatCount || this.lastSeatCount !== seatsArray.length) {
         console.log(`🪑 Received ${seatsArray.length} seats from server`);
@@ -423,7 +405,7 @@ class WebSocketService {
 
       // ✅ Validate data structure trước khi xử lý
       if (!Array.isArray(seatsArray)) {
-        console.error('❌ Invalid seats data received:', data);
+        console.error("❌ Invalid seats data received:", data);
         return;
       }
 
@@ -435,108 +417,108 @@ class WebSocketService {
 
         try {
           const mergedData = {
-            seats: seatsArray.map(seat => {
+            seats: seatsArray.map((seat) => {
               // ✅ Validate seat object structure
-              if (!seat || typeof seat !== 'object') {
-                console.warn('⚠️ Invalid seat object:', seat);
+              if (!seat || typeof seat !== "object") {
+                console.warn("⚠️ Invalid seat object:", seat);
                 return seat;
               }
 
               // Nếu seat có trong session storage, mark as selected
               const seatId = seat.id || seat.seatId;
               if (seatId && sessionSeats.includes(seatId)) {
-                return { ...seat, status: 'selected' as const };
+                return { ...seat, status: "selected" as const };
               }
               return seat;
-            })
+            }),
           };
 
           console.log(`💾 Merged ${sessionSeats.length} session seats with server data`);
-          this.emit('seats-state', mergedData);
+          this.emit("seats-state", mergedData);
         } catch (error) {
-          console.error('❌ Error merging seats data:', error);
+          console.error("❌ Error merging seats data:", error);
           // Fallback: emit original data
-          this.emit('seats-state', { seats: seatsArray });
+          this.emit("seats-state", { seats: seatsArray });
         }
       } else {
-        this.emit('seats-state', { seats: seatsArray });
+        this.emit("seats-state", { seats: seatsArray });
       }
     });
 
-    this.socket.on('seat-selected', (data: SeatUpdateEvent) => {
+    this.socket.on("seat-selected", (data: SeatUpdateEvent) => {
       console.log(`🔧 [FRONTEND_DEBUG] Raw data received:`, JSON.stringify(data));
       console.log(`🔧 [FRONTEND_DEBUG] data.seatId type: ${typeof data.seatId}, value: ${data.seatId}`);
       console.log(`🔧 [FRONTEND_DEBUG] data.userId type: ${typeof data.userId}, value: ${data.userId}`);
       console.log(`🔒 Ghế ${data.seatId} được chọn bởi user ${data.userId}`);
       console.log(`🔌 Socket ID nhận event: ${this.socket?.id}`);
       console.log(`📊 Event data:`, data);
-      this.emit('seat-selected', data);
+      this.emit("seat-selected", data);
     });
 
-    this.socket.on('seat-deselected', (data: SeatUpdateEvent) => {
+    this.socket.on("seat-deselected", (data: SeatUpdateEvent) => {
       console.log(`🔓 Ghế ${data.seatId} được bỏ chọn`);
-      this.emit('seat-deselected', data);
+      this.emit("seat-deselected", data);
     });
 
-    this.socket.on('seats-booked', (data: { seatIds: string[] }) => {
-      console.log('🎫 Ghế đã được đặt:', data.seatIds);
-      this.emit('seats-booked', data);
+    this.socket.on("seats-booked", (data: { seatIds: string[] }) => {
+      console.log("🎫 Ghế đã được đặt:", data.seatIds);
+      this.emit("seats-booked", data);
     });
 
-    this.socket.on('seat-booked', (data: { seatId: string; bookingId: string }) => {
+    this.socket.on("seat-booked", (data: { seatId: string; bookingId: string }) => {
       console.log(`🔴 Ghế ${data.seatId} đã được booking #${data.bookingId}`);
-      this.emit('seat-booked', data);
+      this.emit("seat-booked", data);
     });
 
-    this.socket.on('seat-released', (data: SeatUpdateEvent) => {
+    this.socket.on("seat-released", (data: SeatUpdateEvent) => {
       console.log(`🔄 Ghế ${data.seatId} được giải phóng`);
-      this.emit('seat-released', data);
+      this.emit("seat-released", data);
 
       // 🔧 SIMPLE FIX: Auto refresh seats when any seat is released
-      console.log('🔄 [AUTO_REFRESH] Seat released detected - refreshing seats from server...');
+      console.log("🔄 [AUTO_REFRESH] Seat released detected - refreshing seats from server...");
       setTimeout(() => {
-        if (this.socket?.connected && this.currentShowtime) {
-          this.requestCurrentSeatsState(this.currentShowtime);
-          console.log('✅ [AUTO_REFRESH] Requested fresh seats from server');
+        if (this.socket?.connected && this.currentShowtimeId) {
+          this.requestCurrentSeatsState(this.currentShowtimeId);
+          console.log("✅ [AUTO_REFRESH] Requested fresh seats from server");
         }
       }, 500);
     });
 
     // Timeout management events
-    this.socket.on('seat-expiration-warning', (data: SeatExpirationWarning) => {
+    this.socket.on("seat-expiration-warning", (data: SeatExpirationWarning) => {
       console.log(`⏰ Cảnh báo ghế ${data.seatId} sắp hết hạn: ${data.timeRemaining}ms`);
-      this.emit('seat-expiration-warning', data);
+      this.emit("seat-expiration-warning", data);
       this.showExpirationWarning(data);
     });
 
-    this.socket.on('seat-hold-extended', (data: { seatId: string; newExpiresAt: string }) => {
+    this.socket.on("seat-hold-extended", (data: { seatId: string; newExpiresAt: string }) => {
       console.log(`⏳ Ghế ${data.seatId} được gia hạn đến ${data.newExpiresAt}`);
-      this.emit('seat-hold-extended', data);
+      this.emit("seat-hold-extended", data);
       toast.success(`Đã gia hạn ghế ${data.seatId} thêm 15 phút`);
     });
 
-    this.socket.on('seat-hold-extension-failed', (data: { seatId: string; reason: string }) => {
+    this.socket.on("seat-hold-extension-failed", (data: { seatId: string; reason: string }) => {
       console.error(`❌ Gia hạn ghế ${data.seatId} thất bại: ${data.reason}`);
-      this.emit('seat-hold-extension-failed', data);
+      this.emit("seat-hold-extension-failed", data);
       toast.error(`Không thể gia hạn ghế ${data.seatId}: ${data.reason}`);
     });
 
     // Booking confirmation
-    this.socket.on('booking-confirmed', (data: BookingConfirmationEvent) => {
-      console.log('🎉 Booking confirmed:', data);
-      this.emit('booking-confirmed', data);
+    this.socket.on("booking-confirmed", (data: BookingConfirmationEvent) => {
+      console.log("🎉 Booking confirmed:", data);
+      this.emit("booking-confirmed", data);
     });
 
     // Error handling
-    this.socket.on('error', (error: any) => {
-      console.error('❌ WebSocket error:', error);
-      this.emit('error', error);
+    this.socket.on("error", (error: any) => {
+      console.error("❌ WebSocket error:", error);
+      this.emit("error", error);
 
       // Handle specific backend errors
-      if (error.message === 'Failed to join showtime') {
-        console.warn('⚠️ Backend database error - switching to fallback mode');
-        this.emit('fallback-mode', { reason: 'backend-error', error: error.error });
-        toast.warning('Chuyển sang chế độ offline - một số tính năng real-time có thể bị hạn chế');
+      if (error.message === "Failed to join showtime") {
+        console.log("🔄 Backend database error - switching to fallback mode");
+        this.emit("fallback-mode", { reason: "backend-error", error: error.error });
+        toast.error("Chuyển sang chế độ offline - một số tính năng real-time có thể bị hạn chế");
         return;
       }
 
@@ -544,7 +526,7 @@ class WebSocketService {
       if (error.message) {
         toast.error(`Lỗi kết nối: ${error.message}`);
       } else {
-        toast.error('Có lỗi xảy ra với kết nối WebSocket');
+        toast.error("Có lỗi xảy ra với kết nối WebSocket");
       }
     });
   }
@@ -554,7 +536,7 @@ class WebSocketService {
    */
   joinShowtime(showtimeId: string): void {
     if (!this.socket) {
-      console.warn('⚠️ Socket chưa được khởi tạo');
+      console.warn("⚠️ Socket chưa được khởi tạo");
       return;
     }
 
@@ -564,7 +546,7 @@ class WebSocketService {
       this.currentShowtimeId = showtimeId;
 
       // Đợi connected event để join
-      this.socket.once('connect', () => {
+      this.socket.once("connect", () => {
         console.log(`🔄 Connected! Bây giờ join showtime ${showtimeId}`);
         this.performJoinShowtime(showtimeId);
       });
@@ -583,7 +565,7 @@ class WebSocketService {
     // 🚫 DISABLED: Clear session storage để preserve seats across tabs
     // sessionStorageService.clearSelectedSeats(showtimeId);
 
-    this.socket!.emit('join-showtime', { showtimeId });
+    this.socket!.emit("join-showtime", { showtimeId });
 
     // 🔄 Request current state của tất cả ghế khi join
     this.requestCurrentSeatsState(showtimeId);
@@ -594,22 +576,15 @@ class WebSocketService {
    */
   requestCurrentSeatsState(showtimeId: string): void {
     if (!this.socket?.connected) {
-      console.warn('⚠️ WebSocket chưa kết nối, không thể request seats state');
+      console.warn("⚠️ WebSocket chưa kết nối, không thể request seats state");
       return;
     }
 
     // Request current seats state (reduced logging)
-    this.socket.emit('get-seats-state', { showtimeId });
+    this.socket.emit("get-seats-state", { showtimeId });
 
     // 🎭 Simulate server response với current state từ localStorage
     this.simulateCurrentSeatsStateResponse(showtimeId);
-  }
-
-  /**
-   * Alias method for requestCurrentSeatsState
-   */
-  requestSeatsState(showtimeId: string): void {
-    this.requestCurrentSeatsState(showtimeId);
   }
 
   /**
@@ -624,14 +599,14 @@ class WebSocketService {
         console.log(`🔄 Simulating seats-state response với ${allSelectedSeats.length} ghế đã được chọn`);
 
         // Emit seats-state event với current state
-        this.emit('seats-state', {
+        this.emit("seats-state", {
           showtimeId,
-          seats: allSelectedSeats.map(seatId => ({
+          seats: allSelectedSeats.map((seatId) => ({
             seatId,
-            status: 'selected',
+            status: "selected",
             userId: this.getOwnerOfSeat(seatId, showtimeId),
-            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString() // 15 phút
-          }))
+            expiresAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(), // 15 phút
+          })),
         });
       }
     }, 100); // Delay nhỏ để simulate network
@@ -648,7 +623,7 @@ class WebSocketService {
       const key = localStorage.key(i);
       if (key?.startsWith(`selectedSeats_${showtimeId}_`)) {
         try {
-          const seats = JSON.parse(localStorage.getItem(key) || '[]');
+          const seats = JSON.parse(localStorage.getItem(key) || "[]");
           allSeats.push(...seats);
         } catch (error) {
           console.warn(`⚠️ Không thể parse localStorage key: ${key}`);
@@ -668,17 +643,17 @@ class WebSocketService {
       const key = localStorage.key(i);
       if (key?.startsWith(`selectedSeats_${showtimeId}_`)) {
         try {
-          const seats = JSON.parse(localStorage.getItem(key) || '[]');
+          const seats = JSON.parse(localStorage.getItem(key) || "[]");
           if (seats.includes(seatId)) {
             // Extract userId từ key: selectedSeats_showtimeId_userId
-            return key.split('_')[2] || 'unknown';
+            return key.split("_")[2] || "unknown";
           }
         } catch (error) {
           console.warn(`⚠️ Không thể parse localStorage key: ${key}`);
         }
       }
     }
-    return 'unknown';
+    return "unknown";
   }
 
   /**
@@ -688,7 +663,7 @@ class WebSocketService {
     if (!this.socket?.connected || !this.currentShowtimeId) return;
 
     console.log(`🚪 Rời khỏi showtime room: ${this.currentShowtimeId}`);
-    this.socket.emit('leave-showtime', { showtimeId: this.currentShowtimeId });
+    this.socket.emit("leave-showtime", { showtimeId: this.currentShowtimeId });
     this.currentShowtimeId = null;
   }
 
@@ -697,25 +672,75 @@ class WebSocketService {
    */
   selectSeat(showtimeId: string, seatId: string, userId?: string): void {
     // Validation đầu vào
-    if (!seatId || seatId === 'undefined' || seatId === showtimeId) {
+    if (!seatId || seatId === "undefined" || seatId === showtimeId) {
       console.warn(`⚠️ Invalid seatId: ${seatId}, skipping selectSeat`);
       return;
     }
 
-    if (!showtimeId || showtimeId === 'undefined') {
+    if (!showtimeId || showtimeId === "undefined") {
       console.warn(`⚠️ Invalid showtimeId: ${showtimeId}, skipping selectSeat`);
       return;
     }
 
     if (!this.socket?.connected || !this.currentShowtimeId) {
-      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      console.warn("⚠️ WebSocket chưa kết nối hoặc chưa join showtime");
       return;
     }
 
-    const finalUserId = userId || localStorage.getItem('userId');
+    // Try multiple sources for userId
+    let finalUserId = userId;
 
-    if (!finalUserId || finalUserId === 'undefined') {
+    if (!finalUserId) {
+      // Try localStorage
+      finalUserId = localStorage.getItem("userId") || undefined;
+    }
+
+    if (!finalUserId) {
+      // Try to get from user object in localStorage
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try {
+          const user = JSON.parse(userStr);
+          finalUserId = user?.id || user?.User_ID;
+        } catch (e) {
+          console.warn("⚠️ Failed to parse user from localStorage");
+        }
+      }
+    }
+
+    if (!finalUserId) {
+      // Try to decode from token (both 'token' and 'accessToken' keys)
+      const token = localStorage.getItem("token") || localStorage.getItem("accessToken");
+      if (token) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+          finalUserId = payload?.id || payload?.userId;
+        } catch (e) {
+          console.warn("⚠️ Failed to decode userId from token");
+        }
+      }
+    }
+
+    // 🔧 FIX: Try to get from current user context if still null
+    if (!finalUserId) {
+      try {
+        // Try to get from window context or global state
+        const authContext = (window as any).__AUTH_CONTEXT__;
+        if (authContext?.user?.User_ID) {
+          finalUserId = authContext.user.User_ID.toString();
+        }
+      } catch (e) {
+        console.warn("⚠️ Failed to get userId from auth context");
+      }
+    }
+
+    if (!finalUserId || finalUserId === "undefined" || finalUserId === "null") {
       console.warn(`⚠️ Invalid userId: ${finalUserId}, skipping selectSeat`);
+      console.warn(
+        `🔍 Debug - userId sources: {provided: ${userId}, localStorage: ${localStorage.getItem(
+          "userId"
+        )}, user: ${localStorage.getItem("user")}, token: ${!!localStorage.getItem("token")}}`
+      );
       return;
     }
 
@@ -725,15 +750,21 @@ class WebSocketService {
     sessionStorageService.saveSelectedSeat(seatId, finalUserId, showtimeId);
 
     // Emit to WebSocket server
-    this.socket.emit('select-seat', {
+    this.socket.emit("select-seat", {
       showtimeId: showtimeId,
       seatId,
       userId: finalUserId,
     });
 
-    // 🚫 DISABLED: Cross-tab broadcast - let WebSocket server handle all sync
-    // this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, 'selected');
-    console.log(`🚫 [SELECT_SEAT] Cross-tab broadcast disabled - WebSocket server will handle sync`);
+    // 🔄 ENABLED: Cross-tab broadcast for seat selection to ensure sync
+    console.log(`📡 [SELECT_SEAT] Broadcasting seat selection: ${seatId} by user ${finalUserId}`);
+    console.log(`🔧 [SELECT_SEAT] BroadcastChannel status: ${!!this.broadcastChannel}`);
+    console.log(`🔧 [SELECT_SEAT] Current showtime: ${this.currentShowtimeId}`);
+
+    this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, "selected");
+
+    console.log(`✅ [SELECT_SEAT] Cross-tab broadcast completed for seat selection`);
+    console.log(`🔧 [SELECT_SEAT] Final userId used: ${finalUserId}`);
   }
 
   /**
@@ -741,26 +772,26 @@ class WebSocketService {
    */
   deselectSeat(seatId: string, userId?: string): void {
     if (!this.socket?.connected || !this.currentShowtimeId) {
-      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      console.warn("⚠️ WebSocket chưa kết nối hoặc chưa join showtime");
       return;
     }
 
-    const finalUserId = userId || localStorage.getItem('userId') || 'anonymous';
-
+    const finalUserId = userId || localStorage.getItem("userId") || "anonymous";
 
     // 🗑️ Remove from session storage
     sessionStorageService.removeSelectedSeat(seatId, this.currentShowtimeId);
 
     // Emit to WebSocket server
-    this.socket.emit('deselect-seat', {
+    this.socket.emit("deselect-seat", {
       showtimeId: this.currentShowtimeId,
       seatId,
       userId: finalUserId,
     });
 
-    // 🚫 DISABLED: Cross-tab broadcast - let WebSocket server handle all sync
-    // this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, 'deselected');
-    console.log(`🚫 [DESELECT_SEAT] Cross-tab broadcast disabled - WebSocket server will handle sync`);
+    // 🔄 ENABLED: Cross-tab broadcast for seat deselection to ensure sync
+    console.log(`📡 [DESELECT_SEAT] Broadcasting seat deselection: ${seatId} by user ${finalUserId}`);
+    this.broadcastSeatUpdate(seatId, finalUserId, this.currentShowtimeId, "deselected");
+    console.log(`✅ [DESELECT_SEAT] Cross-tab broadcast completed for seat deselection`);
   }
 
   /**
@@ -768,12 +799,12 @@ class WebSocketService {
    */
   extendSeatHold(seatId: string): void {
     if (!this.socket?.connected || !this.currentShowtimeId) {
-      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      console.warn("⚠️ WebSocket chưa kết nối hoặc chưa join showtime");
       return;
     }
 
     console.log(`⏳ Gia hạn ghế: ${seatId}`);
-    this.socket.emit('extend-seat-hold', {
+    this.socket.emit("extend-seat-hold", {
       showtimeId: this.currentShowtimeId,
       seatId,
     });
@@ -784,12 +815,12 @@ class WebSocketService {
    */
   confirmBooking(seatIds: string[], bookingData: any): void {
     if (!this.socket?.connected || !this.currentShowtimeId) {
-      console.warn('⚠️ WebSocket chưa kết nối hoặc chưa join showtime');
+      console.warn("⚠️ WebSocket chưa kết nối hoặc chưa join showtime");
       return;
     }
 
-    console.log('🎫 Xác nhận booking:', { seatIds, bookingData });
-    this.socket.emit('confirm-booking', {
+    console.log("🎫 Xác nhận booking:", { seatIds, bookingData });
+    this.socket.emit("confirm-booking", {
       showtimeId: this.currentShowtimeId,
       seatIds,
       bookingData,
@@ -822,7 +853,7 @@ class WebSocketService {
   private emit(event: string, data: any): void {
     const listeners = this.eventListeners.get(event);
     if (listeners) {
-      listeners.forEach(callback => {
+      listeners.forEach((callback) => {
         try {
           callback(data);
         } catch (error) {
@@ -838,7 +869,7 @@ class WebSocketService {
   private setConnectionState(state: ConnectionState): void {
     if (this.connectionState !== state) {
       this.connectionState = state;
-      this.emit('connection-state-changed', state);
+      this.emit("connection-state-changed", state);
       console.log(`🔌 Connection state changed: ${state}`);
     }
   }
@@ -847,14 +878,23 @@ class WebSocketService {
    * Xử lý connection error
    */
   private handleConnectionError(error: any): void {
-    this.setConnectionState('error');
+    this.setConnectionState("error");
 
-    if (error.message === 'Authentication failed') {
-      console.error('❌ Authentication failed, chuyển sang fallback mode');
-      toast.error('Xác thực thất bại. Sử dụng chế độ offline.');
+    if (error.message === "Authentication failed") {
+      console.error("❌ Authentication failed, chuyển sang fallback mode");
+
+      // Safe toast call
+      try {
+        if (typeof toast?.error === "function") {
+          toast.error("Xác thực thất bại. Sử dụng chế độ offline.");
+        }
+      } catch (toastError) {
+        console.warn("⚠️ Toast error:", toastError);
+      }
+
       this.enableFallbackMode();
     } else {
-      console.error('❌ Connection error:', error);
+      console.error("❌ Connection error:", error);
       this.scheduleReconnect();
     }
   }
@@ -885,7 +925,7 @@ class WebSocketService {
       this.reconnectAttempts = 0; // Reset để tiếp tục thử
     }
 
-    this.setConnectionState('reconnecting');
+    this.setConnectionState("reconnecting");
     this.reconnectAttempts++;
 
     const delay = Math.min(
@@ -905,9 +945,17 @@ class WebSocketService {
    */
   private enableFallbackMode(): void {
     this.fallbackMode = true;
-    this.setConnectionState('error');
-    console.warn('⚠️ Fallback mode enabled - sử dụng localStorage và API calls');
-    toast.warning('Chế độ offline: Một số tính năng real-time có thể không khả dụng');
+    this.setConnectionState("error");
+    console.warn("⚠️ Fallback mode enabled - sử dụng localStorage và API calls");      // Safe toast call
+      try {
+        if (typeof toast?.error === "function") {
+          toast.error("Chế độ offline: Một số tính năng real-time có thể không khả dụng");
+        } else {
+          console.warn("⚠️ Toast not available, fallback mode enabled silently");
+        }
+      } catch (error) {
+        console.warn("⚠️ Toast error:", error);
+      }
   }
 
   /**
@@ -915,20 +963,16 @@ class WebSocketService {
    */
   private showExpirationWarning(data: SeatExpirationWarning): void {
     const minutes = Math.ceil(data.timeRemaining / 60000);
-    toast.warning(
-      `Ghế ${data.seatId} sẽ hết hạn sau ${minutes} phút. Nhấn để gia hạn.`,
-      {
-        duration: 10000,
-        onClick: () => this.extendSeatHold(data.seatId),
-      }
-    );
+    toast.error(`Ghế ${data.seatId} sẽ hết hạn sau ${minutes} phút. Nhấn để gia hạn.`, {
+      duration: 10000,
+    });
   }
 
   /**
    * Ngắt kết nối WebSocket
    */
   disconnect(): void {
-    console.log('🔌 Ngắt kết nối WebSocket...');
+    console.log("🔌 Ngắt kết nối WebSocket...");
 
     if (this.reconnectTimer) {
       clearTimeout(this.reconnectTimer);
@@ -940,13 +984,11 @@ class WebSocketService {
       this.socket = null;
     }
 
-    this.setConnectionState('disconnected');
+    this.setConnectionState("disconnected");
     this.currentShowtimeId = null;
     this.reconnectAttempts = 0;
     this.fallbackMode = false;
   }
-
-
 
   /**
    * Silent clear - không broadcast đến tabs khác (cho payment)
@@ -955,20 +997,21 @@ class WebSocketService {
     const targetShowtimeId = showtimeId || this.currentShowtimeId;
 
     if (!targetShowtimeId) {
-      console.warn('⚠️ Không có showtime ID để silent clear seats');
+      console.warn("⚠️ Không có showtime ID để silent clear seats");
       return;
     }
 
     console.log(`🤫 Silent clear all seats for showtime: ${targetShowtimeId} (no broadcast)`);
 
     // 🔧 FIX: Lấy userId chính xác từ nhiều nguồn
-    const finalUserId = userId ||
-                       localStorage.getItem('userId') ||
-                       localStorage.getItem('user')?.replace(/['"]/g, '') ||
-                       sessionStorage.getItem('userId') ||
-                       'anonymous';
+    const finalUserId =
+      userId ||
+      localStorage.getItem("userId") ||
+      localStorage.getItem("user")?.replace(/['"]/g, "") ||
+      sessionStorage.getItem("userId") ||
+      "anonymous";
 
-    console.log(`👤 [SILENT_CLEAR] Using userId: ${finalUserId} (from ${userId ? 'param' : 'storage'})`);
+    console.log(`👤 [SILENT_CLEAR] Using userId: ${finalUserId} (from ${userId ? "param" : "storage"})`);
 
     // Clear all possible storage keys
     const allStorageKeys = [
@@ -981,14 +1024,14 @@ class WebSocketService {
     ];
 
     // Clear sessionStorage
-    allStorageKeys.forEach(key => {
+    allStorageKeys.forEach((key) => {
       if (sessionStorage.getItem(key)) {
         sessionStorage.removeItem(key);
       }
     });
 
     // Clear localStorage
-    allStorageKeys.forEach(key => {
+    allStorageKeys.forEach((key) => {
       if (localStorage.getItem(key)) {
         localStorage.removeItem(key);
       }
@@ -999,7 +1042,7 @@ class WebSocketService {
 
     // Clear server state
     if (this.socket?.connected) {
-      this.socket.emit('clear-all-seats', {
+      this.socket.emit("clear-all-seats", {
         showtimeId: targetShowtimeId,
         userId: finalUserId,
       });
@@ -1016,18 +1059,19 @@ class WebSocketService {
     const targetShowtimeId = showtimeId || this.currentShowtimeId;
 
     if (!targetShowtimeId) {
-      console.warn('⚠️ Không có showtime ID để clear seats');
+      console.warn("⚠️ Không có showtime ID để clear seats");
       return;
     }
 
     console.log(`🧹 Clearing all seats for showtime: ${targetShowtimeId}`);
 
     // 🔧 FIX: Lấy userId chính xác từ nhiều nguồn
-    const finalUserId = userId ||
-                       localStorage.getItem('userId') ||
-                       localStorage.getItem('user')?.replace(/['"]/g, '') ||
-                       sessionStorage.getItem('userId') ||
-                       'anonymous';
+    const finalUserId =
+      userId ||
+      localStorage.getItem("userId") ||
+      localStorage.getItem("user")?.replace(/['"]/g, "") ||
+      sessionStorage.getItem("userId") ||
+      "anonymous";
 
     // Clear all possible storage keys
     const allStorageKeys = [
@@ -1040,14 +1084,14 @@ class WebSocketService {
     ];
 
     // Clear sessionStorage
-    allStorageKeys.forEach(key => {
+    allStorageKeys.forEach((key) => {
       if (sessionStorage.getItem(key)) {
         sessionStorage.removeItem(key);
       }
     });
 
     // Clear localStorage
-    allStorageKeys.forEach(key => {
+    allStorageKeys.forEach((key) => {
       if (localStorage.getItem(key)) {
         localStorage.removeItem(key);
       }
@@ -1058,15 +1102,15 @@ class WebSocketService {
 
     // Clear server state
     if (this.socket?.connected) {
-      this.socket.emit('clear-all-seats', {
+      this.socket.emit("clear-all-seats", {
         showtimeId: targetShowtimeId,
         userId: finalUserId,
       });
     }
 
-    // 🚫 DISABLED: NO cross-tab broadcast để tránh clear ghế của user khác
-    // this.broadcastSeatUpdate('CLEAR_ALL', finalUserId, targetShowtimeId, 'deselected');
-    console.log(`✅ Cleared all seats for showtime: ${targetShowtimeId} (NO cross-tab broadcast)`);
+    // 🔄 ENABLED: Cross-tab broadcast for cancel booking to sync all tabs
+    this.broadcastSeatUpdate("CANCEL_BOOKING", finalUserId, targetShowtimeId, "cancel_booking");
+    console.log(`✅ Cleared all seats for showtime: ${targetShowtimeId} (WITH cross-tab broadcast for cancel)`);
   }
 
   /**
@@ -1077,7 +1121,7 @@ class WebSocketService {
       const targetShowtimeId = showtimeId || this.currentShowtimeId;
 
       if (!targetShowtimeId) {
-        console.warn('⚠️ Không có showtime ID để silent cleanup');
+        console.warn("⚠️ Không có showtime ID để silent cleanup");
         resolve(false);
         return;
       }
@@ -1089,30 +1133,30 @@ class WebSocketService {
 
       // 2. Force cleanup backend if connected
       if (!this.socket?.connected) {
-        console.warn('⚠️ WebSocket not connected, only frontend cleanup performed');
+        console.warn("⚠️ WebSocket not connected, only frontend cleanup performed");
         resolve(true);
         return;
       }
 
       // Listen for completion
       const timeoutId = setTimeout(() => {
-        console.warn('⚠️ Silent cleanup timeout');
+        console.warn("⚠️ Silent cleanup timeout");
         resolve(true);
       }, 5000);
 
-      const handleCompletion = (data: any) => {
+      const handleCompletion = () => {
         clearTimeout(timeoutId);
-        this.socket?.off('force-cleanup-completed', handleCompletion);
+        this.socket?.off("force-cleanup-completed", handleCompletion);
 
         console.log(`✅ Silent cleanup completed`);
         resolve(true);
       };
 
-      this.socket.on('force-cleanup-completed', handleCompletion);
+      this.socket.on("force-cleanup-completed", handleCompletion);
 
       // Request backend cleanup
-      this.socket.emit('force-cleanup-user-seats', {
-        showtimeId: targetShowtimeId
+      this.socket.emit("force-cleanup-user-seats", {
+        showtimeId: targetShowtimeId,
       });
     });
   }
@@ -1125,7 +1169,7 @@ class WebSocketService {
       const targetShowtimeId = showtimeId || this.currentShowtimeId;
 
       if (!targetShowtimeId) {
-        console.warn('⚠️ Không có showtime ID để force cleanup');
+        console.warn("⚠️ Không có showtime ID để force cleanup");
         resolve(false);
         return;
       }
@@ -1137,30 +1181,30 @@ class WebSocketService {
 
       // 2. Force cleanup backend if connected
       if (!this.socket?.connected) {
-        console.warn('⚠️ WebSocket not connected, only frontend cleanup performed');
+        console.warn("⚠️ WebSocket not connected, only frontend cleanup performed");
         resolve(true);
         return;
       }
 
       // Listen for completion
       const timeoutId = setTimeout(() => {
-        console.warn('⚠️ Force cleanup timeout');
+        console.warn("⚠️ Force cleanup timeout");
         resolve(true);
       }, 5000);
 
-      const handleCompletion = (data: any) => {
+      const handleCompletion = () => {
         clearTimeout(timeoutId);
-        this.socket?.off('force-cleanup-completed', handleCompletion);
+        this.socket?.off("force-cleanup-completed", handleCompletion);
 
         console.log(`✅ Force cleanup completed`);
         resolve(true);
       };
 
-      this.socket.on('force-cleanup-completed', handleCompletion);
+      this.socket.on("force-cleanup-completed", handleCompletion);
 
       // Request backend cleanup
-      this.socket.emit('force-cleanup-user-seats', {
-        showtimeId: targetShowtimeId
+      this.socket.emit("force-cleanup-user-seats", {
+        showtimeId: targetShowtimeId,
       });
     });
   }
@@ -1169,7 +1213,7 @@ class WebSocketService {
    * Cleanup khi component unmount
    */
   cleanup(): void {
-    console.log('🧹 Cleanup WebSocketService...');
+    console.log("🧹 Cleanup WebSocketService...");
 
     // 🚨 KHÔNG clear selected seats để preserve session khi navigate
     // this.clearAllSelectedSeats();
@@ -1178,11 +1222,12 @@ class WebSocketService {
     this.disconnect();
     this.eventListeners.clear();
 
-    // 🔄 Close BroadcastChannel
+    // 🔄 Close BroadcastChannel - but keep it available for cross-tab sync
     if (this.broadcastChannel) {
-      this.broadcastChannel.close();
-      this.broadcastChannel = null;
-      console.log('🔄 BroadcastChannel closed');
+      console.log("🔄 BroadcastChannel kept alive for cross-tab sync");
+      // Don't close BroadcastChannel to maintain cross-tab communication
+      // this.broadcastChannel.close();
+      // this.broadcastChannel = null;
     }
   }
 
@@ -1208,14 +1253,56 @@ class WebSocketService {
    */
   refreshSeatsState(): void {
     if (!this.socket?.connected || !this.currentShowtimeId) {
-      console.warn('⚠️ Không thể refresh seats state');
+      console.warn("⚠️ Không thể refresh seats state");
       return;
     }
 
-    console.log('🔄 Refresh seats state từ server...');
-    this.socket.emit('get-seats-state', {
-      showtimeId: this.currentShowtimeId
+    console.log("🔄 Refresh seats state từ server...");
+    this.socket.emit("get-seats-state", {
+      showtimeId: this.currentShowtimeId,
     });
+  }
+
+  /**
+   * Request seats state for specific showtime
+   */
+  requestSeatsState(showtimeId: string): void {
+    if (!this.socket?.connected) {
+      console.warn("⚠️ Không thể request seats state - WebSocket not connected");
+      return;
+    }
+
+    console.log(`🔄 Requesting seats state for showtime: ${showtimeId}`);
+    this.socket.emit("get-seats-state", {
+      showtimeId: showtimeId,
+    });
+  }
+
+  /**
+   * Test BroadcastChannel functionality
+   */
+  testBroadcastChannel(): void {
+    if (!this.broadcastChannel) {
+      console.warn("⚠️ [TEST] BroadcastChannel not available for testing");
+      return;
+    }
+
+    const testData = {
+      seatId: "TEST",
+      userId: "TEST_USER",
+      showtimeId: "TEST_SHOWTIME",
+      action: "test",
+      timestamp: Date.now(),
+      test: true,
+    };
+
+    console.log(`🧪 [TEST] Sending test message via BroadcastChannel:`, testData);
+    try {
+      this.broadcastChannel.postMessage(testData);
+      console.log(`✅ [TEST] Test message sent successfully`);
+    } catch (error) {
+      console.error(`❌ [TEST] Failed to send test message:`, error);
+    }
   }
 
   /**
@@ -1225,7 +1312,7 @@ class WebSocketService {
     return new Promise((resolve) => {
       const targetShowtimeId = showtimeId || this.currentShowtimeId;
 
-      console.log(`🔥 Force reconnecting WebSocket${targetShowtimeId ? ` for showtime ${targetShowtimeId}` : ''}...`);
+      console.log(`🔥 Force reconnecting WebSocket${targetShowtimeId ? ` for showtime ${targetShowtimeId}` : ""}...`);
 
       // Disconnect trước
       if (this.socket?.connected) {
@@ -1233,12 +1320,14 @@ class WebSocketService {
       }
 
       // Reset state
-      this.setConnectionState('disconnected');
+      this.setConnectionState("disconnected");
       this.reconnectAttempts = 0;
 
       // Connect lại
       setTimeout(() => {
-        this.connect().then(resolve).catch(() => resolve(false));
+        this.connect()
+          .then(resolve)
+          .catch(() => resolve(false));
       }, 100);
     });
   }
@@ -1257,7 +1346,7 @@ class WebSocketService {
     console.log(`🔄 Starting auto-reconnect for showtime ${targetShowtimeId}`);
 
     this.reconnectTimer = setInterval(() => {
-      if (!this.socket?.connected && this.connectionState !== 'connecting') {
+      if (!this.socket?.connected && this.connectionState !== "connecting") {
         console.log(`🔄 Auto-reconnect attempt ${this.reconnectAttempts + 1}...`);
         this.connect();
       }
@@ -1275,8 +1364,8 @@ class WebSocketService {
     return new Promise((resolve) => {
       const timeout = setTimeout(() => resolve(false), 5000);
 
-      this.socket!.emit('ping', { timestamp: Date.now() });
-      this.socket!.once('pong', () => {
+      this.socket!.emit("ping", { timestamp: Date.now() });
+      this.socket!.once("pong", () => {
         clearTimeout(timeout);
         resolve(true);
       });

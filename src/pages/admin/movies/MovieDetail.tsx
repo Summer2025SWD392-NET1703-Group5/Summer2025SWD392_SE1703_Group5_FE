@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import {
     ArrowLeftIcon,
-    FilmIcon,
     ClockIcon,
     CalendarIcon,
     StarIcon,
@@ -19,10 +18,13 @@ import { motion } from 'framer-motion';
 import FullScreenLoader from '../../../components/FullScreenLoader';
 import { toast } from 'react-hot-toast';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
+import { useAuth } from '../../../hooks/useAuth';
 
 interface MovieDetailProps { }
 
 const MovieDetail: React.FC<MovieDetailProps> = () => {
+    const { user } = useAuth(); // Get current user information
+    const isAdmin = user?.role === 'Admin'; // Check if user is Admin
     const { id } = useParams<{ id: string }>();
     const [movie, setMovie] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
@@ -50,14 +52,27 @@ const MovieDetail: React.FC<MovieDetailProps> = () => {
     }, [id, navigate]);
 
     const handleEditMovie = () => {
+        if (!isAdmin) {
+            toast.error('Bạn không có quyền chỉnh sửa phim.');
+            return;
+        }
         navigate(`/admin/movies/${id}/edit`);
     };
 
     const handleDeleteMovie = () => {
+        if (!isAdmin) {
+            toast.error('Bạn không có quyền xóa phim.');
+            return;
+        }
         setShowDeleteDialog(true);
     };
 
     const confirmDelete = async () => {
+        if (!isAdmin) {
+            toast.error('Bạn không có quyền xóa phim.');
+            return;
+        }
+        
         if (id) {
             const toastId = toast.loading('Đang xóa phim...');
             try {
@@ -160,19 +175,41 @@ const MovieDetail: React.FC<MovieDetailProps> = () => {
                 </Link>
                 <div className="flex-grow">
                     <h1 className="text-2xl font-bold text-white">Chi tiết phim</h1>
-                    <p className="text-gray-400 mt-1">Xem thông tin chi tiết của phim</p>
+                    <p className="text-gray-400 mt-1">
+                        {isAdmin 
+                            ? "Xem thông tin chi tiết của phim" 
+                            : "Xem thông tin chi tiết của phim (Chế độ chỉ xem)"
+                        }
+                    </p>
+                    {!isAdmin && (
+                        <p className="text-amber-400 text-sm mt-1">
+                            💡 Bạn chỉ có thể xem thông tin phim. Liên hệ Admin để thực hiện các thay đổi.
+                        </p>
+                    )}
                 </div>
                 <div className="flex items-center gap-2">
                     <button
-                        onClick={handleEditMovie}
-                        className="bg-[#FFD875]/10 hover:bg-[#FFD875]/20 text-[#FFD875] px-4 py-2 rounded-lg flex items-center shadow-[0_0_10px_0_rgba(255,216,117,0.2)] hover:shadow-[0_0_15px_0_rgba(255,216,117,0.4)] transition-all"
+                        onClick={() => isAdmin && handleEditMovie()}
+                        className={`px-4 py-2 rounded-lg flex items-center transition-all ${
+                            isAdmin 
+                                ? 'bg-[#FFD875]/10 hover:bg-[#FFD875]/20 text-[#FFD875] shadow-[0_0_10px_0_rgba(255,216,117,0.2)] hover:shadow-[0_0_15px_0_rgba(255,216,117,0.4)] cursor-pointer'
+                                : 'bg-[#FFD875]/5 text-[#FFD875]/50 cursor-not-allowed shadow-[0_0_10px_0_rgba(255,216,117,0.1)]'
+                        }`}
+                        disabled={!isAdmin}
+                        title={!isAdmin ? "Chỉ Admin mới có thể chỉnh sửa phim" : "Chỉnh sửa phim"}
                     >
                         <PencilIcon className="w-5 h-5 mr-2" />
                         Chỉnh sửa
                     </button>
                     <button
-                        onClick={handleDeleteMovie}
-                        className="bg-red-500/10 hover:bg-red-500/20 text-red-400 px-4 py-2 rounded-lg flex items-center shadow-[0_0_10px_0_rgba(239,68,68,0.2)] hover:shadow-[0_0_15px_0_rgba(239,68,68,0.4)] transition-all"
+                        onClick={() => isAdmin && handleDeleteMovie()}
+                        className={`px-4 py-2 rounded-lg flex items-center transition-all ${
+                            isAdmin 
+                                ? 'bg-red-500/10 hover:bg-red-500/20 text-red-400 shadow-[0_0_10px_0_rgba(239,68,68,0.2)] hover:shadow-[0_0_15px_0_rgba(239,68,68,0.4)] cursor-pointer'
+                                : 'bg-red-500/5 text-red-400/50 cursor-not-allowed shadow-[0_0_10px_0_rgba(239,68,68,0.1)]'
+                        }`}
+                        disabled={!isAdmin}
+                        title={!isAdmin ? "Chỉ Admin mới có thể xóa phim" : "Xóa phim"}
                     >
                         <TrashIcon className="w-5 h-5 mr-2" />
                         Xóa

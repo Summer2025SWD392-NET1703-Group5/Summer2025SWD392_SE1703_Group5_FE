@@ -1,7 +1,7 @@
 import React, { Suspense, memo } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "react-hot-toast";
-import { SimpleAuthProvider } from "./contexts/SimpleAuthContext";
+import { SimpleAuthProvider, useAuth } from "./contexts/SimpleAuthContext";
 import { DashboardProvider } from "./contexts/DashboardContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
 import LoadingProvider from "./contexts/LoadingContext";
@@ -24,14 +24,29 @@ import PromotionsPage from "./pages/PromotionsPage";
 const AppLoader = <FullScreenLoader text="Đang tải..." />;
 const AdminLoader = <FullScreenLoader text="Đang tải trang quản trị..." />;
 
+// Dashboard Route Wrapper - Choose dashboard based on user role
+const DashboardRouteWrapper: React.FC = () => {
+  const { user } = useAuth();
+  
+  if (user?.role === 'Admin') {
+    return <LazyWrapper component={AdminPages.Dashboard} fallback={AdminLoader} />;
+  } else if (user?.role === 'Manager') {
+    return <LazyWrapper component={AdminPages.ManagerDashboard} fallback={AdminLoader} />;
+  }
+  
+  // Default to admin dashboard for backward compatibility
+  return <LazyWrapper component={AdminPages.Dashboard} fallback={AdminLoader} />;
+};
+
 // Admin Pages - Nhóm các trang admin theo chức năng để tối ưu code splitting
 const AdminPages = {
   Layout: React.lazy(() => import(/* webpackChunkName: "admin-layout" */ "./pages/admin/AdminLayout")),
   Dashboard: React.lazy(() => import(/* webpackChunkName: "admin-core" */ "./pages/admin/AdminDashboard")),
+  ManagerDashboard: React.lazy(() => import(/* webpackChunkName: "manager-core" */ "./pages/manager/ManagerDashboard")),
   Analytics: React.lazy(() => import(/* webpackChunkName: "admin-core" */ "./pages/admin/Analytics")),
 
   // Movie management
-  MovieManagement: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/MovieManagement")),
+  MovieManagement: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/MovieManagement")),
   AddMovie: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/AddMovie")),
   EditMovie: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/EditMovie")),
   MovieDetail: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/MovieDetail")),
@@ -85,8 +100,10 @@ const AdminPages = {
   BookingsList: React.lazy(
     () => import(/* webpackChunkName: "admin-bookings" */ "./pages/admin/bookings/BookingsList")
   ),
-  BookingDetail: React.lazy(
-    () => import(/* webpackChunkName: "admin-bookings" */ "./pages/admin/bookings/BookingDetail")
+
+  // Ticket Pricing management
+  TicketPricingManagement: React.lazy(
+    () => import(/* webpackChunkName: "admin-pricing" */ "./pages/admin/ticket-pricing/TicketPricingManagement")
   ),
 
   // Promotions management
@@ -135,7 +152,6 @@ const PublicPages = {
   BookingHistory: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/BookingHistory")),
   MyTickets: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/components/MyTickets")),
   TicketDetail: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/TicketDetail")),
-  Favorites: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/components/Favorites")),
   Notifications: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/components/Notifications")),
   Security: React.lazy(() => import(/* webpackChunkName: "profile" */ "./pages/profile/components/Security")),
 
@@ -244,7 +260,7 @@ function App() {
                     path="dashboard"
                     element={
                       <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.Dashboard} fallback={AdminLoader} />
+                        <DashboardRouteWrapper />
                       </Suspense>
                     }
                   />
@@ -311,10 +327,10 @@ function App() {
                     }
                   />
                   <Route
-                    path="bookings/:id"
+                    path="ticket-pricing"
                     element={
                       <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.BookingDetail} fallback={AdminLoader} />
+                        <LazyWrapper component={AdminPages.TicketPricingManagement} fallback={AdminLoader} />
                       </Suspense>
                     }
                   />

@@ -13,18 +13,19 @@ import {
   EyeIcon,
   CloudArrowDownIcon
 } from '@heroicons/react/24/outline';
-import { movieService } from '../../services/movieService';
-import { referenceService } from '../../services/referenceService';
-import MultiStepMovieForm from '../../components/admin/forms/MultiStepMovieForm';
-import DataTable from '../../components/admin/common/DataTable';
-import ConfirmDialog from '../../components/admin/common/ConfirmDialog';
-import ExcelImportExport from '../../components/admin/common/ExcelImportExport';
-import TMDBImportModal from './movies/TMDBImportModal';
-import { formatDate } from '../../utils/dashboardUtils';
+import { movieService } from '../../../services/movieService';
+import { referenceService } from '../../../services/referenceService';
+import MultiStepMovieForm from '../../../components/admin/forms/MultiStepMovieForm';
+import DataTable from '../../../components/admin/common/DataTable';
+import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
+import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
+import TMDBImportModal from './TMDBImportModal';
+import { formatDate } from '../../../utils/dashboardUtils';
 import { toast } from 'react-hot-toast';
-import './styles/MovieManagement.css';
+import '../styles/MovieManagement.css';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../../hooks/useAuth';
 
 // Define the interface for the backend API response
 interface MovieAPI {
@@ -50,6 +51,9 @@ interface MovieAPI {
 }
 
 const MovieManagement: React.FC = () => {
+  const { user } = useAuth(); // Get current user information
+  const isAdmin = user?.role === 'Admin'; // Check if user is Admin
+  
   const [movies, setMovies] = useState<MovieAPI[]>([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -94,15 +98,27 @@ const MovieManagement: React.FC = () => {
 
   // Callback khi import thành công với ExportImportToolbar
   const handleImportComplete = () => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền import dữ liệu.');
+      return;
+    }
     toast.success('Đang làm mới danh sách phim...');
     fetchMovies(); // Làm mới danh sách phim sau khi import
   };
 
   const handleCreateMovie = () => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền thêm phim mới.');
+      return;
+    }
     navigate('/admin/movies/add');
   };
 
   const handleEditMovie = (movie: MovieAPI) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền chỉnh sửa phim.');
+      return;
+    }
     navigate(`/admin/movies/${movie.Movie_ID}/edit`);
   };
 
@@ -111,14 +127,12 @@ const MovieManagement: React.FC = () => {
   };
 
   const handleDeleteMovie = (movie: MovieAPI) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền xóa phim.');
+      return;
+    }
     setMovieToDelete(movie);
     setShowDeleteDialog(true);
-  };
-
-  const handleFormSubmit = () => {
-    setShowForm(false);
-    setSelectedMovie(undefined);
-    fetchMovies();
   };
 
   const handleCancelForm = () => {
@@ -127,6 +141,11 @@ const MovieManagement: React.FC = () => {
   };
 
   const confirmDelete = async () => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền xóa phim.');
+      return;
+    }
+    
     if (movieToDelete && movieToDelete.Movie_ID) {
       const toastId = toast.loading('Đang xóa phim...');
       try {
@@ -183,38 +202,13 @@ const MovieManagement: React.FC = () => {
     }));
   }, [movies]);
 
-  // Xử lý khi nhập dữ liệu từ Excel
-  const handleImportMovies = async (importedData: any[]) => {
-    if (!importedData || importedData.length === 0) {
-      toast.error('Không có dữ liệu phim để nhập');
-      return;
-    }
-
-    setImportLoading(true);
-    const toastId = toast.loading('Đang nhập dữ liệu phim...');
-
-    try {
-      // Đây là nơi bạn sẽ gọi API để thêm nhiều phim cùng lúc
-      // Giả lập việc thêm phim bằng timeout
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      toast.success(`Đã nhập ${importedData.length} phim thành công!`, { id: toastId });
-
-      // Nếu có API thực để thêm nhiều phim, bạn sẽ gọi ở đây
-      // const result = await movieService.bulkAddMovies(importedData);
-
-      // Sau khi nhập xong, làm mới danh sách phim
-      fetchMovies();
-    } catch (error) {
-      console.error('Import movies error:', error);
-      toast.error('Nhập dữ liệu phim thất bại', { id: toastId });
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
   // Handle TMDB import
   const handleTMDBImport = async (tmdbMovies: any[]) => {
+    if (!isAdmin) {
+      toast.error('Bạn không có quyền import phim từ TMDB.');
+      return;
+    }
+    
     setImportLoading(true);
     const toastId = toast.loading(`Đang import ${tmdbMovies.length} phim từ TMDB...`);
 
@@ -519,16 +513,26 @@ const MovieManagement: React.FC = () => {
             <EyeIcon className="w-5 h-5" />
           </button>
           <button
-            onClick={() => handleEditMovie(movie)}
-            className="p-2 text-gray-400 hover:text-[#FFD875] transition-colors duration-300 rounded-full hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)]"
-            title="Chỉnh sửa"
+            onClick={() => isAdmin && handleEditMovie(movie)}
+            className={`p-2 transition-colors duration-300 rounded-full ${
+              isAdmin 
+                ? 'text-gray-400 hover:text-[#FFD875] hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)] cursor-pointer'
+                : 'text-gray-400/50 cursor-not-allowed'
+            }`}
+            disabled={!isAdmin}
+            title={!isAdmin ? "Chỉ Admin mới có thể chỉnh sửa phim" : "Chỉnh sửa"}
           >
             <PencilIcon className="w-5 h-5" />
           </button>
           <button
-            onClick={() => handleDeleteMovie(movie)}
-            className="p-2 text-gray-400 hover:text-red-500 transition-colors duration-300 rounded-full hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)]"
-            title="Xóa"
+            onClick={() => isAdmin && handleDeleteMovie(movie)}
+            className={`p-2 transition-colors duration-300 rounded-full ${
+              isAdmin 
+                ? 'text-gray-400 hover:text-red-500 hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)] cursor-pointer'
+                : 'text-gray-400/50 cursor-not-allowed'
+            }`}
+            disabled={!isAdmin}
+            title={!isAdmin ? "Chỉ Admin mới có thể xóa phim" : "Xóa"}
           >
             <TrashIcon className="w-5 h-5" />
           </button>
@@ -586,30 +590,53 @@ const MovieManagement: React.FC = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold">Quản lý phim</h1>
-          <p className="text-gray-400 mt-1">Quản lý danh sách phim trong hệ thống</p>
+          <p className="text-gray-400 mt-1">
+            {isAdmin 
+              ? "Quản lý danh sách phim trong hệ thống" 
+              : "Xem danh sách phim trong hệ thống (Chế độ chỉ xem)"
+            }
+          </p>
+          {!isAdmin && (
+            <p className="text-amber-400 text-sm mt-1">
+              💡 Bạn chỉ có thể xem chi tiết phim. Liên hệ Admin để thực hiện các thay đổi.
+            </p>
+          )}
         </div>
         <div className="flex gap-4">
           <button
-            onClick={() => setShowTMDBImport(true)}
-            className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg hover:shadow-purple-500/25"
-            disabled={importLoading}
+            onClick={() => isAdmin && setShowTMDBImport(true)}
+            className={`font-bold py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg ${
+              isAdmin 
+                ? 'bg-purple-600 hover:bg-purple-700 text-white hover:shadow-purple-500/25 cursor-pointer' 
+                : 'bg-purple-600/50 text-white/50 cursor-not-allowed'
+            }`}
+            disabled={importLoading || !isAdmin}
+            title={!isAdmin ? "Chỉ Admin mới có thể import từ TMDB" : "Import từ TMDB"}
           >
             <CloudArrowDownIcon className="w-5 h-5 mr-2" />
             Import từ TMDB
           </button>
-          <ExcelImportExport
-            data={moviesForExport}
-            onImport={handleImportComplete}
-            fileName="movies-list"
-            sheetName="Phim"
-            headers={excelHeaders}
-            disabled={loading || importLoading}
-            useApi={true}
-            apiType="movies"
-          />
+          <div className={!isAdmin ? 'opacity-50 pointer-events-none' : ''}>
+            <ExcelImportExport
+              data={moviesForExport}
+              onImport={handleImportComplete}
+              fileName="movies-list"
+              sheetName="Phim"
+              headers={excelHeaders}
+              disabled={loading || importLoading || !isAdmin}
+              useApi={true}
+              apiType="movies"
+            />
+          </div>
           <button
-            onClick={handleCreateMovie}
-            className="bg-[#FFD875] hover:bg-opacity-80 text-black font-bold py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-[0_0_15px_2px_rgba(255,216,117,0.4)] hover:shadow-[0_0_20px_5px_rgba(255,216,117,0.6)]"
+            onClick={() => isAdmin && handleCreateMovie()}
+            className={`font-bold py-2 px-4 rounded-lg flex items-center transition-all duration-300 ${
+              isAdmin 
+                ? 'bg-[#FFD875] hover:bg-opacity-80 text-black shadow-[0_0_15px_2px_rgba(255,216,117,0.4)] hover:shadow-[0_0_20px_5px_rgba(255,216,117,0.6)] cursor-pointer'
+                : 'bg-[#FFD875]/50 text-black/50 cursor-not-allowed shadow-[0_0_15px_2px_rgba(255,216,117,0.2)]'
+            }`}
+            disabled={!isAdmin}
+            title={!isAdmin ? "Chỉ Admin mới có thể thêm phim mới" : "Thêm phim mới"}
           >
             <PlusIcon className="w-5 h-5 mr-2" />
             Thêm phim

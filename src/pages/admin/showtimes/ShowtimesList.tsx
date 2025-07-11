@@ -1154,9 +1154,10 @@ const ShowtimesList: React.FC = () => {
                           <BuildingOfficeIcon className="w-5 h-5 text-[#FFD875]" />
                         </div>
                         <div className="min-w-0 flex-1 relative group/cinema">
+                          {isAdmin && (
                           <div className="text-sm font-medium text-white truncate cursor-pointer">
                             {showtime.cinemaName || showtime.Cinema?.Cinema_Name || 'Không xác định'}
-                            </div>
+                            </div>)}
                           <div className="text-xs text-gray-400 flex items-center gap-1 mt-1">
                             <CubeIcon className="w-3 h-3 flex-shrink-0" />
                             <span className="font-medium text-white">{showtime.Room?.Room_Name || "Không xác định"}</span>

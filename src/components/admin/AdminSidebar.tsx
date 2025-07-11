@@ -9,21 +9,14 @@ import {
   UsersIcon,
   TicketIcon,
   CurrencyDollarIcon,
-  Cog6ToothIcon,
-  BellIcon,
   DocumentChartBarIcon,
   CalendarIcon,
-  ShieldCheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   ChevronDownIcon,
-  ChevronUpIcon,
   ArrowLeftOnRectangleIcon,
   UserCircleIcon,
-  StarIcon,
-  UserPlusIcon,
   TagIcon,
-  PlusIcon,
   CogIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../contexts/SimpleAuthContext";
@@ -46,7 +39,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const [expandedMenus, setExpandedMenus] = useState<string[]>(["dashboard"]);
+  const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
 
   // Add custom CSS for the glossy text effect
@@ -181,14 +174,22 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
       icon: HomeIcon,
       path: "/admin",
     },
-    // Quản lý đặt vé - chỉ hiển thị cho Admin
+    // Quản lý đặt vé
+    {
+      id: "bookings",
+      label: "Quản lý đặt vé",
+      icon: TicketIcon,
+      path: "/admin/bookings",
+    },
+
+    // Quản lý giá vé - chỉ hiển thị cho Admin
     ...(user?.role === "Admin"
       ? [
           {
-            id: "bookings",
-            label: "Quản lý đặt vé",
-            icon: TicketIcon,
-            children: [{ id: "bookings-list", label: "Danh sách đặt vé", icon: TicketIcon, path: "/admin/bookings" }],
+            id: "ticket-pricing",
+            label: "Quản lý giá vé",
+            icon: CurrencyDollarIcon,
+            path: "/admin/ticket-pricing",
           },
         ]
       : []),
@@ -196,12 +197,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
       id: "movies",
       label: "Quản lý phim",
       icon: FilmIcon,
-      children: [
-        { id: "movies-list", label: "Danh sách phim", icon: FilmIcon, path: "/admin/movies" },
-        ...(user?.role === "Admin"
-          ? [{ id: "movies-add", label: "Thêm phim mới", icon: PlusIcon, path: "/admin/movies/add" }]
-          : []),
-      ],
+      path: "/admin/movies",
     },
     {
       id: "cinemas",
@@ -215,17 +211,17 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
         { id: "cinemas-showtimes", label: "Lịch chiếu", icon: CalendarIcon, path: "/admin/showtimes" },
       ],
     },
-    {
-      id: "promotions",
-      label: "Quản lý khuyến mãi",
-      icon: TagIcon,
-      children: [
-        { id: "promotions-list", label: "Danh sách khuyến mãi", icon: TagIcon, path: "/admin/promotions" },
-        ...(user?.role === "Admin"
-          ? [{ id: "promotions-add", label: "Thêm khuyến mãi", icon: PlusIcon, path: "/admin/promotions/add" }]
-          : []),
-      ],
-    },
+    // Quản lý khuyến mãi - chỉ hiển thị cho Admin
+    ...(user?.role === "Admin"
+      ? [
+          {
+            id: "promotions",
+            label: "Quản lý khuyến mãi",
+            icon: TagIcon,
+            path: "/admin/promotions",
+          },
+        ]
+      : []),
     // Quản lý khách hàng - chỉ hiển thị cho Admin
     ...(user?.role === "Admin"
       ? [
@@ -233,10 +229,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
             id: "customers",
             label: "Quản lý khách hàng",
             icon: UsersIcon,
-            children: [
-              { id: "customers-list", label: "Danh sách KH", icon: UsersIcon, path: "/admin/customers" },
-              { id: "customers-add", label: "Thêm khách hàng", icon: UserPlusIcon, path: "/admin/customers/new" },
-            ],
+            path: "/admin/customers",
           },
         ]
       : []),
@@ -263,8 +256,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
 
     // Xử lý đặc biệt cho dashboard
     if (path === "/admin") {
-      // Dashboard chỉ active khi đúng là đường dẫn /admin
-      return location.pathname === "/admin";
+      // Dashboard chỉ active khi đúng là đường dẫn /admin hoặc /admin/dashboard
+      return location.pathname === "/admin" || location.pathname === "/admin/dashboard";
     }
 
     // Các trang khác active khi đường dẫn khớp hoặc bắt đầu với đường dẫn trang
@@ -299,30 +292,42 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
             to={item.path}
             onMouseEnter={() => setHoveredMenu(item.id)}
             onMouseLeave={() => setHoveredMenu(null)}
-            className={`menu-item-hover flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 ease-in-out relative group ${
+            className={`menu-item-hover flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 ease-in-out relative group rounded-xl border ${
               itemIsActive
-                ? "bg-[#FFD875] text-slate-900 shadow-[4px_0_15px_-5px_rgba(255,216,117,0.5)]"
-                : "text-gray-300 hover:bg-[#FFD875] hover:text-slate-900 hover:shadow-[0_0_15px_rgba(255,216,117,0.4)]"
+                ? "bg-gradient-to-r from-[#FFD875] to-amber-500 text-slate-900 shadow-[0_0_20px_rgba(255,216,117,0.4)] border-[#FFD875]/30"
+                : "text-gray-300 hover:bg-gradient-to-r hover:from-[#FFD875]/20 hover:to-amber-500/20 hover:text-[#FFD875] hover:shadow-[0_0_15px_rgba(255,216,117,0.3)] border-transparent hover:border-[#FFD875]/30 backdrop-blur-sm"
             } ${level > 0 ? (collapsed ? "pl-4" : "pl-12") : "pl-4"}`}
           >
-            <item.icon
-              className={`${collapsed ? "w-6 h-6 mx-auto" : "w-5 h-5 mr-3"} flex-shrink-0 transition-all duration-300 ${
-                isHovered && !itemIsActive ? "text-black" : ""
+            <div
+              className={`${
+                collapsed ? "w-8 h-8 mx-auto" : "w-8 h-8 mr-3"
+              } flex items-center justify-center rounded-lg transition-all duration-300 ${
+                itemIsActive ? "bg-slate-900/20" : "bg-slate-700/30 group-hover:bg-[#FFD875]/20"
               }`}
-            />
+            >
+              <item.icon
+                className={`w-5 h-5 flex-shrink-0 transition-all duration-300 ${
+                  itemIsActive ? "text-slate-900" : isHovered ? "text-[#FFD875]" : "text-gray-300"
+                }`}
+              />
+            </div>
             {!collapsed && (
               <>
                 <span
-                  className={`flex-1 ${
-                    isHovered && !itemIsActive
-                      ? "transform translate-x-1 transition-transform duration-300"
-                      : "transition-transform duration-300"
+                  className={`flex-1 font-medium transition-all duration-300 ${
+                    itemIsActive
+                      ? "text-slate-900"
+                      : isHovered
+                      ? "text-[#FFD875] transform translate-x-1"
+                      : "text-gray-300"
                   }`}
                 >
                   {item.label}
                 </span>
                 {item.badge && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">{item.badge}</span>
+                  <span className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg border border-red-400/30">
+                    {item.badge}
+                  </span>
                 )}
               </>
             )}
@@ -330,13 +335,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
               <div className="absolute left-0 top-0 h-full w-1 bg-[#FFD875] rounded-r-full"></div>
             )}
             {collapsed && (
-              <div className="absolute left-full ml-2 px-3 py-1.5 bg-slate-800 border border-slate-700 text-white text-sm rounded-md opacity-0 group-hover:opacity-100 transition-all duration-300 z-50 whitespace-nowrap shadow-lg">
-                {item.label}
+              <div className="absolute left-full ml-3 px-4 py-2 bg-slate-800/95 backdrop-blur-xl border border-slate-600/50 text-white text-sm rounded-xl opacity-0 group-hover:opacity-100 transition-all duration-300 z-50 whitespace-nowrap shadow-2xl">
+                <span className="font-medium">{item.label}</span>
                 {item.badge && (
-                  <span className="ml-2 bg-red-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">
+                  <span className="ml-2 bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
                     {item.badge}
                   </span>
                 )}
+                {/* Tooltip arrow */}
+                <div className="absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-1 w-2 h-2 bg-slate-800/95 border-l border-t border-slate-600/50 rotate-45"></div>
               </div>
             )}
             {isHovered && !collapsed && !itemIsActive && (
@@ -348,39 +355,54 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
             onClick={() => toggleMenu(item.id)}
             onMouseEnter={() => setHoveredMenu(item.id)}
             onMouseLeave={() => setHoveredMenu(null)}
-            className={`menu-item-hover w-full flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 ease-in-out relative group ${
+            className={`menu-item-hover w-full flex items-center px-4 py-3 text-sm font-medium transition-all duration-300 ease-in-out relative group rounded-xl border ${
               itemIsActive
-                ? "text-white bg-slate-700/50 hover:bg-[#FFD875] hover:text-slate-900 hover:shadow-[0_0_15px_rgba(255,216,117,0.4)]"
-                : "text-gray-300 hover:bg-[#FFD875] hover:text-slate-900 hover:shadow-[0_0_15px_rgba(255,216,117,0.4)]"
+                ? "text-[#FFD875] bg-gradient-to-r from-slate-700/50 to-slate-800/50 hover:from-[#FFD875]/20 hover:to-amber-500/20 hover:text-[#FFD875] border-slate-600/30 hover:border-[#FFD875]/30"
+                : "text-gray-300 hover:bg-gradient-to-r hover:from-[#FFD875]/20 hover:to-amber-500/20 hover:text-[#FFD875] border-transparent hover:border-[#FFD875]/30 backdrop-blur-sm"
             } ${level > 0 ? (collapsed ? "pl-4" : "pl-12") : "pl-4"}`}
           >
-            <item.icon
-              className={`${collapsed ? "w-6 h-6 mx-auto" : "w-5 h-5 mr-3"} flex-shrink-0 transition-all duration-300 ${
-                isHovered && !itemIsActive ? "text-black" : ""
+            <div
+              className={`${
+                collapsed ? "w-8 h-8 mx-auto" : "w-8 h-8 mr-3"
+              } flex items-center justify-center rounded-lg transition-all duration-300 ${
+                itemIsActive ? "bg-[#FFD875]/20" : "bg-slate-700/30 group-hover:bg-[#FFD875]/20"
               }`}
-            />
+            >
+              <item.icon
+                className={`w-5 h-5 flex-shrink-0 transition-all duration-300 ${
+                  itemIsActive ? "text-[#FFD875]" : isHovered ? "text-[#FFD875]" : "text-gray-300"
+                }`}
+              />
+            </div>
             {!collapsed && (
               <>
                 <span
-                  className={`flex-1 text-left ${
-                    isHovered && !itemIsActive
-                      ? "transform translate-x-1 transition-transform duration-300"
-                      : "transition-transform duration-300"
+                  className={`flex-1 text-left font-medium transition-all duration-300 ${
+                    itemIsActive
+                      ? "text-[#FFD875]"
+                      : isHovered
+                      ? "text-[#FFD875] transform translate-x-1"
+                      : "text-gray-300"
                   }`}
                 >
                   {item.label}
                 </span>
                 {item.badge && (
-                  <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full mr-2">
+                  <span className="bg-gradient-to-r from-red-500 to-red-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg border border-red-400/30 mr-2">
                     {item.badge}
                   </span>
                 )}
                 {hasChildren && (
                   <div
-                    className="ml-2 transition-transform duration-300 ease-in-out"
-                    style={{ transform: isExpanded ? "rotate(180deg)" : "rotate(0deg)" }}
+                    className={`ml-2 flex items-center justify-center w-6 h-6 rounded-lg transition-all duration-300 ease-in-out ${
+                      isExpanded ? "rotate-180 bg-[#FFD875]/20" : "bg-slate-700/30 group-hover:bg-[#FFD875]/20"
+                    }`}
                   >
-                    <ChevronDownIcon className="w-4 h-4" />
+                    <ChevronDownIcon
+                      className={`w-4 h-4 transition-colors ${
+                        itemIsActive || isHovered ? "text-[#FFD875]" : "text-gray-400"
+                      }`}
+                    />
                   </div>
                 )}
               </>
@@ -425,7 +447,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
 
   return (
     <div
-      className={`sidebar-transition sidebar-container fixed left-0 top-0 bg-slate-800 border-r border-slate-700/50 z-40 ${
+      className={`sidebar-transition sidebar-container fixed left-0 top-0 bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 border-r border-slate-700/50 z-40 shadow-2xl ${
         collapsed ? "w-20" : "w-64"
       }`}
     >
@@ -442,13 +464,15 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
             window.location.reload();
           }}
         >
-          <div className="w-10 h-10 bg-[#FFD875] rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-[0_0_15px_rgba(255,216,117,0.5)] group-hover:shadow-[0_0_25px_rgba(255,216,117,0.7)]">
-            <FilmIcon className="w-6 h-6 text-black" />
+          <div className="w-12 h-12 bg-gradient-to-br from-[#FFD875] to-amber-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-all duration-300 shadow-[0_0_20px_rgba(255,216,117,0.5)] group-hover:shadow-[0_0_30px_rgba(255,216,117,0.8)] border border-[#FFD875]/30">
+            <FilmIcon className="w-7 h-7 text-black" />
           </div>
           {!collapsed && (
-            <div className="ml-3">
-              <h1 className="text-lg font-bold uppercase tracking-wider leading-tight cinema-name">Galaxy Cinema</h1>
-              <p className="text-[10px] uppercase tracking-widest leading-tight -mt-1 cinema-tagline">
+            <div className="ml-4">
+              <h1 className="text-xl font-bold uppercase tracking-wider leading-tight bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                Galaxy Cinema
+              </h1>
+              <p className="text-xs uppercase tracking-widest leading-tight -mt-1 text-[#FFD875]/70 font-medium">
                 Admin Dashboard
               </p>
             </div>
@@ -456,8 +480,8 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
         </div>
         <button
           onClick={() => onToggle(!collapsed)}
-          className="absolute top-7 bg-slate-700 text-white p-1 rounded-full border border-slate-600 hover:bg-[#FFD875] hover:text-black transition-all duration-300 hover:shadow-[0_0_10px_rgba(255,216,117,0.5)] focus:outline-none focus:ring-2 focus:ring-[#FFD875] focus:ring-opacity-50"
-          style={{ right: "-12px", transform: collapsed ? "rotate(180deg)" : "rotate(0deg)" }}
+          className="absolute top-8 bg-gradient-to-br from-slate-700 to-slate-800 text-white p-2 rounded-full border border-slate-600/50 hover:bg-gradient-to-br hover:from-[#FFD875] hover:to-amber-500 hover:text-black transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,216,117,0.6)] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/50 focus:ring-offset-2 focus:ring-offset-slate-900 backdrop-blur-sm"
+          style={{ right: "-14px", transform: collapsed ? "rotate(180deg)" : "rotate(0deg)" }}
         >
           <ChevronLeftIcon className="w-4 h-4" />
         </button>
@@ -465,7 +489,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
 
       {/* Menu */}
       <nav className="sidebar-nav sidebar-scrollbar">
-        <div className="py-4 space-y-1 px-2">{menuItems.map((item) => renderMenuItem(item))}</div>
+        <div className="py-6 space-y-2 px-3">{menuItems.map((item) => renderMenuItem(item))}</div>
       </nav>
 
       {/* Footer */}

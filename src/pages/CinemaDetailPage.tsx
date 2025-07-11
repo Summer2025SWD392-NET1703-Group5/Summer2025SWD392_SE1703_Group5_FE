@@ -2,8 +2,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
-  MapPin, Clock, Car, Wifi, Utensils, Calendar, Globe,
-  ArrowLeft, Share2, Heart, Navigation, Info, Ticket, Building2, Sparkles
+  MapPin, Clock, Calendar,
+  ArrowLeft, Share2, Heart, Navigation, Info, Ticket, Building2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Cinema } from '../types/cinema';
@@ -353,29 +353,6 @@ const CinemaDetailPage: React.FC = () => {
                   <MapPin className="w-5 h-5 mr-2 text-[#FFD875]" />
                   <span className="text-lg">{cinema.Address}</span>
                 </motion.div>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 ml-6">
-                <motion.button
-                  onClick={handleShare}
-                  className="bg-slate-800/50 hover:bg-slate-700/50 text-white p-3 rounded-xl transition-all duration-300 backdrop-blur-sm border border-slate-700 hover:border-[#FFD875]/50"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Share2 className="w-5 h-5" />
-                </motion.button>
-                <motion.button
-                  onClick={() => setIsFavorite(!isFavorite)}
-                  className={`p-3 rounded-xl transition-all duration-300 backdrop-blur-sm border ${isFavorite
-                    ? 'bg-[#FFD875]/20 text-[#FFD875] border-[#FFD875]/50'
-                    : 'bg-slate-800/50 hover:bg-slate-700/50 text-white border-slate-700 hover:border-[#FFD875]/50'
-                    }`}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Heart className={`w-5 h-5 ${isFavorite ? 'fill-current' : ''}`} />
-                </motion.button>
               </div>
             </div>
           </div>

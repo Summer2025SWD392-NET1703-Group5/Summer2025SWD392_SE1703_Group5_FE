@@ -1,14 +1,10 @@
 // src/pages/admin/bookings/BookingsList.tsx
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { motion } from 'framer-motion';
 import {
   TicketIcon,
-  EyeIcon,
   ArrowPathIcon,
-  ArrowDownTrayIcon,
-  XMarkIcon,
   FunnelIcon,
   MagnifyingGlassIcon,
   ChevronLeftIcon,
@@ -19,8 +15,8 @@ import {
   UserIcon,
   FilmIcon
 } from '@heroicons/react/24/outline';
-import { getAllBookings, exportBookingsToExcel } from '../../../services/admin/bookingManagementServices';
-import type { Booking, BookingApiResponse } from '../../../services/admin/bookingManagementServices';
+import { getAllBookings } from '../../../services/admin/bookingManagementServices';
+import type { Booking } from '../../../services/admin/bookingManagementServices';
 
 const BookingsList: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -42,7 +38,7 @@ const BookingsList: React.FC = () => {
       
       const response = await getAllBookings(page, limit, searchTerm, statusFilter);
 
-      if (response && response.success) {
+      if (response && response.data) {
         setBookings(response.data);
         setTotalItems(response.pagination.totalCount);
         setTotalPages(response.pagination.totalPages);
@@ -54,7 +50,7 @@ const BookingsList: React.FC = () => {
         setBookings([]);
         setTotalItems(0);
         setTotalPages(1);
-        console.error('API response không hợp lệ:', response);
+        console.error('API response là null:', response);
       }
     } catch (err) {
       setError('Đã xảy ra lỗi khi tải dữ liệu đặt vé');
@@ -64,18 +60,6 @@ const BookingsList: React.FC = () => {
       setTotalPages(1);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Export bookings to Excel
-  const handleExportExcel = async () => {
-    try {
-      console.log('Đang xuất dữ liệu ra Excel...');
-      await exportBookingsToExcel(searchTerm, statusFilter);
-      console.log('Xuất Excel thành công');
-    } catch (err) {
-      setError('Đã xảy ra lỗi khi xuất file Excel');
-      console.error('Lỗi khi xuất Excel:', err);
     }
   };
 
@@ -266,19 +250,6 @@ const BookingsList: React.FC = () => {
               <ArrowPathIcon className="w-5 h-5" />
               <span>Làm mới</span>
             </motion.button>
-
-            <motion.button
-              whileHover={{
-                scale: 1.05,
-                boxShadow: "0 0 30px rgba(255,216,117,0.4)"
-              }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-3 bg-gradient-to-r from-[#FFD875] to-[#FFC107] text-black rounded-xl hover:from-[#FFC107] hover:to-[#FFD875] transition-all duration-300 flex items-center gap-2 font-semibold shadow-[0_0_20px_rgba(255,216,117,0.3)]"
-              onClick={handleExportExcel}
-            >
-              <ArrowDownTrayIcon className="w-5 h-5" />
-              <span>Xuất Excel</span>
-            </motion.button>
           </div>
         </div>
       </motion.div>
@@ -380,15 +351,12 @@ const BookingsList: React.FC = () => {
                 <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
                   Trạng thái
                 </th>
-                <th scope="col" className="px-6 py-4 text-center text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
-                  Hành động
-                </th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-600/30">
               {loading ? (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="relative">
                         <ArrowPathIcon className="h-8 w-8 text-[#FFD875] animate-spin" />
@@ -437,25 +405,11 @@ const BookingsList: React.FC = () => {
                         {getStatusLabel(booking.Status)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-center">
-                      <motion.div
-                        whileHover={{ scale: 1.1 }}
-                        whileTap={{ scale: 0.9 }}
-                      >
-                        <Link
-                          to={`/admin/bookings/${booking.Booking_ID}`}
-                          state={{ bookingData: booking }}
-                          className="inline-flex items-center justify-center w-10 h-10 bg-[#FFD875]/20 text-[#FFD875] rounded-xl hover:bg-[#FFD875]/30 hover:text-[#FFC107] transition-all duration-300 hover:shadow-[0_0_15px_rgba(255,216,117,0.4)]"
-                        >
-                          <EyeIcon className="h-5 w-5" />
-                        </Link>
-                      </motion.div>
-                    </td>
                   </motion.tr>
                 ))
               ) : (
                 <tr>
-                  <td colSpan={8} className="px-6 py-12 text-center">
+                  <td colSpan={7} className="px-6 py-12 text-center">
                     <div className="flex flex-col items-center justify-center space-y-4">
                       <div className="p-4 bg-slate-700/50 rounded-full">
                         <TicketIcon className="h-12 w-12 text-slate-400" />

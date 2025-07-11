@@ -214,7 +214,7 @@ const PromotionsPage: React.FC = () => {
         
         // Lấy danh sách khuyến mãi hiện có
         const promotionsData = await promotionService.getAvailablePromotions();
-        
+        console.log('Available promotions:', promotionsData);
         // Lấy danh sách khuyến mãi đã sử dụng
         const usedPromotionIds = await promotionService.getUsedPromotions();
         console.log('Used promotion IDs:', usedPromotionIds);

@@ -28,13 +28,30 @@ export type PaginatedResponse<T> = {
     currentPage: number;
 }
 
+export type ApiResponse<T> = {
+    success: boolean;
+    data: T[];
+    pagination: {
+        currentPage: number;
+        totalPages: number;
+        totalCount: number;
+        limit: number;
+        hasNextPage: boolean;
+        hasPrevPage: boolean;
+    };
+    metadata: {
+        responseTime: string;
+        dataCount: number;
+    };
+}
+
 // Get all bookings with optional filters
 export const getAllBookings = async (
     page = 1,
     limit = 10,
     searchTerm = '',
     status = 'all'
-): Promise<PaginatedResponse<Booking> | null> => {
+): Promise<ApiResponse<Booking> | null> => {
     try {
         const response = await api.get('/bookings', {
             params: {
@@ -48,20 +65,30 @@ export const getAllBookings = async (
         // Handle the API response
         if (response.data) {
             // Check if the response is already in the expected format
-            if (response.data.data && Array.isArray(response.data.data)) {
-                return response.data as PaginatedResponse<Booking>;
+            if (response.data.success && response.data.data && Array.isArray(response.data.data)) {
+                return response.data as ApiResponse<Booking>;
             }
-            // If the response is an array, format it into a paginated response
+            // If the response is an array, format it into an API response
             else if (Array.isArray(response.data)) {
                 return {
+                    success: true,
                     data: response.data,
-                    totalItems: response.headers['x-total-count']
-                        ? parseInt(response.headers['x-total-count'])
-                        : response.data.length,
-                    totalPages: response.headers['x-total-pages']
-                        ? parseInt(response.headers['x-total-pages'])
-                        : Math.ceil(response.data.length / limit),
-                    currentPage: page
+                    pagination: {
+                        currentPage: page,
+                        totalPages: response.headers['x-total-pages']
+                            ? parseInt(response.headers['x-total-pages'])
+                            : Math.ceil(response.data.length / limit),
+                        totalCount: response.headers['x-total-count']
+                            ? parseInt(response.headers['x-total-count'])
+                            : response.data.length,
+                        limit: limit,
+                        hasNextPage: page < Math.ceil(response.data.length / limit),
+                        hasPrevPage: page > 1
+                    },
+                    metadata: {
+                        responseTime: '0ms',
+                        dataCount: response.data.length
+                    }
                 };
             }
         }

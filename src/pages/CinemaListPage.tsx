@@ -1,6 +1,6 @@
 // pages/CinemaListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { MapPin, Phone, Star, Clock, Filter, Search, Navigation, Building2, Sparkles, Eye, Calendar, ChevronRight } from 'lucide-react';
+import { MapPin, Phone, Filter, Search, Building2, Sparkles, Eye, Calendar, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import type { Cinema } from '../types/cinema';

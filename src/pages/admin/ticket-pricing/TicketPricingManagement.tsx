@@ -1,32 +1,25 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   TicketIcon,
   PlusIcon,
   PencilIcon,
   TrashIcon,
-  EyeIcon,
   CurrencyDollarIcon,
   BuildingOfficeIcon,
-  ArrowPathIcon,
   FunnelIcon,
-  ArrowDownTrayIcon,
   CalculatorIcon,
   ChartBarIcon,
-  AdjustmentsHorizontalIcon,
-  ExclamationTriangleIcon,
-  CheckIcon,
-  XMarkIcon
-} from '@heroicons/react/24/outline';
-import ticketPricingService from '../../../services/ticketPricingService';
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import ticketPricingService from "../../../services/ticketPricingService";
 import type {
   TicketPricingGroup,
   CreateTicketPricingRequest,
   PricingStructure,
   SeatType,
-  BulkPriceUpdate
-} from '../../../types/ticketPricing';
-import toast from 'react-hot-toast';
+} from "../../../types/ticketPricing";
+import toast from "react-hot-toast";
 
 const TicketPricingManagement: React.FC = () => {
   // States
@@ -36,31 +29,29 @@ const TicketPricingManagement: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [showBulkModal, setShowBulkModal] = useState(false);
   const [showCalculatorModal, setShowCalculatorModal] = useState(false);
   const [showStructureModal, setShowStructureModal] = useState(false);
   const [selectedItem, setSelectedItem] = useState<any>(null);
-  const [filterRoomType, setFilterRoomType] = useState<string>('');
-  const [bulkUpdates, setBulkUpdates] = useState<BulkPriceUpdate[]>([]);
+  const [filterRoomType, setFilterRoomType] = useState<string>("");
 
   // Form states
   const [createForm, setCreateForm] = useState<CreateTicketPricingRequest>({
-    Room_Type: '',
-    Seat_Type: '',
-    Base_Price: 0
+    Room_Type: "",
+    Seat_Type: "",
+    Base_Price: 0,
   });
 
   const [editForm, setEditForm] = useState<CreateTicketPricingRequest>({
-    Room_Type: '',
-    Seat_Type: '',
-    Base_Price: 0
+    Room_Type: "",
+    Seat_Type: "",
+    Base_Price: 0,
   });
 
   const [calculatorForm, setCalculatorForm] = useState({
-    roomType: '',
-    seatType: '',
-    showDate: '',
-    startTime: ''
+    roomType: "",
+    seatType: "",
+    showDate: "",
+    startTime: "",
   });
 
   // Load data
@@ -71,13 +62,9 @@ const TicketPricingManagement: React.FC = () => {
   const loadAllData = async () => {
     setIsLoading(true);
     try {
-      await Promise.all([
-        loadPricingGroups(),
-        loadPricingStructure(),
-        loadSeatTypes()
-      ]);
+      await Promise.all([loadPricingGroups(), loadPricingStructure(), loadSeatTypes()]);
     } catch (error) {
-      console.error('Lỗi tải dữ liệu:', error);
+      console.error("Lỗi tải dữ liệu:", error);
     } finally {
       setIsLoading(false);
     }
@@ -113,15 +100,15 @@ const TicketPricingManagement: React.FC = () => {
   // CRUD Operations
   const handleCreate = async () => {
     if (!createForm.Room_Type || !createForm.Seat_Type || !createForm.Base_Price) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     try {
       await ticketPricingService.createTicketPricing(createForm);
-      toast.success('Tạo cấu hình giá vé thành công!');
+      toast.success("Tạo cấu hình giá vé thành công!");
       setShowCreateModal(false);
-      setCreateForm({ Room_Type: '', Seat_Type: '', Base_Price: 0 });
+      setCreateForm({ Room_Type: "", Seat_Type: "", Base_Price: 0 });
       loadAllData();
     } catch (error: any) {
       toast.error(error.message);
@@ -130,14 +117,14 @@ const TicketPricingManagement: React.FC = () => {
 
   const handleEdit = async () => {
     if (!selectedItem || !editForm.Base_Price) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
     try {
       const id = ticketPricingService.generateId(selectedItem.Room_Type, selectedItem.Seat_Type);
       await ticketPricingService.updateTicketPricing(id, editForm);
-      toast.success('Cập nhật cấu hình giá vé thành công!');
+      toast.success("Cập nhật cấu hình giá vé thành công!");
       setShowEditModal(false);
       setSelectedItem(null);
       loadAllData();
@@ -147,31 +134,14 @@ const TicketPricingManagement: React.FC = () => {
   };
 
   const handleDelete = async (roomType: string, seatType: string) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa cấu hình giá vé này?')) {
+    if (!confirm("Bạn có chắc chắn muốn xóa cấu hình giá vé này?")) {
       return;
     }
 
     try {
       const id = ticketPricingService.generateId(roomType, seatType);
       await ticketPricingService.deleteTicketPricing(id);
-      toast.success('Xóa cấu hình giá vé thành công!');
-      loadAllData();
-    } catch (error: any) {
-      toast.error(error.message);
-    }
-  };
-
-  const handleBulkUpdate = async () => {
-    if (bulkUpdates.length === 0) {
-      toast.error('Không có cập nhật nào để thực hiện');
-      return;
-    }
-
-    try {
-      await ticketPricingService.bulkUpdatePrices(bulkUpdates);
-      toast.success('Cập nhật hàng loạt thành công!');
-      setShowBulkModal(false);
-      setBulkUpdates([]);
+      toast.success("Xóa cấu hình giá vé thành công!");
       loadAllData();
     } catch (error: any) {
       toast.error(error.message);
@@ -180,7 +150,7 @@ const TicketPricingManagement: React.FC = () => {
 
   const handleCalculatePrice = async () => {
     if (!calculatorForm.roomType || !calculatorForm.seatType || !calculatorForm.showDate || !calculatorForm.startTime) {
-      toast.error('Vui lòng điền đầy đủ thông tin');
+      toast.error("Vui lòng điền đầy đủ thông tin");
       return;
     }
 
@@ -194,19 +164,19 @@ const TicketPricingManagement: React.FC = () => {
 
   // Utility functions
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(amount);
   };
 
   const getRoomTypes = () => {
-    return [...new Set(pricingGroups.map(group => group.room_type))];
+    return [...new Set(pricingGroups.map((group) => group.room_type))];
   };
 
   const getFilteredGroups = () => {
     if (!filterRoomType) return pricingGroups;
-    return pricingGroups.filter(group => group.room_type === filterRoomType);
+    return pricingGroups.filter((group) => group.room_type === filterRoomType);
   };
 
   // Modal components
@@ -229,9 +199,7 @@ const TicketPricingManagement: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Phòng
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Phòng</label>
                 <input
                   type="text"
                   value={createForm.Room_Type}
@@ -242,22 +210,18 @@ const TicketPricingManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Ghế
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Ghế</label>
                 <input
                   type="text"
                   value={createForm.Seat_Type}
                   onChange={(e) => setCreateForm({ ...createForm, Seat_Type: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                                                      placeholder="Ví dụ: Thường, VIP, Sweetbox"
+                  placeholder="Ví dụ: Thường, VIP, Sweetbox"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Giá Cơ Bản (VNĐ)
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Giá Cơ Bản (VNĐ)</label>
                 <input
                   type="number"
                   value={createForm.Base_Price}
@@ -307,9 +271,7 @@ const TicketPricingManagement: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Phòng
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Phòng</label>
                 <input
                   type="text"
                   value={editForm.Room_Type}
@@ -319,9 +281,7 @@ const TicketPricingManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Ghế
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Ghế</label>
                 <input
                   type="text"
                   value={editForm.Seat_Type}
@@ -331,9 +291,7 @@ const TicketPricingManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Giá Cơ Bản (VNĐ)
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Giá Cơ Bản (VNĐ)</label>
                 <input
                   type="number"
                   value={editForm.Base_Price}
@@ -385,32 +343,30 @@ const TicketPricingManagement: React.FC = () => {
 
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Phòng
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Phòng</label>
                 <select
                   value={calculatorForm.roomType}
                   onChange={(e) => setCalculatorForm({ ...calculatorForm, roomType: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
                 >
                   <option value="">Chọn loại phòng</option>
-                  {getRoomTypes().map(roomType => (
-                    <option key={roomType} value={roomType}>{roomType}</option>
+                  {getRoomTypes().map((roomType) => (
+                    <option key={roomType} value={roomType}>
+                      {roomType}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Loại Ghế
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Loại Ghế</label>
                 <select
                   value={calculatorForm.seatType}
                   onChange={(e) => setCalculatorForm({ ...calculatorForm, seatType: e.target.value })}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
                 >
                   <option value="">Chọn loại ghế</option>
-                  {seatTypes.map(seatType => (
+                  {seatTypes.map((seatType) => (
                     <option key={seatType.seat_type} value={seatType.seat_type}>
                       {seatType.seat_type}
                     </option>
@@ -419,9 +375,7 @@ const TicketPricingManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Ngày Chiếu
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Ngày Chiếu</label>
                 <input
                   type="date"
                   value={calculatorForm.showDate}
@@ -431,9 +385,7 @@ const TicketPricingManagement: React.FC = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-400 mb-2">
-                  Giờ Chiếu
-                </label>
+                <label className="block text-sm font-medium text-gray-400 mb-2">Giờ Chiếu</label>
                 <input
                   type="time"
                   value={calculatorForm.startTime}
@@ -553,10 +505,7 @@ const TicketPricingManagement: React.FC = () => {
                 <div className="bg-slate-700 rounded-lg p-4">
                   <div className="flex flex-wrap gap-2">
                     {pricingStructure.holidays.map((holiday, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1 bg-[#FFD875] text-black rounded-full text-sm font-medium"
-                      >
+                      <span key={index} className="px-3 py-1 bg-[#FFD875] text-black rounded-full text-sm font-medium">
                         {holiday}
                       </span>
                     ))}
@@ -571,200 +520,308 @@ const TicketPricingManagement: React.FC = () => {
   );
 
   return (
-    <div className="p-6">
-      {/* Header */}
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex items-center gap-3">
-          <TicketIcon className="w-8 h-8 text-[#FFD875]" />
-          <div>
-            <h1 className="text-2xl font-bold text-white">Quản Lý Giá Vé</h1>
-            <p className="text-gray-400">Cấu hình giá vé theo loại phòng và ghế</p>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
+      <div className="p-6 space-y-6">
+        {/* Enhanced Header with gradient background */}
+        <motion.div
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-gradient-to-r from-slate-800/80 via-slate-700/80 to-slate-800/80 backdrop-blur-sm rounded-2xl p-6 border border-slate-600/50 shadow-2xl"
+        >
+          <div className="flex justify-between items-center">
+            <div className="flex items-center gap-4">
+              <div className="p-3 bg-gradient-to-br from-[#FFD875] to-[#e5c368] rounded-xl shadow-lg">
+                <TicketIcon className="w-8 h-8 text-slate-900" />
+              </div>
+              <div>
+                <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                  Quản Lý Giá Vé
+                </h1>
+                <p className="text-gray-400 mt-1">
+                  Cấu hình giá vé theo loại phòng và ghế với hệ thống tính giá thông minh
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setShowCreateModal(true)}
+                className="px-6 py-2.5 bg-gradient-to-r from-[#FFD875] to-[#e5c368] text-slate-900 rounded-xl hover:from-[#e5c368] hover:to-[#d4b356] transition-all flex items-center gap-2 shadow-lg hover:shadow-[#FFD875]/25 font-semibold"
+              >
+                <PlusIcon className="w-4 h-4" />
+                <span>Thêm Mới</span>
+              </motion.button>
+            </div>
           </div>
-        </div>
+        </motion.div>
 
-        <div className="flex gap-2">
-          <button
-            onClick={() => setShowCalculatorModal(true)}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-all flex items-center gap-1"
-          >
-            <CalculatorIcon className="w-4 h-4" />
-            <span>Tính Giá</span>
-          </button>
+        {/* Enhanced Filters */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-gradient-to-r from-slate-800/60 via-slate-700/60 to-slate-800/60 backdrop-blur-sm rounded-xl p-4 border border-slate-600/50 shadow-lg"
+        >
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <FunnelIcon className="w-5 h-5 text-[#FFD875]" />
+              <span className="text-white font-medium">Bộ lọc:</span>
+            </div>
+            <div className="flex-1 max-w-xs">
+              <select
+                value={filterRoomType}
+                onChange={(e) => setFilterRoomType(e.target.value)}
+                className="w-full px-4 py-2.5 bg-slate-700/80 text-white rounded-lg border border-slate-600/50 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/20 transition-all"
+              >
+                <option value="">🎬 Tất cả loại phòng</option>
+                {getRoomTypes().map((roomType) => (
+                  <option key={roomType} value={roomType}>
+                    {roomType === "2D" ? "🎞️" : roomType === "3D" ? "🥽" : roomType === "IMAX" ? "🎭" : "🎪"} {roomType}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {filterRoomType && (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                onClick={() => setFilterRoomType("")}
+                className="px-3 py-1.5 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition-all flex items-center gap-1 text-sm"
+              >
+                <XMarkIcon className="w-4 h-4" />
+                Xóa bộ lọc
+              </motion.button>
+            )}
+          </div>
+        </motion.div>
 
-          <button
-            onClick={() => setShowStructureModal(true)}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-all flex items-center gap-1"
-          >
-            <ChartBarIcon className="w-4 h-4" />
-            <span>Cấu Trúc</span>
-          </button>
-
-          <button
-            onClick={loadAllData}
-            className="px-4 py-2 bg-slate-800 text-white rounded-lg hover:bg-slate-700 transition-all flex items-center gap-1"
-          >
-            <ArrowPathIcon className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
-            <span>Làm Mới</span>
-          </button>
-
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="px-4 py-2 bg-[#FFD875] text-black rounded-lg hover:bg-[#e5c368] transition-all flex items-center gap-1 shadow-[0_0_20px_rgba(255,216,117,0.5)]"
-          >
-            <PlusIcon className="w-4 h-4" />
-            <span>Thêm Mới</span>
-          </button>
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex gap-4 mb-6">
-        <div className="flex-1">
-          <select
-            value={filterRoomType}
-            onChange={(e) => setFilterRoomType(e.target.value)}
-            className="w-full px-3 py-2 bg-slate-800 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-          >
-            <option value="">Tất cả loại phòng</option>
-            {getRoomTypes().map(roomType => (
-              <option key={roomType} value={roomType}>{roomType}</option>
-            ))}
-          </select>
-        </div>
-      </div>
-
-      {/* Loading State */}
-      {isLoading ? (
-        <div className="flex items-center justify-center h-64">
+        {/* Enhanced Loading State */}
+        {isLoading ? (
           <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-16 h-16 border-4 border-[#FFD875] border-t-transparent rounded-full"
-          />
-        </div>
-      ) : (
-        /* Content */
-        <div className="space-y-6">
-          {getFilteredGroups().map((group, groupIndex) => (
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex flex-col items-center justify-center h-96 bg-gradient-to-br from-slate-800/40 to-slate-700/40 backdrop-blur-sm rounded-2xl border border-slate-600/50"
+          >
             <motion.div
-              key={group.room_type}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: groupIndex * 0.1 }}
-              className="bg-slate-800 rounded-lg border border-slate-700 overflow-hidden"
+              animate={{ rotate: 360 }}
+              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+              className="w-20 h-20 border-4 border-[#FFD875] border-t-transparent rounded-full mb-4 shadow-lg"
+            />
+            <motion.div
+              animate={{ opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="text-center"
             >
-              {/* Group Header */}
-              <div className="bg-slate-700 px-6 py-4 border-b border-slate-600">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <BuildingOfficeIcon className="w-5 h-5 text-[#FFD875]" />
-                    <h3 className="text-lg font-semibold text-white">{group.room_type}</h3>
-                    <span className="px-2 py-1 bg-[#FFD875] text-black rounded-full text-xs font-medium">
-                      {group.seat_types.length} loại ghế
-                    </span>
+              <h3 className="text-xl font-semibold text-white mb-2">Đang tải dữ liệu giá vé...</h3>
+              <p className="text-gray-400">Vui lòng chờ trong giây lát</p>
+            </motion.div>
+          </motion.div>
+        ) : (
+          /* Enhanced Content */
+          <div className="space-y-8">
+            {getFilteredGroups().map((group, groupIndex) => (
+              <motion.div
+                key={group.room_type}
+                initial={{ opacity: 0, y: 30 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: groupIndex * 0.15 }}
+                className="bg-gradient-to-br from-slate-800/80 via-slate-700/80 to-slate-800/80 backdrop-blur-sm rounded-2xl border border-slate-600/50 overflow-hidden shadow-2xl hover:shadow-3xl transition-all duration-500"
+              >
+                {/* Enhanced Group Header */}
+                <div className="bg-gradient-to-r from-slate-700/90 to-slate-600/90 px-8 py-6 border-b border-slate-600/50">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="p-2 bg-gradient-to-br from-[#FFD875] to-[#e5c368] rounded-lg shadow-lg">
+                        <BuildingOfficeIcon className="w-6 h-6 text-slate-900" />
+                      </div>
+                      <div>
+                        <h3 className="text-2xl font-bold text-white mb-1">{group.room_type}</h3>
+                        <div className="flex items-center gap-3">
+                          <span className="px-3 py-1 bg-gradient-to-r from-[#FFD875] to-[#e5c368] text-slate-900 rounded-full text-sm font-semibold shadow-lg">
+                            {group.seat_types.length} loại ghế
+                          </span>
+                          <span className="text-gray-400 text-sm">
+                            Tổng giá trung bình:{" "}
+                            {formatCurrency(
+                              group.seat_types.reduce((sum, seat) => sum + seat.Base_Price, 0) / group.seat_types.length
+                            )}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              {/* Seat Types Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-slate-700/50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Loại Ghế
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Giá Cơ Bản
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Trạng Thái
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Cập Nhật Cuối
-                      </th>
-                      <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                        Thao Tác
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-700">
-                    {group.seat_types.map((seatType, seatIndex) => (
-                      <tr key={seatType.Price_ID} className="hover:bg-slate-700/30 transition-colors">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-white font-medium">{seatType.Seat_Type}</span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className="text-[#FFD875] font-semibold">
-                            {formatCurrency(seatType.Base_Price)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${seatType.Status === 'Active'
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'bg-red-500/20 text-red-400'
-                            }`}>
-                            {seatType.Status === 'Active' ? 'Hoạt động' : 'Không hoạt động'}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-gray-400 text-sm">
-                          {new Date(seatType.Last_Updated).toLocaleDateString('vi-VN')}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => {
-                                setSelectedItem({ ...seatType, Room_Type: group.room_type });
-                                setEditForm({
-                                  Room_Type: group.room_type,
-                                  Seat_Type: seatType.Seat_Type,
-                                  Base_Price: seatType.Base_Price
-                                });
-                                setShowEditModal(true);
-                              }}
-                              className="p-1 hover:bg-slate-600 rounded transition-all"
-                              title="Chỉnh sửa"
-                            >
-                              <PencilIcon className="w-4 h-4 text-blue-400" />
-                            </button>
-                            <button
-                              onClick={() => handleDelete(group.room_type, seatType.Seat_Type)}
-                              className="p-1 hover:bg-slate-600 rounded transition-all"
-                              title="Xóa"
-                            >
-                              <TrashIcon className="w-4 h-4 text-red-400" />
-                            </button>
+                {/* Enhanced Seat Types Table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full">
+                    <thead className="bg-gradient-to-r from-slate-700/60 to-slate-600/60">
+                      <tr>
+                        <th className="px-8 py-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <span>🪑</span>
+                            Loại Ghế
                           </div>
-                        </td>
+                        </th>
+                        <th className="px-8 py-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <CurrencyDollarIcon className="w-4 h-4" />
+                            Giá Cơ Bản
+                          </div>
+                        </th>
+                        <th className="px-8 py-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <span>📊</span>
+                            Trạng Thái
+                          </div>
+                        </th>
+                        <th className="px-8 py-4 text-left text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                          <div className="flex items-center gap-2">
+                            <span>⏰</span>
+                            Cập Nhật Cuối
+                          </div>
+                        </th>
+                        <th className="px-8 py-4 text-right text-sm font-semibold text-gray-300 uppercase tracking-wider">
+                          <div className="flex items-center justify-end gap-2">
+                            <span>⚙️</span>
+                            Thao Tác
+                          </div>
+                        </th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
-          ))}
+                    </thead>
+                    <tbody className="divide-y divide-slate-600/50">
+                      {group.seat_types.map((seatType, seatIndex) => (
+                        <motion.tr
+                          key={seatType.Price_ID}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: seatIndex * 0.1 }}
+                          className="hover:bg-gradient-to-r hover:from-slate-700/40 hover:to-slate-600/40 transition-all duration-300 group"
+                        >
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className="flex items-center gap-3">
+                              <div className="w-3 h-3 rounded-full bg-gradient-to-r from-[#FFD875] to-[#e5c368] shadow-lg"></div>
+                              <span className="text-white font-semibold text-lg">{seatType.Seat_Type}</span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <div className="flex items-center gap-2">
+                              <span className="text-2xl font-bold bg-gradient-to-r from-[#FFD875] to-[#e5c368] bg-clip-text text-transparent">
+                                {formatCurrency(seatType.Base_Price)}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap">
+                            <span
+                              className={`px-4 py-2 rounded-full text-sm font-semibold shadow-lg ${
+                                seatType.Status === "Active"
+                                  ? "bg-gradient-to-r from-green-500/20 to-green-600/20 text-green-400 border border-green-500/30"
+                                  : "bg-gradient-to-r from-red-500/20 to-red-600/20 text-red-400 border border-red-500/30"
+                              }`}
+                            >
+                              {seatType.Status === "Active" ? "✅ Hoạt động" : "❌ Không hoạt động"}
+                            </span>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap text-gray-400">
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm">
+                                {new Date(seatType.Last_Updated).toLocaleDateString("vi-VN", {
+                                  year: "numeric",
+                                  month: "short",
+                                  day: "numeric",
+                                  hour: "2-digit",
+                                  minute: "2-digit",
+                                })}
+                              </span>
+                            </div>
+                          </td>
+                          <td className="px-8 py-6 whitespace-nowrap text-right">
+                            <div className="flex items-center justify-end gap-3">
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => {
+                                  setSelectedItem({ ...seatType, Room_Type: group.room_type });
+                                  setEditForm({
+                                    Room_Type: group.room_type,
+                                    Seat_Type: seatType.Seat_Type,
+                                    Base_Price: seatType.Base_Price,
+                                  });
+                                  setShowEditModal(true);
+                                }}
+                                className="p-2.5 bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 rounded-lg transition-all border border-blue-500/30 shadow-lg"
+                                title="Chỉnh sửa"
+                              >
+                                <PencilIcon className="w-4 h-4 text-blue-400" />
+                              </motion.button>
+                              <motion.button
+                                whileHover={{ scale: 1.1 }}
+                                whileTap={{ scale: 0.9 }}
+                                onClick={() => handleDelete(group.room_type, seatType.Seat_Type)}
+                                className="p-2.5 bg-gradient-to-r from-red-500/20 to-red-600/20 hover:from-red-500/30 hover:to-red-600/30 rounded-lg transition-all border border-red-500/30 shadow-lg"
+                                title="Xóa"
+                              >
+                                <TrashIcon className="w-4 h-4 text-red-400" />
+                              </motion.button>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            ))}
 
-          {getFilteredGroups().length === 0 && (
-            <div className="text-center py-12">
-              <TicketIcon className="w-16 h-16 text-gray-500 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-400 mb-2">Chưa có cấu hình giá vé</h3>
-              <p className="text-gray-500 mb-4">Hãy thêm cấu hình giá vé đầu tiên của bạn</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="px-4 py-2 bg-[#FFD875] text-black rounded-lg hover:bg-[#e5c368] transition-all"
+            {getFilteredGroups().length === 0 && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="text-center py-20 bg-gradient-to-br from-slate-800/40 to-slate-700/40 backdrop-blur-sm rounded-2xl border border-slate-600/50"
               >
-                Thêm Cấu Hình Giá Vé
-              </button>
-            </div>
-          )}
-        </div>
-      )}
+                <motion.div
+                  animate={{
+                    y: [0, -10, 0],
+                    rotate: [0, 5, -5, 0],
+                  }}
+                  transition={{
+                    duration: 3,
+                    repeat: Infinity,
+                    ease: "easeInOut",
+                  }}
+                  className="mb-8"
+                >
+                  <div className="w-24 h-24 mx-auto bg-gradient-to-br from-[#FFD875] to-[#e5c368] rounded-2xl flex items-center justify-center shadow-2xl">
+                    <TicketIcon className="w-12 h-12 text-slate-900" />
+                  </div>
+                </motion.div>
+                <h3 className="text-2xl font-bold text-white mb-3">Chưa có cấu hình giá vé</h3>
+                <p className="text-gray-400 mb-8 max-w-md mx-auto">
+                  Hệ thống chưa có cấu hình giá vé nào. Hãy tạo cấu hình đầu tiên để bắt đầu quản lý giá vé cho rạp
+                  chiếu phim.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowCreateModal(true)}
+                  className="px-8 py-4 bg-gradient-to-r from-[#FFD875] to-[#e5c368] text-slate-900 rounded-xl hover:from-[#e5c368] hover:to-[#d4b356] transition-all font-semibold shadow-lg hover:shadow-[#FFD875]/25 flex items-center gap-3 mx-auto"
+                >
+                  <PlusIcon className="w-5 h-5" />
+                  Tạo Cấu Hình Giá Vé Đầu Tiên
+                </motion.button>
+              </motion.div>
+            )}
+          </div>
+        )}
 
-      {/* Modals */}
-      <CreateModal />
-      <EditModal />
-      <CalculatorModal />
-      <StructureModal />
+        {/* Modals */}
+        <CreateModal />
+        <EditModal />
+        <CalculatorModal />
+        <StructureModal />
+      </div>
     </div>
   );
 };
