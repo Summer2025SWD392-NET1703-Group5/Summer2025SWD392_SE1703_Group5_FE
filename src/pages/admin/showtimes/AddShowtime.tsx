@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import FullScreenLoader from '../../../components/FullScreenLoader';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 import ButtonWithSpinner from '../../../components/admin/common/ButtonWithSpinner';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 import showtimeService from '../../../services/showtimeService';
@@ -237,10 +237,6 @@ const AddShowtime: React.FC = () => {
   const [showDate, setShowDate] = useState<string>('');
   const [showTime, setShowTime] = useState<string>('');
 
-  // Thêm state theo dõi lỗi trùng lịch
-  const [hasTimeConflict, setHasTimeConflict] = useState<boolean>(false);
-  const [timeConflictError, setTimeConflictError] = useState<string>('');
-
   // Selected movie details
   const [selectedMovieDetails, setSelectedMovieDetails] = useState<Movie | null>(null);
   
@@ -379,7 +375,7 @@ const AddShowtime: React.FC = () => {
     }
   }, [selectedMovie, movies]);
 
-  // Calculate end time based on movie duration + 15 phút giải lao
+  // Calculate end time based on movie duration
   const calculateEndTime = () => {
     if (!selectedMovieDetails || !showTime) return '';
 
@@ -388,8 +384,7 @@ const AddShowtime: React.FC = () => {
     startDate.setHours(hours, minutes, 0, 0);
 
     const endDate = new Date(startDate);
-    // Thêm thời lượng phim + 15 phút giải lao
-    endDate.setMinutes(endDate.getMinutes() + selectedMovieDetails.duration + 15);
+    endDate.setMinutes(endDate.getMinutes() + selectedMovieDetails.duration);
 
     return endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
@@ -424,10 +419,6 @@ const AddShowtime: React.FC = () => {
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent, allowEarlyShowtime: boolean = false) => {
     e.preventDefault();
-
-    // Reset lỗi trùng lịch trước khi submit
-    setHasTimeConflict(false);
-    setTimeConflictError('');
 
     // Validate form
     if (!selectedMovie) {
@@ -477,6 +468,7 @@ const AddShowtime: React.FC = () => {
 
       if (result) {
         toast.success('Thêm suất chiếu thành công');
+        console.log('Suất chiếu được tạo thành công, chuyển về trang quản lý suất chiếu');
         // Redirect to showtimes page without filter parameters
         navigate('/admin/showtimes');
       }
@@ -501,18 +493,6 @@ const AddShowtime: React.FC = () => {
         
         // Hiển thị modal thay vì window.confirm()
         setShowEarlyPremiereModal(true);
-      } 
-      // Xử lý lỗi trùng lịch chiếu
-      else if (
-        error.message?.includes("trùng lịch") || 
-        error.response?.data?.message?.includes("trùng lịch") || 
-        error.message?.includes("conflict") || 
-        error.response?.data?.message?.includes("conflict")
-      ) {
-        // Gán lỗi trùng lịch
-        setHasTimeConflict(true);
-        setTimeConflictError(error.message || error.response?.data?.message || 'Xuất chiếu bị trùng lịch');
-        toast.error(error.message || error.response?.data?.message || 'Xuất chiếu bị trùng lịch');
       } else {
         // Xử lý các lỗi khác
         toast.error(error.message || error.response?.data?.message || 'Không thể tạo suất chiếu');
@@ -676,23 +656,15 @@ const AddShowtime: React.FC = () => {
                     type="time"
                     id="time"
                     value={showTime}
-                    onChange={(e) => {
-                      setShowTime(e.target.value);
-                      setHasTimeConflict(false); // Xóa lỗi khi người dùng thay đổi giờ
-                    }}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border w-full focus:outline-none focus:ring-1
-                    ${hasTimeConflict ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-slate-600 focus:border-FFD875 focus:ring-FFD875'}`}
+                    onChange={(e) => setShowTime(e.target.value)}
+                    className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
+                    style={{ borderColor: showTime ? '#FFD875' : undefined }}
                     required
                   />
                 </div>
-                {selectedMovieDetails && showTime && !hasTimeConflict && (
+                {selectedMovieDetails && showTime && (
                   <p className="text-sm text-gray-400 mt-1">
                     Kết thúc: {calculateEndTime()}
-                  </p>
-                )}
-                {hasTimeConflict && (
-                  <p className="text-sm text-red-500 mt-1">
-                    {timeConflictError}
                   </p>
                 )}
               </div>

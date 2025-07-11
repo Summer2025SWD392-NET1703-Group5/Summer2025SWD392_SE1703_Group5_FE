@@ -15,20 +15,51 @@ import {
     FilmIcon,
     ClockIcon,
     UserGroupIcon,
-    XMarkIcon
+    XMarkIcon,
+    TicketIcon,
+    EyeIcon,
+    ArrowPathIcon
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
 import { cinemaService } from '../../../services/cinemaService';
-import FullScreenLoader from '../../../components/FullScreenLoader';
+import apiClient from '../../../services/apiClient';
+import LoadingSpinner from '../../../components/LoadingSpinner';
 import type { Cinema, CinemaRoom } from '../../../types/cinema';
 
 interface Showtime {
-    id: number;
-    movieName: string;
-    roomName: string;
-    startTime: string;
-    endTime: string;
-    price: number;
+    Showtime_ID: number;
+    Movie_ID: number;
+    Cinema_Room_ID: number;
+    Show_Date: string;
+    Start_Time: string;
+    End_Time: string;
+    Status: 'Hidden' | 'Scheduled';
+    BookedSeats: number;
+    TotalSeats: number;
+    AvailableSeats: number;
+    
+    // Thông tin từ relationships
+    Movie?: {
+        Movie_ID: number;
+        Movie_Name: string;
+        Duration: number;
+        Poster_URL?: string;
+        Genre?: string;
+        Rating?: string;
+    };
+    
+    Room?: {
+        Cinema_Room_ID: number;
+        Room_Name: string;
+        Room_Type: string;
+    };
+    
+    Cinema?: {
+        Cinema_ID: number;
+        Cinema_Name: string;
+        City?: string;
+        Address?: string;
+    };
 }
 
 const CinemaDetail: React.FC = () => {
@@ -36,15 +67,14 @@ const CinemaDetail: React.FC = () => {
     const navigate = useNavigate();
 
     const [loading, setLoading] = useState(true);
+    const [showtimesLoading, setShowtimesLoading] = useState(true);
     const [cinema, setCinema] = useState<Cinema | null>(null);
     const [rooms, setRooms] = useState<CinemaRoom[]>([]);
     const [showtimes, setShowtimes] = useState<Showtime[]>([]);
 
     // Modal states
     const [showRoomModal, setShowRoomModal] = useState(false);
-    const [showShowtimeModal, setShowShowtimeModal] = useState(false);
     const [editingRoom, setEditingRoom] = useState<CinemaRoom | null>(null);
-    const [editingShowtime, setEditingShowtime] = useState<Showtime | null>(null);
 
     // Tab state
     const [activeTab, setActiveTab] = useState<'info' | 'rooms' | 'showtimes'>('info');
@@ -60,13 +90,19 @@ const CinemaDetail: React.FC = () => {
         if (id) {
             fetchCinemaDetails();
             fetchRooms();
-            fetchShowtimes();
         }
     }, [id]);
+    
+    // Fetch showtimes sau khi rooms đã được load
+    useEffect(() => {
+        if (rooms.length > 0) {
+            fetchShowtimes();
+        }
+    }, [rooms]);
 
     useEffect(() => {
         // Animate stats numbers
-        const totalSeats = rooms.reduce((sum, room) => sum + (room.totalSeats || 0), 0);
+        const totalSeats = rooms.reduce((sum, room) => sum + (room.Seat_Quantity || 0), 0);
 
         const animateValue = (start: number, end: number, key: keyof typeof animatedStats) => {
             let current = start;
@@ -102,40 +138,86 @@ const CinemaDetail: React.FC = () => {
     const fetchRooms = async () => {
         try {
             const data = await cinemaService.getCinemaRooms(Number(id));
-            setRooms(data);
+            setRooms(data as unknown as CinemaRoom[]);
         } catch (error) {
             console.error('Error fetching rooms:', error);
         }
     };
 
     const fetchShowtimes = async () => {
-        // Mock data - replace with actual API call
-        setShowtimes([
-            {
-                id: 1,
-                movieName: 'Avatar 2',
-                roomName: 'Phòng 1',
-                startTime: '10:00',
-                endTime: '13:00',
-                price: 85000
-            },
-            {
-                id: 2,
-                movieName: 'Black Panther',
-                roomName: 'Phòng 2',
-                startTime: '14:00',
-                endTime: '16:30',
-                price: 90000
+        try {
+            setShowtimesLoading(true);
+            console.log(`Đang tải lịch chiếu cho rạp ID: ${id}`);
+            
+            // Gọi API lấy tất cả showtimes và filter theo cinema
+            const response = await apiClient.get('/showtimes');
+            
+            if (!response.data || !Array.isArray(response.data)) {
+                console.error('Dữ liệu showtimes không hợp lệ:', response.data);
+                setShowtimes([]);
+                return;
             }
-        ]);
+            
+            console.log('Tất cả showtimes:', response.data);
+            console.log('Danh sách rooms của cinema:', rooms);
+            
+            // Lấy danh sách room IDs của cinema hiện tại
+            const cinemaRoomIds = rooms.map(room => room.Cinema_Room_ID);
+            console.log('Room IDs của rạp:', cinemaRoomIds);
+            
+            // Filter showtimes cho rạp hiện tại dựa trên room IDs
+            const cinemaShowtimes = response.data.filter((showtime: any) => {
+                // Log chi tiết để debug
+                console.log(`Checking showtime ${showtime.Showtime_ID}:`, {
+                    Cinema_Room_ID: showtime.Cinema_Room_ID,
+                    cinema_id: showtime.cinema_id,
+                    Cinema: showtime.Cinema,
+                    Room: showtime.Room
+                });
+                
+                // Check nếu showtime thuộc về một trong các rooms của cinema này
+                const belongsToRoom = cinemaRoomIds.includes(showtime.Cinema_Room_ID) ||
+                                    cinemaRoomIds.includes(parseInt(showtime.Cinema_Room_ID)) ||
+                                    cinemaRoomIds.map(id => id.toString()).includes(showtime.Cinema_Room_ID?.toString());
+                
+                // Fallback: check Cinema_ID nếu có
+                const belongsToCinema = showtime.Cinema?.Cinema_ID?.toString() === id ||
+                                      showtime.cinema_id?.toString() === id ||
+                                      showtime.Cinema_ID?.toString() === id ||
+                                      // Check thêm trường hợp nested Room.Cinema
+                                      showtime.Room?.Cinema?.Cinema_ID?.toString() === id;
+                
+                return belongsToRoom || belongsToCinema;
+            });
+            
+            console.log(`Tìm thấy ${cinemaShowtimes.length} suất chiếu cho rạp ID ${id}`);
+            
+            // Debug: nếu không tìm thấy showtime nào
+            if (cinemaShowtimes.length === 0 && response.data.length > 0) {
+                console.log('Không tìm thấy suất chiếu. Debug info:');
+                console.log('Cinema ID hiện tại:', id);
+                console.log('Room IDs của rạp:', cinemaRoomIds);
+                console.log('Sample showtime:', response.data[0]);
+            }
+            
+            setShowtimes(cinemaShowtimes);
+            
+        } catch (error) {
+            console.error('Lỗi khi tải lịch chiếu:', error);
+            toast.error('Không thể tải lịch chiếu');
+            setShowtimes([]);
+        } finally {
+            setShowtimesLoading(false);
+        }
     };
 
     const handleDeleteRoom = async (roomId: number) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa phòng chiếu này?')) {
             try {
-                await cinemaService.deleteCinemaRoom(roomId);
-                toast.success('Đã xóa phòng chiếu');
-                fetchRooms();
+                // TODO: Implement delete cinema room API
+                console.log('Deleting room:', roomId);
+                toast.success('Chức năng đang phát triển');
+                // fetchRooms();
             } catch (error) {
                 toast.error('Không thể xóa phòng chiếu');
             }
@@ -145,9 +227,10 @@ const CinemaDetail: React.FC = () => {
     const handleDeleteShowtime = async (showtimeId: number) => {
         if (window.confirm('Bạn có chắc chắn muốn xóa lịch chiếu này?')) {
             try {
-                // API call to delete showtime
-                toast.success('Đã xóa lịch chiếu');
-                fetchShowtimes();
+                // TODO: Implement delete showtime API
+                console.log('Deleting showtime:', showtimeId);
+                toast.success('Chức năng đang phát triển');
+                // fetchShowtimes();
             } catch (error) {
                 toast.error('Không thể xóa lịch chiếu');
             }
@@ -157,7 +240,7 @@ const CinemaDetail: React.FC = () => {
     if (loading) {
         return (
             <div className="flex items-center justify-center h-[60vh]">
-                <FullScreenLoader />
+                <LoadingSpinner />
             </div>
         );
     }
@@ -318,7 +401,7 @@ const CinemaDetail: React.FC = () => {
                                 >
                                     <FilmIcon className="w-8 h-8 text-[#FFD875] mx-auto mb-2" />
                                     <p className="text-2xl font-bold text-white">{animatedStats.showtimes}</p>
-                                    <p className="text-sm text-gray-400">Lịch chiếu hôm nay</p>
+                                    <p className="text-sm text-gray-400">Tổng lịch chiếu</p>
                                 </motion.div>
                                 <motion.div
                                     whileHover={{ scale: 1.05, rotate: -1 }}
@@ -366,7 +449,7 @@ const CinemaDetail: React.FC = () => {
                             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                                 {rooms.map((room, index) => (
                                     <motion.div
-                                        key={room.id}
+                                        key={room.Cinema_Room_ID}
                                         initial={{ opacity: 0, y: 20 }}
                                         animate={{ opacity: 1, y: 0 }}
                                         transition={{ delay: index * 0.1 }}
@@ -375,7 +458,7 @@ const CinemaDetail: React.FC = () => {
                                     >
                                         <div className="absolute -top-10 -right-10 w-20 h-20 bg-[#FFD875]/10 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
                                         <div className="flex justify-between items-start mb-3 relative z-10">
-                                            <h4 className="text-white font-medium">{room.roomName}</h4>
+                                            <h4 className="text-white font-medium">{room.Room_Name}</h4>
                                             <div className="flex gap-2">
                                                 <motion.button
                                                     whileHover={{ scale: 1.1 }}
@@ -391,7 +474,7 @@ const CinemaDetail: React.FC = () => {
                                                 <motion.button
                                                     whileHover={{ scale: 1.1 }}
                                                     whileTap={{ scale: 0.9 }}
-                                                    onClick={() => handleDeleteRoom(room.id)}
+                                                    onClick={() => handleDeleteRoom(room.Cinema_Room_ID)}
                                                     className="p-1 hover:bg-slate-600 rounded transition-colors"
                                                 >
                                                     <TrashIcon className="w-4 h-4 text-gray-400 hover:text-red-500" />
@@ -400,20 +483,20 @@ const CinemaDetail: React.FC = () => {
                                         </div>
                                         <div className="space-y-2 text-sm relative z-10">
                                             <p className="text-gray-400">
-                                                Loại: <span className="text-white">{room.roomType}</span>
+                                                Loại: <span className="text-white">{room.Room_Type}</span>
                                             </p>
                                             <p className="text-gray-400">
-                                                Số ghế: <span className="text-white font-semibold">{room.totalSeats}</span>
+                                                Số ghế: <span className="text-white font-semibold">{room.Seat_Quantity}</span>
                                             </p>
                                             <p className="text-gray-400">
                                                 Trạng thái:
-                                                <span className={`ml-2 px-2 py-1 rounded-full text-xs inline-flex items-center gap-1 ${room.status === 'active'
+                                                <span className={`ml-2 px-2 py-1 rounded-full text-xs inline-flex items-center gap-1 ${room.Status === 'Active'
                                                         ? 'bg-green-500/20 text-green-400'
                                                         : 'bg-gray-500/20 text-gray-400'
                                                     }`}>
-                                                    <span className={`w-1.5 h-1.5 rounded-full ${room.status === 'active' ? 'bg-green-400' : 'bg-gray-400'
+                                                    <span className={`w-1.5 h-1.5 rounded-full ${room.Status === 'Active' ? 'bg-green-400' : 'bg-gray-400'
                                                         }`}></span>
-                                                    {room.status === 'active' ? 'Hoạt động' : 'Bảo trì'}
+                                                    {room.Status === 'Active' ? 'Hoạt động' : 'Bảo trì'}
                                                 </span>
                                             </p>
                                         </div>
@@ -434,17 +517,24 @@ const CinemaDetail: React.FC = () => {
                     >
                         <div className="bg-slate-800 rounded-xl p-6 border border-slate-700">
                             <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-lg font-semibold text-white">Lịch chiếu hôm nay</h3>
+                                <h3 className="text-lg font-semibold text-white">Danh sách lịch chiếu</h3>
+                                <div className="flex gap-3">
                                 <button
-                                    onClick={() => {
-                                        setEditingShowtime(null);
-                                        setShowShowtimeModal(true);
-                                    }}
+                                        onClick={() => fetchShowtimes()}
+                                        disabled={showtimesLoading}
+                                        className="p-2 rounded-lg bg-slate-700 hover:bg-slate-600 text-white transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                                        title="Làm mới"
+                                    >
+                                        <ArrowPathIcon className={`w-5 h-5 ${showtimesLoading ? 'animate-spin' : ''}`} />
+                                    </button>
+                                    <Link
+                                        to={`/admin/showtimes/add?cinema=${id}`}
                                     className="bg-[#FFD875] hover:bg-[#e5c368] text-black px-4 py-2 rounded-lg transition-all duration-300 shadow-[0_0_15px_0px_rgba(255,216,117,0.5)] flex items-center gap-2 hover:shadow-[0_0_20px_3px_rgba(255,216,117,0.6)]"
                                 >
                                     <PlusIcon className="w-5 h-5" />
                                     Thêm lịch chiếu
-                                </button>
+                                    </Link>
+                                </div>
                             </div>
 
                             <div className="overflow-x-auto">
@@ -453,46 +543,100 @@ const CinemaDetail: React.FC = () => {
                                         <tr className="border-b border-slate-700">
                                             <th className="text-left py-3 px-4 text-gray-400 font-medium">Phim</th>
                                             <th className="text-left py-3 px-4 text-gray-400 font-medium">Phòng</th>
-                                            <th className="text-left py-3 px-4 text-gray-400 font-medium">Giờ chiếu</th>
-                                            <th className="text-left py-3 px-4 text-gray-400 font-medium">Giá vé</th>
+                                            <th className="text-left py-3 px-4 text-gray-400 font-medium">Thời gian</th>
+                                            <th className="text-left py-3 px-4 text-gray-400 font-medium">Ghế</th>
                                             <th className="text-right py-3 px-4 text-gray-400 font-medium">Thao tác</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {showtimes.map((showtime) => (
-                                            <tr key={showtime.id} className="border-b border-slate-700/50 hover:bg-slate-700/30">
-                                                <td className="py-3 px-4 text-white">{showtime.movieName}</td>
-                                                <td className="py-3 px-4 text-white">{showtime.roomName}</td>
-                                                <td className="py-3 px-4">
-                                                    <div className="flex items-center gap-2 text-white">
-                                                        <ClockIcon className="w-4 h-4 text-gray-400" />
-                                                        {showtime.startTime} - {showtime.endTime}
-                                                    </div>
+                                        {showtimesLoading ? (
+                                            <tr>
+                                                <td colSpan={5} className="py-8 text-center">
+                                                    <LoadingSpinner />
+                                                    <p className="text-gray-400 mt-2">Đang tải lịch chiếu...</p>
                                                 </td>
-                                                <td className="py-3 px-4 text-white">
-                                                    {showtime.price.toLocaleString()}đ
+                                            </tr>
+                                        ) : showtimes.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="py-8 text-center">
+                                                    <FilmIcon className="w-12 h-12 mx-auto mb-2 text-gray-500" />
+                                                    <p className="text-gray-400">Không có lịch chiếu nào</p>
+                                                </td>
+                                            </tr>
+                                        ) : (
+                                            showtimes.map((showtime) => (
+                                                <tr key={showtime.Showtime_ID} className="border-b border-slate-700/50 hover:bg-slate-700/30">
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-3">
+                                                            {showtime.Movie?.Poster_URL && (
+                                                                <img 
+                                                                    src={showtime.Movie.Poster_URL} 
+                                                                    alt={showtime.Movie.Movie_Name}
+                                                                    className="w-8 h-12 object-cover rounded"
+                                                                />
+                                                            )}
+                                                            <div>
+                                                                <p className="text-white font-medium">
+                                                                    {showtime.Movie?.Movie_Name || `Phim ${showtime.Movie_ID}`}
+                                                                </p>
+                                                                {showtime.Movie?.Duration && (
+                                                                    <p className="text-xs text-gray-400">
+                                                                        {showtime.Movie.Duration} phút
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4 text-white">
+                                                        {showtime.Room?.Room_Name || `Phòng ${showtime.Cinema_Room_ID}`}
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 text-white">
+                                                                <ClockIcon className="w-4 h-4 text-gray-400" />
+                                                                {showtime.Start_Time.substring(0, 5)} - {showtime.End_Time.substring(0, 5)}
+                                                            </div>
+                                                            <p className="text-xs text-gray-400">
+                                                                {new Date(showtime.Show_Date).toLocaleDateString('vi-VN')}
+                                                            </p>
+                                                        </div>
+                                                    </td>
+                                                    <td className="py-3 px-4">
+                                                        <div className="flex items-center gap-2">
+                                                            <TicketIcon className="w-4 h-4 text-gray-400" />
+                                                            <span className="text-white">
+                                                                {showtime.BookedSeats || 0}/{showtime.TotalSeats || 0}
+                                                            </span>
+                                                        </div>
                                                 </td>
                                                 <td className="py-3 px-4">
                                                     <div className="flex justify-end gap-2">
-                                                        <button
-                                                            onClick={() => {
-                                                                setEditingShowtime(showtime);
-                                                                setShowShowtimeModal(true);
-                                                            }}
+                                                            <Link
+                                                                to={`/admin/showtimes/${showtime.Showtime_ID}/detail`}
+                                                                className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                                                title="Xem chi tiết"
+                                                            >
+                                                                <EyeIcon className="w-4 h-4 text-gray-400 hover:text-blue-400" />
+                                                            </Link>
+                                                            <Link
+                                                                to={`/admin/showtimes/${showtime.Showtime_ID}`}
                                                             className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                                                title="Chỉnh sửa"
                                                         >
                                                             <PencilIcon className="w-4 h-4 text-gray-400 hover:text-[#FFD875]" />
-                                                        </button>
+                                                            </Link>
                                                         <button
-                                                            onClick={() => handleDeleteShowtime(showtime.id)}
+                                                                onClick={() => handleDeleteShowtime(showtime.Showtime_ID)}
                                                             className="p-1 hover:bg-slate-600 rounded transition-colors"
+                                                                title="Xóa"
                                                         >
                                                             <TrashIcon className="w-4 h-4 text-gray-400 hover:text-red-500" />
                                                         </button>
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ))}
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -539,7 +683,7 @@ const CinemaDetail: React.FC = () => {
                                     <input
                                         type="text"
                                         className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                                        defaultValue={editingRoom?.roomName}
+                                        defaultValue={editingRoom?.Room_Name}
                                     />
                                 </div>
 
@@ -575,101 +719,7 @@ const CinemaDetail: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* Showtime Modal */}
-            <AnimatePresence>
-                {showShowtimeModal && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50"
-                        onClick={() => setShowShowtimeModal(false)}
-                    >
-                        <motion.div
-                            initial={{ scale: 0.9, opacity: 0 }}
-                            animate={{ scale: 1, opacity: 1 }}
-                            exit={{ scale: 0.9, opacity: 0 }}
-                            className="bg-slate-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-[0_0_30px_rgba(255,216,117,0.3)]"
-                            onClick={(e) => e.stopPropagation()}
-                        >
-                            <div className="flex justify-between items-center mb-4">
-                                <h3 className="text-xl font-bold text-white">
-                                    {editingShowtime ? 'Chỉnh sửa lịch chiếu' : 'Thêm lịch chiếu mới'}
-                                </h3>
-                                <button
-                                    onClick={() => setShowShowtimeModal(false)}
-                                    className="p-1 hover:bg-slate-700 rounded-lg transition-colors"
-                                >
-                                    <XMarkIcon className="w-6 h-6 text-gray-400" />
-                                </button>
-                            </div>
 
-                            {/* Showtime form content */}
-                            <form className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Chọn phim
-                                    </label>
-                                    <select className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none">
-                                        <option>Avatar 2</option>
-                                        <option>Black Panther</option>
-                                        <option>Spider-Man</option>
-                                    </select>
-                                </div>
-
-                                <div>
-                                    <label className="block text-sm font-medium text-gray-300 mb-2">
-                                        Phòng chiếu
-                                    </label>
-                                    <select className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none">
-                                        {rooms.map(room => (
-                                            <option key={room.id} value={room.id}>{room.roomName}</option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Giờ bắt đầu
-                                        </label>
-                                        <input
-                                            type="time"
-                                            className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-sm font-medium text-gray-300 mb-2">
-                                            Giá vé
-                                        </label>
-                                        <input
-                                            type="number"
-                                            className="w-full px-4 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                                            placeholder="85000"
-                                        />
-                                    </div>
-                                </div>
-
-                                <div className="flex gap-3 mt-6">
-                                    <button
-                                        type="submit"
-                                        className="flex-1 bg-[#FFD875] hover:bg-[#e5c368] text-black py-2 rounded-lg transition-colors font-medium"
-                                    >
-                                        {editingShowtime ? 'Cập nhật' : 'Thêm lịch chiếu'}
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => setShowShowtimeModal(false)}
-                                        className="flex-1 bg-slate-700 hover:bg-slate-600 text-white py-2 rounded-lg transition-colors"
-                                    >
-                                        Hủy
-                                    </button>
-                                </div>
-                            </form>
-                        </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
         </div>
     );
 };
