@@ -108,7 +108,7 @@ export const glitchEffect = (element: HTMLElement) => {
     const interval = setInterval(() => {
         element.textContent = text
             .split('')
-            .map((char, index) => {
+            .map((_, index) => {
                 if (index < iteration) {
                     return text[index];
                 }
@@ -210,13 +210,12 @@ export const createSpotlight = (event: MouseEvent) => {
 // Hàm tạo text scramble effect
 export const scrambleText = (element: HTMLElement, newText: string) => {
     const chars = '!<>-_\\/[]{}—=+*^?#________';
-    const originalText = element.textContent || '';
     let iteration = 0;
 
     const interval = setInterval(() => {
         element.textContent = newText
             .split('')
-            .map((char, index) => {
+            .map((_, index) => {
                 if (index < iteration) {
                     return newText[index];
                 }

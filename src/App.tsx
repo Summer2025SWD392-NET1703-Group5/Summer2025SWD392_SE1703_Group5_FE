@@ -12,7 +12,7 @@ import FullScreenLoader from "./components/FullScreenLoader";
 import StaffProtectedApp from "./components/StaffProtectedApp";
 
 // Import auth components
-import { GuestAllowedRoute, AdminRoute, AuthRequiredRoute, StaffRoute } from "./components/auth";
+import { GuestAllowedRoute, AdminRoute, AuthRequiredRoute } from "./components/auth";
 import AdminOnlyRoute from "./components/auth/AdminOnlyRoute";
 
 // Public Pages
@@ -148,11 +148,6 @@ const PublicPages = {
   // Legal
   Terms: React.lazy(() => import(/* webpackChunkName: "legal" */ "./pages/TermsPage")),
   Privacy: React.lazy(() => import(/* webpackChunkName: "legal" */ "./pages/PrivacyPage")),
-
-  // Demo & Misc
-  QRDemo: React.lazy(() => import(/* webpackChunkName: "demo" */ "./pages/QRDemo")),
-  AssetsDemo: React.lazy(() => import(/* webpackChunkName: "demo" */ "./pages/AssetsDemo")),
-  AnimationsDemo: React.lazy(() => import(/* webpackChunkName: "demo" */ "./pages/AnimationsDemo")),
 
   // Staff
   TicketScanner: React.lazy(() => import(/* webpackChunkName: "staff" */ "./pages/staff/TicketScanner")),
@@ -513,21 +508,6 @@ function App() {
                       </Suspense>
                     }
                   />
-
-                  {/* Test route for sidebar scrolling */}
-                  <Route
-                    path="test/sidebar"
-                    element={
-                      <AdminOnlyRoute>
-                        <Suspense fallback={AdminLoader}>
-                          <LazyWrapper
-                            component={() => import("./components/admin/AdminSidebarTest")}
-                            fallback={AdminLoader}
-                          />
-                        </Suspense>
-                      </AdminOnlyRoute>
-                    }
-                  />
                 </Route>
 
                 {/* Public Routes with Header/Footer */}
@@ -542,12 +522,6 @@ function App() {
                             <Routes>
                               <Route path="/" element={<HomePage />} />
                               <Route path="/promotions" element={<PromotionsPage />} />
-                              <Route path="/assets-demo" element={<LazyWrapper component={PublicPages.AssetsDemo} />} />
-                              <Route
-                                path="/animations-demo"
-                                element={<LazyWrapper component={PublicPages.AnimationsDemo} />}
-                              />
-                              <Route path="/qr-demo" element={<LazyWrapper component={PublicPages.QRDemo} />} />
                               <Route path="/login" element={<LazyWrapper component={PublicPages.Login} />} />
                               <Route path="/register" element={<LazyWrapper component={PublicPages.Register} />} />
                               <Route

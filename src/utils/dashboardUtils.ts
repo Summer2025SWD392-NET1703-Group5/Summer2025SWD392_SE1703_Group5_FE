@@ -180,7 +180,6 @@ export const getDateRange = (days: number) => {
 };
 
 export const getDateRangeByType = (type: string) => {
-  const now = new Date();
 
   switch (type) {
     case '7days':
@@ -287,46 +286,6 @@ export const slugify = (text: string): string => {
     .replace(/[^\w\s-]/g, '')
     .replace(/[\s_-]+/g, '-')
     .replace(/^-+|-+$/g, '');
-};
-
-// Validation utilities
-export const validateEmail = (email: string): boolean => {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  return emailRegex.test(email);
-};
-
-export const validatePhone = (phone: string): boolean => {
-  const phoneRegex = /^(\+84|84|0)[3|5|7|8|9][0-9]{8}$/;
-  return phoneRegex.test(phone.replace(/\s/g, ''));
-};
-
-export const validatePassword = (password: string): { isValid: boolean; errors: string[] } => {
-  const errors: string[] = [];
-
-  if (password.length < 8) {
-    errors.push('Mật khẩu phải có ít nhất 8 ký tự');
-  }
-
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 chữ hoa');
-  }
-
-  if (!/[a-z]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 chữ thường');
-  }
-
-  if (!/[0-9]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 số');
-  }
-
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Mật khẩu phải có ít nhất 1 ký tự đặc biệt');
-  }
-
-  return {
-    isValid: errors.length === 0,
-    errors
-  };
 };
 
 // File utilities

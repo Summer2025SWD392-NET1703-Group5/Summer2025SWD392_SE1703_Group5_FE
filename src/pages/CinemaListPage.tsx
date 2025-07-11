@@ -1,8 +1,8 @@
 // pages/CinemaListPage.tsx
 import React, { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Star, Car, Utensils, Wifi, Clock, Filter, Search, Navigation, Building2, Users, Sparkles, Eye, Calendar, ChevronRight } from 'lucide-react';
+import { MapPin, Phone, Star, Clock, Filter, Search, Navigation, Building2, Sparkles, Eye, Calendar, ChevronRight } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import type { Cinema } from '../types/cinema';
 import { cinemaService } from '../services/cinemaService';
 import toast from 'react-hot-toast';
@@ -35,28 +35,9 @@ const CinemaListPage: React.FC = () => {
   const [filteredCinemas, setFilteredCinemas] = useState<CinemaDisplay[]>([]);
   const [selectedCity, setSelectedCity] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [cities, setCities] = useState<string[]>([]);
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
-
-  // Get user location
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setUserLocation({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude
-          });
-        },
-        (error) => {
-          console.log('Location access denied');
-        }
-      );
-    }
-  }, []);
 
   // Fetch cinemas from API
   useEffect(() => {
@@ -109,18 +90,6 @@ const CinemaListPage: React.FC = () => {
     fetchCinemas();
   }, [selectedCity]);
 
-  // Calculate distance between two points
-  const calculateDistance = (lat1: number, lng1: number, lat2: number, lng2: number): number => {
-    const R = 6371; // Earth's radius in km
-    const dLat = (lat2 - lat1) * Math.PI / 180;
-    const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-      Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  };
-
   // Filter cinemas based on search only
   useEffect(() => {
     let filtered = cinemas;
@@ -132,34 +101,8 @@ const CinemaListPage: React.FC = () => {
       );
     }
 
-    // Sort by distance if user location available
-    if (userLocation && filtered.some(cinema => cinema.coordinates)) {
-      filtered = filtered.sort((a, b) => {
-        if (!a.coordinates || !b.coordinates) return 0;
-        const distanceA = calculateDistance(userLocation.lat, userLocation.lng, a.coordinates.lat, a.coordinates.lng);
-        const distanceB = calculateDistance(userLocation.lat, userLocation.lng, b.coordinates.lat, b.coordinates.lng);
-        return distanceA - distanceB;
-      });
-    }
-
     setFilteredCinemas(filtered);
-  }, [searchTerm, cinemas, userLocation]);
-
-  const getAmenityIcon = (amenity: string) => {
-    switch (amenity.toLowerCase()) {
-      case 'bãi đậu xe':
-      case 'parking':
-        return <Car className="w-4 h-4" />;
-      case 'khu ẩm thực':
-      case 'food court':
-        return <Utensils className="w-4 h-4" />;
-      case 'wifi miễn phí':
-      case 'free wifi':
-        return <Wifi className="w-4 h-4" />;
-      default:
-        return <div className="w-4 h-4 bg-[#FFD875] rounded-full" />;
-    }
-  };
+  }, [searchTerm, cinemas]);
 
   return (
     <div className="min-h-screen bg-black pt-20">
@@ -269,9 +212,6 @@ const CinemaListPage: React.FC = () => {
                 <p className="text-slate-400 text-lg">
                   Tìm thấy <span className="text-[#FFD875] font-bold text-2xl">{filteredCinemas.length}</span> rạp chiếu phim
                 </p>
-                {userLocation && (
-                  <p className="text-slate-500 text-sm mt-1">Sắp xếp theo khoảng cách gần nhất</p>
-                )}
               </div>
             </motion.div>
 
@@ -301,37 +241,6 @@ const CinemaListPage: React.FC = () => {
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                    {/* Rating Badge */}
-                    {cinema.rating && (
-                      <motion.div
-                        className="absolute top-4 right-4 bg-black/80 backdrop-blur-sm text-white px-3 py-2 rounded-xl flex items-center border border-[#FFD875]/30"
-                        whileHover={{ scale: 1.05 }}
-                        style={{ boxShadow: '0 0 15px rgba(255, 216, 117, 0.2)' }}
-                      >
-                        <Star className="w-4 h-4 text-[#FFD875] mr-1 fill-current" />
-                        <span className="font-bold">{cinema.rating.toFixed(1)}</span>
-                      </motion.div>
-                    )}
-
-                    {/* Distance Badge */}
-                    {userLocation && cinema.coordinates && (
-                      <motion.div
-                        className="absolute top-4 left-4 bg-[#FFD875] text-black px-3 py-2 rounded-xl flex items-center font-bold"
-                        whileHover={{ scale: 1.05 }}
-                        style={{ boxShadow: '0 0 15px rgba(255, 216, 117, 0.4)' }}
-                      >
-                        <Navigation className="w-4 h-4 mr-1" />
-                        <span>
-                          {calculateDistance(
-                            userLocation.lat,
-                            userLocation.lng,
-                            cinema.coordinates.lat,
-                            cinema.coordinates.lng
-                          ).toFixed(1)} km
-                        </span>
-                      </motion.div>
-                    )}
-
                     {/* Status Badge */}
                     <div className="absolute bottom-4 left-4">
                       <span className="bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-sm font-medium border border-green-500/30">
@@ -359,14 +268,6 @@ const CinemaListPage: React.FC = () => {
                         </div>
                       )}
 
-                      {cinema.operatingHours && (
-                        <div className="flex items-center text-slate-300">
-                          <Clock className="w-5 h-5 mr-3 flex-shrink-0 text-[#FFD875]" />
-                          <span className="text-sm">
-                            {cinema.operatingHours.open} - {cinema.operatingHours.close}
-                          </span>
-                        </div>
-                      )}
                     </div>
 
                     {/* Action Buttons */}

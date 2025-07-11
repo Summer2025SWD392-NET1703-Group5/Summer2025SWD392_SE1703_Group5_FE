@@ -2,15 +2,6 @@ import { AxiosError } from 'axios';
 import { toast } from 'react-hot-toast';
 
 /**
- * Kiểu dữ liệu cho lỗi API chuẩn
- */
-interface ApiError {
-    message: string;
-    code?: string;
-    details?: any;
-}
-
-/**
  * Xử lý lỗi từ API và hiển thị thông báo phù hợp
  * @param error Lỗi từ Axios
  * @returns Promise bị reject với lỗi đã được xử lý
