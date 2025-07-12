@@ -180,9 +180,33 @@ const TicketPricingManagement: React.FC = () => {
   };
 
   // Modal components
-  const CreateModal = () => (
-    <AnimatePresence>
-      {showCreateModal && (
+  // Thay thế CreateModal bằng modal mới dùng state local
+  const CreateModal = () => {
+    const [roomType, setRoomType] = useState('');
+    const [seatType, setSeatType] = useState('');
+    const [basePrice, setBasePrice] = useState(0);
+
+    const handleSubmit = async () => {
+      if (!roomType || !seatType || !basePrice) {
+        toast.error('Vui lòng điền đầy đủ thông tin');
+        return;
+      }
+      try {
+        await ticketPricingService.createTicketPricing({ Room_Type: roomType, Seat_Type: seatType, Base_Price: basePrice });
+        toast.success('Tạo cấu hình giá vé thành công!');
+        setShowCreateModal(false);
+        setRoomType('');
+        setSeatType('');
+        setBasePrice(0);
+        loadAllData();
+      } catch (error: any) {
+        toast.error(error.message);
+      }
+    };
+
+    if (!showCreateModal) return null;
+    return (
+      <AnimatePresence>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -196,51 +220,52 @@ const TicketPricingManagement: React.FC = () => {
             className="bg-slate-800 rounded-lg p-6 w-full max-w-md border border-slate-700"
           >
             <h3 className="text-xl font-bold text-white mb-4">Tạo Cấu Hình Giá Vé Mới</h3>
-
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Loại Phòng</label>
-                <input
-                  type="text"
-                  value={createForm.Room_Type}
-                  onChange={(e) => setCreateForm({ ...createForm, Room_Type: e.target.value })}
+                <select
+                  value={roomType}
+                  onChange={e => setRoomType(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                  placeholder="Ví dụ: 2D, 3D, IMAX"
-                />
+                >
+                  <option value="">Chọn loại phòng</option>
+                  <option value="2D">2D</option>
+                  <option value="3D">3D</option>
+                  <option value="IMAX">IMAX</option>
+                </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Loại Ghế</label>
-                <input
-                  type="text"
-                  value={createForm.Seat_Type}
-                  onChange={(e) => setCreateForm({ ...createForm, Seat_Type: e.target.value })}
+                <select
+                  value={seatType}
+                  onChange={e => setSeatType(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                  placeholder="Ví dụ: Thường, VIP, Sweetbox"
-                />
+                >
+                  <option value="">Chọn loại ghế</option>
+                  <option value="Regular">Regular</option>
+                  <option value="VIP">VIP</option>
+                </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Giá Cơ Bản (VNĐ)</label>
                 <input
                   type="number"
-                  value={createForm.Base_Price}
-                  onChange={(e) => setCreateForm({ ...createForm, Base_Price: Number(e.target.value) })}
+                  value={basePrice}
+                  onChange={e => setBasePrice(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
                   placeholder="Ví dụ: 120000"
                 />
               </div>
             </div>
-
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowCreateModal(false)}
+                onClick={() => { setShowCreateModal(false); setRoomType(''); setSeatType(''); setBasePrice(0); }}
                 className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-all"
               >
                 Hủy
               </button>
               <button
-                onClick={handleCreate}
+                onClick={handleSubmit}
                 className="flex-1 px-4 py-2 bg-[#FFD875] text-black rounded-lg hover:bg-[#e5c368] transition-all"
               >
                 Tạo Mới
@@ -248,13 +273,47 @@ const TicketPricingManagement: React.FC = () => {
             </div>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
-  );
+      </AnimatePresence>
+    );
+  };
 
-  const EditModal = () => (
-    <AnimatePresence>
-      {showEditModal && selectedItem && (
+  // Thay thế EditModal bằng modal mới dùng state local
+  const EditModal = () => {
+    const [roomType, setRoomType] = useState('');
+    const [seatType, setSeatType] = useState('');
+    const [basePrice, setBasePrice] = useState(0);
+
+    useEffect(() => {
+      if (showEditModal && selectedItem) {
+        setRoomType(selectedItem.Room_Type || '');
+        setSeatType(selectedItem.Seat_Type || '');
+        setBasePrice(selectedItem.Base_Price || 0);
+      }
+    }, [showEditModal, selectedItem]);
+
+    const handleSubmit = async () => {
+      if (!roomType || !seatType || !basePrice) {
+        toast.error('Vui lòng điền đầy đủ thông tin');
+        return;
+      }
+      try {
+        const id = ticketPricingService.generateId(roomType, seatType);
+        await ticketPricingService.updateTicketPricing(id, { Room_Type: roomType, Seat_Type: seatType, Base_Price: basePrice });
+        toast.success('Cập nhật cấu hình giá vé thành công!');
+        setShowEditModal(false);
+        setRoomType('');
+        setSeatType('');
+        setBasePrice(0);
+        setSelectedItem(null);
+        loadAllData();
+      } catch (error: any) {
+        toast.error(error.message);
+      }
+    };
+
+    if (!showEditModal || !selectedItem) return null;
+    return (
+      <AnimatePresence>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -268,48 +327,51 @@ const TicketPricingManagement: React.FC = () => {
             className="bg-slate-800 rounded-lg p-6 w-full max-w-md border border-slate-700"
           >
             <h3 className="text-xl font-bold text-white mb-4">Chỉnh Sửa Giá Vé</h3>
-
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Loại Phòng</label>
-                <input
-                  type="text"
-                  value={editForm.Room_Type}
-                  onChange={(e) => setEditForm({ ...editForm, Room_Type: e.target.value })}
+                <select
+                  value={roomType}
+                  onChange={e => setRoomType(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                />
+                >
+                  <option value="">Chọn loại phòng</option>
+                  <option value="2D">2D</option>
+                  <option value="3D">3D</option>
+                  <option value="IMAX">IMAX</option>
+                </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Loại Ghế</label>
-                <input
-                  type="text"
-                  value={editForm.Seat_Type}
-                  onChange={(e) => setEditForm({ ...editForm, Seat_Type: e.target.value })}
+                <select
+                  value={seatType}
+                  onChange={e => setSeatType(e.target.value)}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
-                />
+                >
+                  <option value="">Chọn loại ghế</option>
+                  <option value="Regular">Regular</option>
+                  <option value="VIP">VIP</option>
+                </select>
               </div>
-
               <div>
                 <label className="block text-sm font-medium text-gray-400 mb-2">Giá Cơ Bản (VNĐ)</label>
                 <input
                   type="number"
-                  value={editForm.Base_Price}
-                  onChange={(e) => setEditForm({ ...editForm, Base_Price: Number(e.target.value) })}
+                  value={basePrice}
+                  onChange={e => setBasePrice(Number(e.target.value))}
                   className="w-full px-3 py-2 bg-slate-700 text-white rounded-lg border border-slate-600 focus:border-[#FFD875] focus:outline-none"
                 />
               </div>
             </div>
-
             <div className="flex gap-3 mt-6">
               <button
-                onClick={() => setShowEditModal(false)}
+                onClick={() => { setShowEditModal(false); setRoomType(''); setSeatType(''); setBasePrice(0); setSelectedItem(null); }}
                 className="flex-1 px-4 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-500 transition-all"
               >
                 Hủy
               </button>
               <button
-                onClick={handleEdit}
+                onClick={handleSubmit}
                 className="flex-1 px-4 py-2 bg-[#FFD875] text-black rounded-lg hover:bg-[#e5c368] transition-all"
               >
                 Cập Nhật
@@ -317,9 +379,9 @@ const TicketPricingManagement: React.FC = () => {
             </div>
           </motion.div>
         </motion.div>
-      )}
-    </AnimatePresence>
-  );
+      </AnimatePresence>
+    );
+  };
 
   const CalculatorModal = () => (
     <AnimatePresence>
@@ -519,6 +581,12 @@ const TicketPricingManagement: React.FC = () => {
     </AnimatePresence>
   );
 
+  // Khi mở modal tạo mới, reset form về rỗng
+  const handleOpenCreateModal = () => {
+    setCreateForm({ Room_Type: '', Seat_Type: '', Base_Price: 0 });
+    setShowCreateModal(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       <div className="p-6 space-y-6">
@@ -547,7 +615,7 @@ const TicketPricingManagement: React.FC = () => {
               <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
-                onClick={() => setShowCreateModal(true)}
+                onClick={handleOpenCreateModal}
                 className="px-6 py-2.5 bg-gradient-to-r from-[#FFD875] to-[#e5c368] text-slate-900 rounded-xl hover:from-[#e5c368] hover:to-[#d4b356] transition-all flex items-center gap-2 shadow-lg hover:shadow-[#FFD875]/25 font-semibold"
               >
                 <PlusIcon className="w-4 h-4" />
@@ -744,11 +812,6 @@ const TicketPricingManagement: React.FC = () => {
                                 whileTap={{ scale: 0.9 }}
                                 onClick={() => {
                                   setSelectedItem({ ...seatType, Room_Type: group.room_type });
-                                  setEditForm({
-                                    Room_Type: group.room_type,
-                                    Seat_Type: seatType.Seat_Type,
-                                    Base_Price: seatType.Base_Price,
-                                  });
                                   setShowEditModal(true);
                                 }}
                                 className="p-2.5 bg-gradient-to-r from-blue-500/20 to-blue-600/20 hover:from-blue-500/30 hover:to-blue-600/30 rounded-lg transition-all border border-blue-500/30 shadow-lg"
@@ -805,7 +868,7 @@ const TicketPricingManagement: React.FC = () => {
                 <motion.button
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  onClick={() => setShowCreateModal(true)}
+                  onClick={handleOpenCreateModal}
                   className="px-8 py-4 bg-gradient-to-r from-[#FFD875] to-[#e5c368] text-slate-900 rounded-xl hover:from-[#e5c368] hover:to-[#d4b356] transition-all font-semibold shadow-lg hover:shadow-[#FFD875]/25 flex items-center gap-3 mx-auto"
                 >
                   <PlusIcon className="w-5 h-5" />

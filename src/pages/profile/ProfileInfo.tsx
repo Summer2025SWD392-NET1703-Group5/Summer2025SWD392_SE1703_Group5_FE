@@ -17,7 +17,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../contexts/SimpleAuthContext';
 import { userService } from '../../services/userService';
-import type { UpdateProfileData, User } from "../../types/user";
+import type { UpdateProfileData } from '../../types/user';
 import { toast } from 'react-hot-toast';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -98,24 +98,10 @@ const InfoField = ({ icon: Icon, label, value, isEditing, children, error, fullW
 );
 
 const ProfileInfo: React.FC = () => {
-  const [ user, setUser ] = useState<User>();
-  const {isLoading} = useAuth();
+  const { user, setUser, isLoading } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [success, setSuccess] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (user) {
-      userService.getUserProfile()
-        .then(profile => {
-          setUser(profile);
-        })
-        .catch(err => {
-          console.error('Error loading user profile:', err);
-          toast.error('Không thể tải thông tin người dùng.');
-        });
-    }
-  }, []);
 
   const { control, handleSubmit, reset, setError, clearErrors, formState: { errors, isDirty } } = useForm<UpdateProfileData>({
     resolver: yupResolver(profileSchema),
@@ -169,6 +155,20 @@ const ProfileInfo: React.FC = () => {
       >
         <div className="text-red-400 text-lg mb-2">⚠️ Lỗi</div>
         <div className="text-slate-400">Không tìm thấy thông tin người dùng.</div>
+      </motion.div>
+    );
+  }
+
+  // Ẩn thông tin cá nhân nếu là Staff
+  if (user.role === 'Staff') {
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="text-center py-12"
+      >
+        <div className="text-yellow-400 text-lg mb-2">⚠️ Không có quyền truy cập</div>
+        <div className="text-slate-400">Nhân viên không được phép xem thông tin cá nhân.</div>
       </motion.div>
     );
   }

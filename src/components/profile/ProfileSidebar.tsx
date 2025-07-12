@@ -67,6 +67,10 @@ const ProfileSidebar: React.FC<ProfileSidebarProps> = ({ className = '' }) => {
   // Memoize menu items để tránh re-filter mỗi render
   const menuItems = useMemo(() => {
     const userRole = user?.role?.toLowerCase();
+    // Nếu là staff thì chỉ hiển thị mục Cài đặt
+    if (userRole === 'staff') {
+      return allMenuItems.filter(item => item.name === 'Cài đặt');
+    }
     return allMenuItems.filter(item => item.roles.includes(userRole || 'customer'));
   }, [user?.role]);
 

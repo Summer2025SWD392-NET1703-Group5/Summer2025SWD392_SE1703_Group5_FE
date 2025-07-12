@@ -37,7 +37,8 @@ const MediaStep: React.FC = () => {
         return (match && match[7].length === 11) ? match[7] : null;
     };
 
-    const youtubeId = extractYoutubeVideoId(watch('Trailer_Link'));
+    const trailerLink = watch('Trailer_Link');
+    const youtubeId = extractYoutubeVideoId(trailerLink ? trailerLink : null);
 
     return (
         <motion.div
@@ -99,6 +100,9 @@ const MediaStep: React.FC = () => {
                             />
                         </div>
                         <p className="text-xs text-gray-400 mt-2">Nhập đường dẫn URL đến hình ảnh poster (png, jpg, jpeg)</p>
+                        {errors.Poster_URL && (
+                            <p className="text-xs text-red-400 mt-1">{errors.Poster_URL.message}</p>
+                        )}
                     </div>
                 ) : (
                     <Controller
@@ -134,6 +138,9 @@ const MediaStep: React.FC = () => {
                                     />
                                 </label>
                                 <p className="text-xs text-gray-400 mt-3">PNG, JPG, GIF tối đa 5MB</p>
+                                {errors.Poster_URL && (
+                                    <p className="text-xs text-red-400 mt-2">{errors.Poster_URL.message}</p>
+                                )}
                             </div>
                         )}
                     />
@@ -196,6 +203,9 @@ const MediaStep: React.FC = () => {
                         placeholder="https://www.youtube.com/watch?v=..."
                     />
                 </div>
+                {errors.Trailer_Link && (
+                    <p className="text-xs text-red-400 mt-1">{errors.Trailer_Link.message}</p>
+                )}
 
                 {/* YouTube Trailer Preview */}
                 {youtubeId && (
