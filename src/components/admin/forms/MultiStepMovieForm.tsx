@@ -113,9 +113,16 @@ const movieSchema = yup.object().shape({
             return value !== premiereDate;
         }),
     Production_Company: yup.string().nullable().optional(),
-    Trailer_Link: yup.string().nullable().optional(),
+    Trailer_Link: yup.string().required('Phải nhập link trailer'),
     posterFile: yup.mixed().nullable().optional(),
     Poster_URL: yup.string().nullable().optional(),
+}).test('poster-required', 'Phải thêm poster (tải lên hoặc nhập URL)', function (value) {
+    if (!value) return false;
+    // Nếu không có cả file lẫn url thì lỗi
+    if (!value.posterFile && (!value.Poster_URL || value.Poster_URL.trim() === '')) {
+        return this.createError({ path: 'Poster_URL', message: 'Phải thêm poster (tải lên hoặc nhập URL)' });
+    }
+    return true;
 });
 
 interface MultiStepMovieFormProps {

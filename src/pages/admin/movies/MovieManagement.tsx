@@ -512,30 +512,34 @@ const MovieManagement: React.FC = () => {
           >
             <EyeIcon className="w-5 h-5" />
           </button>
-          <button
-            onClick={() => isAdmin && handleEditMovie(movie)}
-            className={`p-2 transition-colors duration-300 rounded-full ${
-              isAdmin 
-                ? 'text-gray-400 hover:text-[#FFD875] hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)] cursor-pointer'
-                : 'text-gray-400/50 cursor-not-allowed'
-            }`}
-            disabled={!isAdmin}
-            title={!isAdmin ? "Chỉ Admin mới có thể chỉnh sửa phim" : "Chỉnh sửa"}
-          >
-            <PencilIcon className="w-5 h-5" />
-          </button>
-          <button
-            onClick={() => isAdmin && handleDeleteMovie(movie)}
-            className={`p-2 transition-colors duration-300 rounded-full ${
-              isAdmin 
-                ? 'text-gray-400 hover:text-red-500 hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)] cursor-pointer'
-                : 'text-gray-400/50 cursor-not-allowed'
-            }`}
-            disabled={!isAdmin}
-            title={!isAdmin ? "Chỉ Admin mới có thể xóa phim" : "Xóa"}
-          >
-            <TrashIcon className="w-5 h-5" />
-          </button>
+          {movie.Status !== 'Inactive' && movie.Status !== 'Ended' && (
+            <>
+              <button
+                onClick={() => isAdmin && handleEditMovie(movie)}
+                className={`p-2 transition-colors duration-300 rounded-full ${
+                  isAdmin 
+                    ? 'text-gray-400 hover:text-[#FFD875] hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)] cursor-pointer'
+                    : 'text-gray-400/50 cursor-not-allowed'
+                }`}
+                disabled={!isAdmin}
+                title={!isAdmin ? "Chỉ Admin mới có thể chỉnh sửa phim" : "Chỉnh sửa"}
+              >
+                <PencilIcon className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => isAdmin && handleDeleteMovie(movie)}
+                className={`p-2 transition-colors duration-300 rounded-full ${
+                  isAdmin 
+                    ? 'text-gray-400 hover:text-red-500 hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)] cursor-pointer'
+                    : 'text-gray-400/50 cursor-not-allowed'
+                }`}
+                disabled={!isAdmin}
+                title={!isAdmin ? "Chỉ Admin mới có thể xóa phim" : "Xóa"}
+              >
+                <TrashIcon className="w-5 h-5" />
+              </button>
+            </>
+          )}
         </div>
       ),
     },
