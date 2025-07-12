@@ -72,7 +72,6 @@ const AdminPages = {
   // Cinema management
   CinemasList: React.lazy(() => import(/* webpackChunkName: "admin-cinemas" */ "./pages/admin/cinemas/CinemasList")),
   AddCinema: React.lazy(() => import(/* webpackChunkName: "admin-cinemas" */ "./pages/admin/cinemas/AddCinema")),
-  CinemaDetail: React.lazy(() => import(/* webpackChunkName: "admin-cinemas" */ "./pages/admin/cinemas/CinemaDetail")),
   CinemaEditor: React.lazy(() => import(/* webpackChunkName: "admin-cinemas" */ "./pages/admin/cinemas/CinemaEditor")),
 
   // Room management
@@ -395,16 +394,6 @@ function App() {
                       <AdminOnlyRoute>
                         <Suspense fallback={AdminLoader}>
                           <LazyWrapper component={AdminPages.AddCinema} fallback={AdminLoader} />
-                        </Suspense>
-                      </AdminOnlyRoute>
-                    }
-                  />
-                  <Route
-                    path="cinemas/:id"
-                    element={
-                      <AdminOnlyRoute>
-                        <Suspense fallback={AdminLoader}>
-                          <LazyWrapper component={AdminPages.CinemaDetail} fallback={AdminLoader} />
                         </Suspense>
                       </AdminOnlyRoute>
                     }
