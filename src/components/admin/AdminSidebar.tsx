@@ -20,6 +20,7 @@ import {
   CogIcon,
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../contexts/SimpleAuthContext";
+import { useManagerAssignment } from "../../hooks/useManagerAssignment";
 
 interface AdminSidebarProps {
   collapsed: boolean;
@@ -39,6 +40,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { isAssigned } = useManagerAssignment();
   const [expandedMenus, setExpandedMenus] = useState<string[]>([]);
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
 
@@ -168,19 +170,29 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
   }, []);
 
   const menuItems: MenuItem[] = [
-    {
-      id: "dashboard",
-      label: "Dashboard",
-      icon: HomeIcon,
-      path: "/admin",
-    },
-    // Quản lý đặt vé
-    {
-      id: "bookings",
-      label: "Quản lý đặt vé",
-      icon: TicketIcon,
-      path: "/admin/bookings",
-    },
+    // Dashboard - Managers cannot see this
+    ...(user?.role === "Admin"
+      ? [
+          {
+            id: "dashboard",
+            label: "Dashboard",
+            icon: HomeIcon,
+            path: "/admin",
+          },
+        ]
+      : []),
+
+    // Quản lý đặt vé - chỉ hiển thị cho Admin
+    ...(user?.role === "Admin"
+      ? [
+          {
+            id: "bookings",
+            label: "Quản lý đặt vé",
+            icon: TicketIcon,
+            path: "/admin/bookings",
+          },
+        ]
+      : []),
 
     // Quản lý giá vé - chỉ hiển thị cho Admin
     ...(user?.role === "Admin"
@@ -199,18 +211,28 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
       icon: FilmIcon,
       path: "/admin/movies",
     },
-    {
-      id: "cinemas",
-      label: "Quản lý rạp",
-      icon: BuildingOfficeIcon,
-      children: [
-        ...(user?.role === "Admin"
-          ? [{ id: "cinemas-list", label: "Danh sách rạp", icon: BuildingOfficeIcon, path: "/admin/cinemas" }]
-          : []),
-        { id: "cinemas-rooms", label: "Phòng chiếu", icon: CogIcon, path: "/admin/cinema-rooms" },
-        { id: "cinemas-showtimes", label: "Lịch chiếu", icon: CalendarIcon, path: "/admin/showtimes" },
-      ],
-    },
+    // Cinema management - show only if user has access to at least one sub-item
+    ...(user?.role === "Admin" || (user?.role === "Manager" && isAssigned)
+      ? [
+          {
+            id: "cinemas",
+            label: "Quản lý rạp",
+            icon: BuildingOfficeIcon,
+            children: [
+              ...(user?.role === "Admin"
+                ? [{ id: "cinemas-list", label: "Danh sách rạp", icon: BuildingOfficeIcon, path: "/admin/cinemas" }]
+                : []),
+              // Cinema rooms and showtimes - only for assigned managers or admins
+              ...(user?.role === "Admin" || (user?.role === "Manager" && isAssigned)
+                ? [
+                    { id: "cinemas-rooms", label: "Phòng chiếu", icon: CogIcon, path: "/admin/cinema-rooms" },
+                    { id: "cinemas-showtimes", label: "Lịch chiếu", icon: CalendarIcon, path: "/admin/showtimes" },
+                  ]
+                : []),
+            ],
+          },
+        ]
+      : []),
     // Quản lý khuyến mãi - chỉ hiển thị cho Admin
     ...(user?.role === "Admin"
       ? [
@@ -233,16 +255,21 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({ collapsed, onToggle }) => {
           },
         ]
       : []),
-    {
-      id: "reports",
-      label: "Báo cáo",
-      icon: ChartBarIcon,
-      children: [
-        { id: "reports-daily", label: "Báo cáo ngày", icon: DocumentChartBarIcon, path: "/admin/reports/daily" },
-        { id: "reports-monthly", label: "Báo cáo tháng", icon: DocumentChartBarIcon, path: "/admin/reports/monthly" },
-        { id: "reports-custom", label: "Báo cáo tùy chỉnh", icon: DocumentChartBarIcon, path: "/admin/reports/custom" },
-      ],
-    },
+    // Báo cáo - chỉ hiển thị cho Admin
+    ...(user?.role === "Admin"
+      ? [
+          {
+            id: "reports",
+            label: "Báo cáo",
+            icon: ChartBarIcon,
+            children: [
+              { id: "reports-daily", label: "Báo cáo ngày", icon: DocumentChartBarIcon, path: "/admin/reports/daily" },
+              { id: "reports-monthly", label: "Báo cáo tháng", icon: DocumentChartBarIcon, path: "/admin/reports/monthly" },
+              { id: "reports-custom", label: "Báo cáo tùy chỉnh", icon: DocumentChartBarIcon, path: "/admin/reports/custom" },
+            ],
+          },
+        ]
+      : []),
   ];
 
   const toggleMenu = (menuId: string) => {

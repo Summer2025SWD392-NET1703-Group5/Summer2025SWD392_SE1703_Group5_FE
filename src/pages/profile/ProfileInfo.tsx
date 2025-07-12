@@ -1,7 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { format } from 'date-fns';
-import { vi } from 'date-fns/locale';
 import {
   UserIcon,
   EnvelopeIcon,
@@ -27,19 +25,19 @@ import * as yup from 'yup';
 const profileSchema = yup.object().shape({
   FullName: yup
     .string()
-    .required('Họ và tên là bắt buộc')
+    .optional()
     .min(2, 'Họ và tên phải có ít nhất 2 ký tự')
     .max(50, 'Họ và tên không được quá 50 ký tự')
     .matches(/^[a-zA-ZÀ-ỹ\s]+$/, 'Họ và tên chỉ được chứa chữ cái và khoảng trắng'),
   PhoneNumber: yup
     .string()
-    .required('Số điện thoại là bắt buộc')
+    .optional()
     .matches(/^(84|0[3|5|7|8|9])+([0-9]{8})$/, 'Số điện thoại không hợp lệ (VD: 0987654321)'),
   DateOfBirth: yup
     .string()
-    .required('Ngày sinh là bắt buộc')
+    .optional()
     .test('age', 'Bạn phải từ 16 tuổi trở lên', function (value) {
-      if (!value) return true; // Let required handle it
+      if (!value) return true; // Allow empty value
       const today = new Date();
       const birthDate = new Date(value);
       let age = today.getFullYear() - birthDate.getFullYear();
@@ -51,29 +49,24 @@ const profileSchema = yup.object().shape({
     }),
   Sex: yup
     .string()
+    .optional()
     .oneOf(['Male', 'Female', 'Other'], 'Vui lòng chọn giới tính hợp lệ')
     .nullable(),
   Address: yup
     .string()
+    .optional()
     .nullable()
     .max(200, 'Địa chỉ không được quá 200 ký tự')
     .transform((value, originalValue) => originalValue === "" ? null : value),
 });
 
-const itemVariants = {
-  hidden: { y: 20, opacity: 0 },
-  visible: {
-    y: 0,
-    opacity: 1,
-    transition: {
-      type: "spring",
-      stiffness: 100
-    }
-  }
-};
-
 const InfoField = ({ icon: Icon, label, value, isEditing, children, error, fullWidth = false, isRequired = false }: any) => (
-  <motion.div variants={itemVariants} className={`space-y-2 ${fullWidth ? 'col-span-1 md:col-span-2' : ''}`}>
+  <motion.div 
+    initial={{ opacity: 0, y: 10 }}
+    animate={{ opacity: 1, y: 0 }}
+    transition={{ duration: 0.3 }}
+    className={`space-y-2 ${fullWidth ? 'col-span-1 md:col-span-2' : ''}`}
+  >
     <label className="text-sm font-medium text-slate-400 flex items-center">
       <Icon className="w-4 h-4 mr-2 text-[#FFD875]" />
       {label}
@@ -83,9 +76,9 @@ const InfoField = ({ icon: Icon, label, value, isEditing, children, error, fullW
       <>
         {children}
         {error && (
-          <p className="text-red-400 text-xs flex items-center gap-1 mt-1.5">
-            <ExclamationCircleIcon className="w-4 h-4 mr-1" />
-            {error.message}
+          <p className="text-red-400 text-xs flex items-start gap-1 mt-1.5">
+            <ExclamationCircleIcon className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <span>{error.message}</span>
           </p>
         )}
       </>
@@ -105,20 +98,18 @@ const ProfileInfo: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user) {
-      userService.getUserProfile()
-        .then(profile => {
-          setUser(profile);
-        })
-        .catch(err => {
-          console.error('Error loading user profile:', err);
-          toast.error('Không thể tải thông tin người dùng.');
-        });
-    }
+    userService.getUserProfile()
+      .then(profile => {
+        setUser(profile);
+      })
+      .catch(err => {
+        console.error('Error loading user profile:', err);
+        toast.error('Không thể tải thông tin người dùng.');
+      });
   }, []);
 
   const { control, handleSubmit, reset, setError, clearErrors, formState: { errors, isDirty } } = useForm<UpdateProfileData>({
-    resolver: yupResolver(profileSchema),
+    resolver: yupResolver(profileSchema) as any,
     defaultValues: {
       FullName: '',
       PhoneNumber: '',
@@ -131,13 +122,14 @@ const ProfileInfo: React.FC = () => {
   useEffect(() => {
     if (user) {
       console.log('User data in ProfileInfo:', user);
-      // Map API data format to form format
+      // Map API data format (snake_case) to form format
       reset({
-        FullName: user.fullName || '',
-        PhoneNumber: user.phoneNumber || '',
-        DateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : undefined,
-        Sex: user.sex || undefined,
-        Address: user.address || undefined,
+        FullName: user.fullName || user.Full_Name || '',
+        PhoneNumber: user.phoneNumber || user.Phone_Number || '',
+        DateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : 
+                     user.Date_Of_Birth ? user.Date_Of_Birth.split('T')[0] : undefined,
+        Sex: user.sex || user.Sex || undefined,
+        Address: user.address || user.Address || undefined,
       });
     }
   }, [user, isEditing, reset]);
@@ -182,7 +174,7 @@ const ProfileInfo: React.FC = () => {
       // Transform data to match API expectations
       const payload = {
         ...data,
-        DateOfBirth: data.DateOfBirth || null
+        DateOfBirth: data.DateOfBirth || undefined
       };
 
       const updatedUser = await userService.updateProfile(payload);
@@ -190,10 +182,35 @@ const ProfileInfo: React.FC = () => {
       setSuccess('Cập nhật thông tin thành công!');
       setIsEditing(false);
     } catch (err: any) {
-      const errorMessage = err.message || 'Có lỗi xảy ra khi cập nhật.';
-      if (errorMessage.toLowerCase().includes('phone')) {
-        setError('PhoneNumber', { type: 'manual', message: 'Số điện thoại này đã được sử dụng.' });
+      console.error('Update profile error:', err);
+      
+      // Handle structured API error response
+      if (err.response && err.response.data) {
+        const errorData = err.response.data;
+        
+        // Handle field-specific errors from errorDetails
+        if (errorData.errorDetails) {
+          Object.keys(errorData.errorDetails).forEach(fieldName => {
+            const errorMessages = errorData.errorDetails[fieldName];
+            if (Array.isArray(errorMessages) && errorMessages.length > 0) {
+              setError(fieldName as keyof UpdateProfileData, { 
+                type: 'manual', 
+                message: errorMessages[0] 
+              });
+            }
+          });
+        }
+        
+        // If no field-specific errors but has general message, show it as server error
+        if (!errorData.errorDetails && errorData.message) {
+          setError('root.serverError', { 
+            type: 'manual', 
+            message: errorData.message 
+          });
+        }
       } else {
+        // Fallback for other error types
+        const errorMessage = err.message || 'Có lỗi xảy ra khi cập nhật.';
         setError('root.serverError', { type: 'manual', message: errorMessage });
       }
     } finally {
@@ -206,11 +223,12 @@ const ProfileInfo: React.FC = () => {
     setSuccess(null);
     if (user) {
       reset({
-        FullName: user.fullName || '',
-        PhoneNumber: user.phoneNumber || '',
-        DateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : undefined,
-        Sex: user.sex || undefined,
-        Address: user.address || undefined,
+        FullName: user.fullName || user.Full_Name || '',
+        PhoneNumber: user.phoneNumber || user.Phone_Number || '',
+        DateOfBirth: user.dateOfBirth ? user.dateOfBirth.split('T')[0] : 
+                     user.Date_Of_Birth ? user.Date_Of_Birth.split('T')[0] : undefined,
+        Sex: user.sex || user.Sex || undefined,
+        Address: user.address || user.Address || undefined,
       });
     }
   };
@@ -226,6 +244,11 @@ const ProfileInfo: React.FC = () => {
     } catch {
       return 'Ngày không hợp lệ';
     }
+  };
+
+  // Helper function to get user field value (handles both camelCase and snake_case)
+  const getUserField = (camelCase: keyof User, snakeCase: string) => {
+    return (user as any)?.[camelCase] || (user as any)?.[snakeCase];
   };
 
   const genderMap: Record<string, string> = {
@@ -247,26 +270,13 @@ const ProfileInfo: React.FC = () => {
     }
   };
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    visible: {
-      opacity: 1,
-      transition: {
-        staggerChildren: 0.1
-      }
-    }
-  };
-
   return (
-    <motion.div
-      className="space-y-8"
-      variants={containerVariants}
-      initial="hidden"
-      animate="visible"
-    >
+    <div className="space-y-8">
       {/* Header Section */}
       <motion.div
-        variants={itemVariants}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
         className="flex items-center justify-between"
       >
         <div className="flex items-center space-x-3">
@@ -323,8 +333,29 @@ const ProfileInfo: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl flex items-center space-x-2"
         >
-          <XMarkIcon className="w-5 h-5" />
+          <XMarkIcon className="w-5 h-5 flex-shrink-0" />
           <span>{errors.root.serverError.message}</span>
+        </motion.div>
+      )}
+
+      {/* Display field validation errors */}
+      {(errors.FullName || errors.PhoneNumber || errors.DateOfBirth || errors.Sex || errors.Address) && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-red-500/10 border border-red-500/30 text-red-400 p-4 rounded-xl space-y-2"
+        >
+          <div className="flex items-center space-x-2 mb-2">
+            <ExclamationCircleIcon className="w-5 h-5 flex-shrink-0" />
+            <span className="font-semibold">Vui lòng kiểm tra lại các thông tin sau:</span>
+          </div>
+          <ul className="list-disc list-inside space-y-1 ml-7">
+            {errors.FullName && <li>Họ và tên: {errors.FullName.message}</li>}
+            {errors.PhoneNumber && <li>Số điện thoại: {errors.PhoneNumber.message}</li>}
+            {errors.DateOfBirth && <li>Ngày sinh: {errors.DateOfBirth.message}</li>}
+            {errors.Sex && <li>Giới tính: {errors.Sex.message}</li>}
+            {errors.Address && <li>Địa chỉ: {errors.Address.message}</li>}
+          </ul>
         </motion.div>
       )}
 
@@ -341,7 +372,9 @@ const ProfileInfo: React.FC = () => {
 
       {/* Account Status */}
       <motion.div
-        variants={itemVariants}
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5, delay: 0.1 }}
         className="bg-slate-700/30 rounded-xl p-6 border border-slate-600/30"
       >
         <div className="flex items-center justify-between">
@@ -352,10 +385,10 @@ const ProfileInfo: React.FC = () => {
               <p className="text-slate-400 text-sm">Tình trạng hoạt động của tài khoản</p>
             </div>
           </div>
-          <span className={`px-4 py-2 rounded-full text-sm font-semibold border ${getAccountStatusColor(user.accountStatus || 'unknown')}`}>
-            {user.accountStatus === 'Active' ? 'Đang hoạt động' :
-              user.accountStatus === 'Inactive' ? 'Không hoạt động' :
-                user.accountStatus === 'Suspended' ? 'Bị đình chỉ' : 'Không xác định'}
+          <span className={`px-4 py-2 rounded-full text-sm font-semibold border ${getAccountStatusColor(getUserField('accountStatus', 'Account_Status') || 'unknown')}`}>
+            {getUserField('accountStatus', 'Account_Status') === 'Active' ? 'Đang hoạt động' :
+              getUserField('accountStatus', 'Account_Status') === 'Inactive' ? 'Không hoạt động' :
+                getUserField('accountStatus', 'Account_Status') === 'Suspended' ? 'Bị đình chỉ' : 'Không xác định'}
           </span>
         </div>
       </motion.div>
@@ -363,16 +396,16 @@ const ProfileInfo: React.FC = () => {
       {/* Form Fields */}
       <form onSubmit={handleSubmit(onSubmit)}>
         <motion.div
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
           className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-8"
         >
           {/* Full Name */}
           <InfoField
             icon={UserIcon}
             label="Họ và tên"
-            value={user.fullName}
+            value={getUserField('fullName', 'Full_Name')}
             isEditing={isEditing}
             error={errors.FullName}
             isRequired
@@ -397,11 +430,11 @@ const ProfileInfo: React.FC = () => {
           <InfoField
             icon={EnvelopeIcon}
             label="Email (Không thể thay đổi)"
-            value={user.email}
+            value={getUserField('email', 'Email')}
           >
             <input
               type="text"
-              value={user.email}
+              value={getUserField('email', 'Email')}
               disabled
               className="w-full p-4 bg-slate-800/50 text-slate-400 rounded-xl border border-slate-700 cursor-not-allowed"
             />
@@ -411,7 +444,7 @@ const ProfileInfo: React.FC = () => {
           <InfoField
             icon={PhoneIcon}
             label="Số điện thoại"
-            value={user.phoneNumber}
+            value={getUserField('phoneNumber', 'Phone_Number')}
             isEditing={isEditing}
             error={errors.PhoneNumber}
             isRequired
@@ -437,7 +470,7 @@ const ProfileInfo: React.FC = () => {
           <InfoField
             icon={CalendarDaysIcon}
             label="Ngày sinh"
-            value={formatDate(user.dateOfBirth)}
+            value={formatDate(getUserField('dateOfBirth', 'Date_Of_Birth'))}
             isEditing={isEditing}
             error={errors.DateOfBirth}
             isRequired
@@ -464,7 +497,7 @@ const ProfileInfo: React.FC = () => {
           <InfoField
             icon={SparklesIcon}
             label="Giới tính"
-            value={user.sex ? genderMap[user.sex] : undefined}
+            value={getUserField('sex', 'Sex') ? genderMap[getUserField('sex', 'Sex')] : undefined}
             isEditing={isEditing}
             error={errors.Sex}
           >
@@ -494,7 +527,7 @@ const ProfileInfo: React.FC = () => {
           <InfoField
             icon={MapPinIcon}
             label="Địa chỉ"
-            value={user.address}
+            value={getUserField('address', 'Address')}
             isEditing={isEditing}
             error={errors.Address}
             fullWidth={true}
@@ -518,18 +551,23 @@ const ProfileInfo: React.FC = () => {
           </InfoField>
 
           {/* Account Status - Not editable */}
-          <motion.div variants={itemVariants} className="md:col-span-2">
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            className="md:col-span-2"
+          >
             <label className="text-sm font-medium text-slate-400 flex items-center">
               <ShieldCheckIcon className="w-4 h-4 mr-2 text-[#FFD875]" />
               Trạng thái tài khoản
             </label>
-            <div className={`mt-2 inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-full ${getAccountStatusColor(user.status || 'Active')}`}>
-              {user.status || 'Active'}
+            <div className={`mt-2 inline-flex items-center gap-2 text-sm font-semibold px-3 py-1.5 rounded-full ${getAccountStatusColor(getUserField('status', 'Account_Status') || 'Active')}`}>
+              {getUserField('status', 'Account_Status') || getUserField('accountStatus', 'Account_Status') || 'Active'}
             </div>
           </motion.div>
         </motion.div>
       </form>
-    </motion.div>
+    </div>
   );
 };
 

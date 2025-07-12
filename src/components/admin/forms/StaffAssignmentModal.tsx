@@ -6,11 +6,13 @@ import apiClient from '../../../services/apiClient';
 
 interface User {
     User_ID: number;
-    Full_Name: string;
+    Full_Name?: string;
     Email: string;
-    Phone_Number: string;
-    Cinema_ID: number | null;
-    Cinema_Name: string | null;
+    Phone_Number?: string;
+    Cinema_ID?: number | null;
+    Cinema_Name?: string | null;
+    Name?: string; // Some APIs might return Name instead of Full_Name
+    Role?: string;
 }
 
 interface Cinema {
@@ -63,7 +65,16 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
         if (!cinema) return;
         try {
             const manager = await cinemaService.getCinemaManager(cinema.Cinema_ID);
-            setCurrentManager(manager);
+            // Normalize the manager object to match our User interface
+            if (manager) {
+                const normalizedManager: User = {
+                    ...manager,
+                    Full_Name: (manager as any).Full_Name || (manager as any).Name || 'Unknown Manager'
+                };
+                setCurrentManager(normalizedManager);
+            } else {
+                setCurrentManager(null);
+            }
         } catch (error) {
             console.error(`Error fetching current manager for cinema ${cinema.Cinema_ID}:`, error);
         }
@@ -73,7 +84,12 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
         if (!cinema) return;
         try {
             const staff = await cinemaService.getCinemaStaff(cinema.Cinema_ID);
-            setCurrentStaff(staff || []);
+            // Normalize the staff objects to match our User interface
+            const normalizedStaff: User[] = (staff || []).map((s: any) => ({
+                ...s,
+                Full_Name: s.Full_Name || s.Name || 'Unknown Staff'
+            }));
+            setCurrentStaff(normalizedStaff);
         } catch (error) {
             console.error(`Error fetching current staff for cinema ${cinema.Cinema_ID}:`, error);
         }
@@ -95,9 +111,16 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
 
             console.log(`Fetched ${type}s:`, fetchedUsers);
 
-            // Ensure we have valid users with Full_Name property
-            const validUsers = fetchedUsers.filter(user => user && typeof user.Full_Name === 'string');
-            setUsers(validUsers);
+            // Ensure we have valid users with Full_Name or Name property
+            const validUsers = fetchedUsers.filter(user => user && (user.Full_Name || user.Name));
+            
+            // Normalize the Full_Name property for consistency
+            const normalizedUsers = validUsers.map(user => ({
+                ...user,
+                Full_Name: user.Full_Name || user.Name || 'Unknown User'
+            }));
+            
+            setUsers(normalizedUsers);
         } catch (error) {
             console.error(`Error fetching ${type}s:`, error);
             toast.error(`Không thể tải danh sách ${type === 'manager' ? 'quản lý' : 'nhân viên'}`);
@@ -113,7 +136,8 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
             // Kiểm tra nếu đã có manager cho rạp này
             if (currentManager) {
                 if (currentManager.User_ID === userId) {
-                    setValidationError(`${currentManager.Full_Name} đã là quản lý của rạp này.`);
+                    const managerName = currentManager.Full_Name || currentManager.Name || 'Manager hiện tại';
+                    setValidationError(`${managerName} đã là quản lý của rạp này.`);
                     return false;
                 }
                 // Cho phép thay thế manager hiện tại mà không cảnh báo
@@ -123,14 +147,16 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
             // Kiểm tra nếu nhân viên đã được phân công cho rạp này
             const existingStaff = currentStaff.find(staff => staff.User_ID === userId);
             if (existingStaff) {
-                setValidationError(`${existingStaff.Full_Name} đã được phân công cho rạp này.`);
+                const staffName = existingStaff.Full_Name || existingStaff.Name || 'Nhân viên này';
+                setValidationError(`${staffName} đã được phân công cho rạp này.`);
                 return false;
             }
 
             // Kiểm tra nếu nhân viên đã được phân công cho rạp khác
             const selectedUser = users.find(user => user.User_ID === userId);
             if (selectedUser && selectedUser.Cinema_ID && selectedUser.Cinema_ID !== cinema?.Cinema_ID) {
-                setValidationError(`${selectedUser.Full_Name} đã được phân công cho rạp ${selectedUser.Cinema_Name}. Một nhân viên chỉ có thể được phân công cho một rạp.`);
+                const userName = selectedUser.Full_Name || selectedUser.Name || 'Nhân viên này';
+                setValidationError(`${userName} đã được phân công cho rạp ${selectedUser.Cinema_Name}. Một nhân viên chỉ có thể được phân công cho một rạp.`);
                 return false;
             }
         }
@@ -174,8 +200,10 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
             let successMessage = responseData.message;
             if (!successMessage) {
                 if (type === 'manager') {
+                    const selectedUser = users.find(u => u.User_ID === selectedUserId);
+                    const userName = selectedUser?.Full_Name || selectedUser?.Name || 'Quản lý';
                     successMessage = currentManager
-                        ? `Đã thay thế quản lý thành công. ${users.find(u => u.User_ID === selectedUserId)?.Full_Name} hiện là quản lý mới của rạp.`
+                        ? `Đã thay thế quản lý thành công. ${userName} hiện là quản lý mới của rạp.`
                         : 'Quản lý đã được phân công thành công';
                 } else {
                     successMessage = 'Nhân viên đã được phân công thành công';
@@ -232,8 +260,8 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
     };
 
     const filteredUsers = users.filter(user => {
-        const userName = user?.Full_Name?.toLowerCase() || '';
-        const userEmail = user?.Email?.toLowerCase() || '';
+        const userName = (user?.Full_Name || user?.Name || '').toLowerCase();
+        const userEmail = (user?.Email || '').toLowerCase();
         const search = searchTerm.toLowerCase();
         return userName.includes(search) || userEmail.includes(search);
     });
@@ -265,7 +293,7 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
                     {type === 'manager' && currentManager && (
                         <div className="mb-4 bg-slate-700/50 rounded-lg p-3 border border-[#FFD875]/30">
                             <div className="text-sm text-white">
-                                <span className="text-[#FFD875] font-medium">Quản lý hiện tại:</span> {currentManager.Full_Name}
+                                <span className="text-[#FFD875] font-medium">Quản lý hiện tại:</span> {currentManager.Full_Name || currentManager.Name || 'Quản lý'}
                             </div>
                             <div className="text-xs text-gray-400 mt-1">
                                 {currentManager.Email} (ID: {currentManager.User_ID})
@@ -282,9 +310,9 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
                                 <span className="text-[#FFD875] font-medium">Nhân viên hiện tại ({currentStaff.length}):</span>
                             </div>
                             <div className="text-xs text-gray-400 mt-1 max-h-20 overflow-y-auto">
-                                {currentStaff.map((staff, index) => (
+                                {currentStaff.map((staff) => (
                                     <div key={staff.User_ID} className="mb-1">
-                                        {staff.Full_Name} (ID: {staff.User_ID})
+                                        {staff.Full_Name || staff.Name || 'Nhân viên'} (ID: {staff.User_ID})
                                     </div>
                                 ))}
                             </div>
@@ -326,17 +354,20 @@ const StaffAssignmentModal: React.FC<StaffAssignmentModalProps> = ({
                                     >
                                         <div className="flex items-center">
                                             <div className="w-8 h-8 bg-[#FFD875] text-black rounded-full flex items-center justify-center mr-3 font-bold">
-                                                {user.Full_Name ? user.Full_Name.charAt(0).toUpperCase() : '?'}
+                                                {(() => {
+                                                    const name = user.Full_Name || user.Name;
+                                                    return name ? name.charAt(0).toUpperCase() : '?';
+                                                })()}
                                             </div>
                                             <div>
                                                 <div className="text-white font-medium">
-                                                    {user.Full_Name || 'Không có tên'}
+                                                    {user.Full_Name || user.Name || 'Không có tên'}
                                                     <span className="text-xs text-[#FFD875] ml-2">ID: {user.User_ID}</span>
                                                 </div>
                                                 <div className="text-gray-400 text-sm">{user.Email || 'Không có email'}</div>
                                                 {user.Cinema_ID && user.Cinema_Name && (
                                                     <div className="text-xs text-[#FFD875] mt-1">
-                                                        Đang quản lý: {user.Cinema_Name}
+                                                        Đang phân công: {user.Cinema_Name}
                                                     </div>
                                                 )}
                                             </div>

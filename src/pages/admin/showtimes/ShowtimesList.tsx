@@ -1,6 +1,6 @@
 // src/pages/admin/showtimes/ShowtimesList.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import '../../../components/admin/cinema-rooms/SeatMap.css';
@@ -17,18 +17,12 @@ import {
   CurrencyDollarIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  FunnelIcon,
   TicketIcon,
-  UserGroupIcon,
-  MapPinIcon,
   CubeIcon,
 } from '@heroicons/react/24/outline';
 import FullScreenLoader from '../../../components/FullScreenLoader';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
 import showtimeService from '../../../services/showtimeService';
-import movieService from '../../../services/movieService';
-import cinemaService from '../../../services/cinemaService';
-import { cinemaRoomService } from '../../../services/cinemaRoomService';
 import apiClient from '../../../services/apiClient';
 import type { Movie } from '../../../types/movie';
 import { useAuth } from '../../../contexts/SimpleAuthContext';
@@ -446,7 +440,6 @@ const formatCurrency = (amount: number) => {
 
 const ShowtimesList: React.FC = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { user } = useAuth(); // Lấy thông tin người dùng
   const isAdmin = user?.role === 'Admin'; // Kiểm tra xem người dùng có phải là Admin không
   
@@ -460,7 +453,6 @@ const ShowtimesList: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [importLoading, setImportLoading] = useState(false);
-  const [priceFilter, setPriceFilter] = useState<string>('all');
   const [timeFilter, setTimeFilter] = useState<string>('all');
   const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all');
   
@@ -471,9 +463,6 @@ const ShowtimesList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // State cho movie selector
-  const [showMovieSelector, setShowMovieSelector] = useState(false);
-  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Thêm loading states riêng cho movies và cinemas
   const [moviesLoading, setMoviesLoading] = useState(true);
@@ -880,9 +869,8 @@ const ShowtimesList: React.FC = () => {
           <ExcelImportExport
                   headers={excelHeaders}
             data={showtimesForExport}
-                  filename="danh-sach-suat-chieu"
+                  fileName="danh-sach-suat-chieu"
             onImport={handleImportShowtimes}
-                  importLoading={importLoading}
           />
           <Link
                   to="/admin/showtimes/add"

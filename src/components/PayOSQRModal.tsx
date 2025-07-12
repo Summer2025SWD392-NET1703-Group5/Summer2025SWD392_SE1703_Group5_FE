@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { XCircleIcon, ExclamationTriangleIcon } from '@heroicons/react/24/outline';
-import api from '../config/api';
+import React, { useState, useEffect } from "react";
+import { XCircleIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
+import api from "../config/api";
+import QRCode from "qrcode";
 
 interface PayOSQRModalProps {
   isOpen: boolean;
@@ -19,9 +20,9 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
   bookingId,
   onPaymentSuccess,
   amount = 0,
-  ticketInfo = '',
+  ticketInfo = "",
   skipConfirmation = false,
-  isStaff = false
+  isStaff = false,
 }) => {
   const [paymentQrUrl, setPaymentQrUrl] = useState<string | null>(null);
   const [orderCode, setOrderCode] = useState<string | null>(null);
@@ -35,56 +36,99 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
   useEffect(() => {
     // Chỉ chạy khi modal mở
     if (!isOpen) return;
-    
+
     const fetchPaymentQR = async () => {
       try {
         setIsLoading(true);
         setErrorMessage(null);
-        
+
         // Sử dụng amount từ props trực tiếp
         if (amount > 0) {
           setPaymentAmount(amount);
         }
-        
+
         let response;
         let responseData;
-        
+
         // Sử dụng API khác nhau cho staff và customer
         if (isStaff && bookingId) {
           // API dành cho staff - yêu cầu bookingId
           response = await api.post(`/payos/staff/create-payment-link/${bookingId}`);
         } else {
           // API thông thường cho khách hàng
-          response = await api.get('/payos/pending-payment-url');
+          response = await api.get("/payos/pending-payment-url");
         }
-        
+
         responseData = response.data?.data || response.data;
 
-        if (responseData?.qrCode || responseData?.payment?.qrCode) {
-          const qrData = responseData?.qrCode || responseData?.payment?.qrCode;
-          const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrData)}`;
-          
-          // Cập nhật thông tin QR code và orderCode
-          setPaymentQrUrl(qrUrl);
-          setOrderCode(responseData?.orderCode || responseData?.payment?.orderCode || null);
-          
-          // Cập nhật số tiền từ response nếu có
-          if (responseData?.amount || responseData?.payment?.amount) {
-            const apiAmount = responseData?.amount || responseData?.payment?.amount;
-            setPaymentAmount(apiAmount);
-          }
-          
-          // Chỉ bắt đầu kiểm tra nếu có orderCode
-          const orderCodeToCheck = responseData?.orderCode || responseData?.payment?.orderCode;
-          if (orderCodeToCheck) {
-            startCheckPaymentStatus(orderCodeToCheck);
+        console.log("=== PayOS API Response Debug ===");
+        console.log("Full response:", response);
+        console.log("Response data:", responseData);
+
+        // Lấy QR code từ response theo structure thực tế
+        let qrData = null;
+        let orderCode = null;
+        let paymentAmount = null;
+
+        // Kiểm tra structure: data.payment.qrCode
+        if (responseData?.payment?.qrCode) {
+          qrData = responseData.payment.qrCode;
+          orderCode = responseData.payment.orderCode;
+          paymentAmount = responseData.payment.amount;
+          console.log("Found QR in data.payment.qrCode");
+        }
+        // Fallback: kiểm tra các structure khác
+        else if (responseData?.qrCode) {
+          qrData = responseData.qrCode;
+          orderCode = responseData.orderCode;
+          paymentAmount = responseData.amount;
+          console.log("Found QR in data.qrCode");
+        }
+
+        console.log("Extracted QR Data:", qrData);
+        console.log("Extracted Order Code:", orderCode);
+        console.log("Extracted Amount:", paymentAmount);
+
+        if (qrData) {
+          try {
+            // Tạo QR code từ QR data sử dụng thư viện local
+            const qrDataUrl = await QRCode.toDataURL(qrData, {
+              width: 250,
+              margin: 2,
+              color: {
+                dark: "#000000",
+                light: "#FFFFFF",
+              },
+            });
+
+            console.log("Generated QR DataURL successfully");
+
+            // Cập nhật state
+            setPaymentQrUrl(qrDataUrl);
+            setOrderCode(orderCode);
+
+            if (paymentAmount) {
+              setPaymentAmount(paymentAmount);
+            }
+
+            // Bắt đầu kiểm tra trạng thái thanh toán
+            if (orderCode) {
+              startCheckPaymentStatus(orderCode);
+            }
+
+            console.log("QR Modal state updated successfully");
+          } catch (qrError) {
+            console.error("Lỗi khi tạo QR code:", qrError);
+            setErrorMessage("Không thể tạo mã QR thanh toán - Vui lòng thử lại");
           }
         } else {
-          setErrorMessage('Không thể tạo mã QR thanh toán');
+          console.error("Không tìm thấy QR code trong response");
+          console.error("Response structure:", Object.keys(responseData || {}));
+          setErrorMessage("Không thể tạo mã QR thanh toán - Vui lòng thử lại");
         }
       } catch (error: any) {
-        console.error('PayOS QR error:', error);
-        setErrorMessage(error.response?.data?.message || error.message || 'Lỗi khi tạo mã QR thanh toán');
+        console.error("PayOS QR error:", error);
+        setErrorMessage(error.response?.data?.message || error.message || "Lỗi khi tạo mã QR thanh toán");
       } finally {
         setIsLoading(false);
       }
@@ -112,11 +156,11 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
       try {
         const response = await api.get(`/payos/check-status/${orderCode}`);
         const status = response.data?.data?.status || response.data?.status;
-        
-        if (status === 'PAID' || status === 'COMPLETED' || status === 'SUCCESS') {
+
+        if (status === "PAID" || status === "COMPLETED" || status === "SUCCESS") {
           clearInterval(intervalId);
           setCheckInterval(null);
-          
+
           if (onPaymentSuccess) {
             const transactionId = response.data?.data?.transactionId || orderCode;
             onPaymentSuccess(transactionId);
@@ -154,10 +198,7 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
   return (
     <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 backdrop-blur-sm">
       <div className="bg-slate-800 p-8 rounded-2xl max-w-md w-full border-2 border-[#FFD875]/60 shadow-lg shadow-[#FFD875]/10 m-4 relative">
-        <button
-          onClick={handleCloseRequest} 
-          className="absolute top-4 right-4 text-gray-400 hover:text-white"
-        >
+        <button onClick={handleCloseRequest} className="absolute top-4 right-4 text-gray-400 hover:text-white">
           <XCircleIcon className="h-6 w-6" />
         </button>
 
@@ -166,7 +207,7 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
         {/* Hiển thị số tiền thanh toán */}
         <div className="mb-4 text-center">
           <p className="text-2xl font-bold text-[#FFD875] drop-shadow-[0_0_10px_rgba(255,216,117,0.5)]">
-            {paymentAmount ? paymentAmount.toLocaleString('vi-VN') : 0} đ
+            {paymentAmount ? paymentAmount.toLocaleString("vi-VN") : 0} đ
           </p>
         </div>
 
@@ -178,7 +219,7 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
         ) : errorMessage ? (
           <div className="bg-red-900/20 border border-red-700/50 rounded-lg p-4 text-center">
             <p className="text-red-400">{errorMessage}</p>
-            <button 
+            <button
               onClick={handleCloseRequest}
               className="mt-4 bg-[#FFD875] text-black px-4 py-2 rounded-lg hover:bg-[#FFD875]/80 transition-colors"
             >
@@ -187,20 +228,23 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
           </div>
         ) : paymentQrUrl ? (
           <>
-              <div className="bg-white p-4 rounded-lg mb-4">
-                <div className="flex justify-center">
-                  <img
-                    src={paymentQrUrl}
-                    alt="QR Code thanh toán"
-                    className="max-w-full h-auto"
-                  onError={() => setErrorMessage('Không thể tải mã QR')}
-                  />
+            <div className="bg-white p-4 rounded-lg mb-4">
+              <div className="flex justify-center">
+                <img
+                  src={paymentQrUrl}
+                  alt="QR Code thanh toán"
+                  className="max-w-full h-auto"
+                  onError={(e) => {
+                    console.error("QR Image load error:", e);
+                    console.error("QR URL:", paymentQrUrl);
+                    setErrorMessage("Không thể tải mã QR");
+                  }}
+                  onLoad={() => console.log("QR Image loaded successfully")}
+                />
               </div>
-              </div>
+            </div>
 
-            <p className="text-center text-sm text-gray-300 mb-6">
-              Quét mã QR bằng ứng dụng ngân hàng để thanh toán
-            </p>
+            <p className="text-center text-sm text-gray-300 mb-6">Quét mã QR bằng ứng dụng ngân hàng để thanh toán</p>
 
             <div className="text-center">
               <a
@@ -228,9 +272,12 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
               <ExclamationTriangleIcon className="w-8 h-8 text-[#FFD875]" />
               <h3 className="text-xl font-medium text-white">Xác nhận hủy thanh toán</h3>
             </div>
-            
-            <p className="text-gray-300 mb-6">Bạn có chắc chắn muốn hủy quá trình thanh toán này? Vé của bạn sẽ không được xác nhận nếu không hoàn tất thanh toán.</p>
-            
+
+            <p className="text-gray-300 mb-6">
+              Bạn có chắc chắn muốn hủy quá trình thanh toán này? Vé của bạn sẽ không được xác nhận nếu không hoàn tất
+              thanh toán.
+            </p>
+
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowConfirmClose(false)}
@@ -252,4 +299,4 @@ const PayOSQRModal: React.FC<PayOSQRModalProps> = ({
   );
 };
 
-export default PayOSQRModal; 
+export default PayOSQRModal;

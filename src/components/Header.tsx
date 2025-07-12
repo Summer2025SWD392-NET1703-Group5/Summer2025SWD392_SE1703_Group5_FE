@@ -7,14 +7,12 @@ import {
   FilmIcon,
   HomeIcon,
   TicketIcon,
-  UserIcon,
   BellIcon,
   ChevronDownIcon,
   CogIcon,
   ArrowRightOnRectangleIcon,
   BuildingOfficeIcon,
   ClockIcon,
-  MapPinIcon,
   TagIcon,
   UserCircleIcon,
   CheckCircleIcon,
@@ -115,6 +113,14 @@ const Header: React.FC = () => {
   const getNavItems = () => {
     // Staff chỉ được xem một số trang nhất định
     if (user?.role === "Staff") {
+      // If staff is not assigned to any cinema, restrict access
+      // Wait for user data to be fully loaded before making this decision
+      if (!user?.cinemaId) {
+        console.log("[Header] Staff without cinema assignment, hiding navigation");
+        return []; // No navigation items for unassigned staff
+      }
+      
+      console.log("[Header] Assigned staff, showing staff navigation");
       return [
         { name: "Lịch chiếu", path: "/showtimes", icon: ClockIcon },
         { name: "Quét vé", path: "/staff/scanner", icon: TicketIcon },
@@ -908,45 +914,80 @@ const Header: React.FC = () => {
                           {/* Staff Profile Links */}
                           {user.role === "Staff" && (
                             <>
-                              <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2 border border-blue-500/30 bg-blue-500/5">
-                                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-blue-500 group-hover:bg-blue-600">
-                                  <ClockIcon className="h-6 w-6 text-white" aria-hidden="true" />
-                                </div>
-                                <div className="flex-auto">
-                                  <Link
-                                    to="/showtimes"
-                                    className="block font-semibold text-blue-400 group-hover:text-white"
-                                  >
-                                    Lịch chiếu
-                                    <span className="absolute inset-0" />
-                                  </Link>
-                                  <p className="mt-1 text-gray-400">Xem và đặt vé cho khách</p>
-                                </div>
-                              </div>
-                              <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2">
-                                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
-                                  <TicketIcon className="h-6 w-6 text-white" aria-hidden="true" />
-                                </div>
-                                <div className="flex-auto">
-                                  <Link to="/staff/scanner" className="block font-semibold text-white">
-                                    Quét vé
-                                    <span className="absolute inset-0" />
-                                  </Link>
-                                  <p className="mt-1 text-gray-400">Scan và kiểm tra vé</p>
-                                </div>
-                              </div>
-                              <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700">
-                                <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
-                                  <UserCircleIcon className="h-6 w-6 text-white" aria-hidden="true" />
-                                </div>
-                                <div className="flex-auto">
-                                  <Link to="/profile" className="block font-semibold text-white">
-                                    Thông tin cá nhân
-                                    <span className="absolute inset-0" />
-                                  </Link>
-                                  <p className="mt-1 text-gray-400">Xem thông tin cá nhân</p>
-                                </div>
-                              </div>
+                              {/* Show restriction message for unassigned staff */}
+                              {!user?.cinemaId ? (
+                                <>
+                                  <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30 mb-3">
+                                    <div className="flex items-center space-x-3">
+                                      <div className="flex h-8 w-8 flex-none items-center justify-center rounded-lg bg-red-500">
+                                        <ExclamationTriangleIcon className="h-5 w-5 text-white" />
+                                      </div>
+                                      <div className="flex-auto">
+                                        <h4 className="text-sm font-semibold text-red-400">Chưa được phân công</h4>
+                                        <p className="text-xs text-gray-300 mt-1">
+                                          Liên hệ Quản lý để được phân công rạp
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  {/* Only settings available for unassigned staff */}
+                                  <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700">
+                                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
+                                      <CogIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                                    </div>
+                                    <div className="flex-auto">
+                                      <Link to="/profile/settings" className="block font-semibold text-white">
+                                        Cài đặt
+                                        <span className="absolute inset-0" />
+                                      </Link>
+                                      <p className="mt-1 text-gray-400">Cài đặt tài khoản</p>
+                                    </div>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  {/* Full access for assigned staff */}
+                                  <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2 border border-blue-500/30 bg-blue-500/5">
+                                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-blue-500 group-hover:bg-blue-600">
+                                      <ClockIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                                    </div>
+                                    <div className="flex-auto">
+                                      <Link
+                                        to="/showtimes"
+                                        className="block font-semibold text-blue-400 group-hover:text-white"
+                                      >
+                                        Lịch chiếu
+                                        <span className="absolute inset-0" />
+                                      </Link>
+                                      <p className="mt-1 text-gray-400">Xem và đặt vé cho khách</p>
+                                    </div>
+                                  </div>
+                                  <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700 mb-2">
+                                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
+                                      <TicketIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                                    </div>
+                                    <div className="flex-auto">
+                                      <Link to="/staff/scanner" className="block font-semibold text-white">
+                                        Quét vé
+                                        <span className="absolute inset-0" />
+                                      </Link>
+                                      <p className="mt-1 text-gray-400">Scan và kiểm tra vé</p>
+                                    </div>
+                                  </div>
+                                  <div className="group relative flex items-center gap-x-6 rounded-lg p-3 text-sm leading-6 hover:bg-gray-700">
+                                    <div className="flex h-11 w-11 flex-none items-center justify-center rounded-lg bg-gray-700 group-hover:bg-gray-600">
+                                      <CogIcon className="h-6 w-6 text-white" aria-hidden="true" />
+                                    </div>
+                                    <div className="flex-auto">
+                                      <Link to="/profile/settings" className="block font-semibold text-white">
+                                        Cài đặt
+                                        <span className="absolute inset-0" />
+                                      </Link>
+                                      <p className="mt-1 text-gray-400">Cài đặt tài khoản</p>
+                                    </div>
+                                  </div>
+                                </>
+                              )}
                             </>
                           )}
                         </div>
@@ -1229,22 +1270,40 @@ const Header: React.FC = () => {
                     {/* Staff-specific mobile menu */}
                     {user.role === "Staff" ? (
                       <>
-                        <Link
-                          to="/showtimes"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center space-x-2 px-3 py-2 text-blue-400 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
-                        >
-                          <ClockIcon className="w-4 h-4" />
-                          <span className="text-sm">Lịch chiếu</span>
-                        </Link>
-                        <Link
-                          to="/staff/scanner"
-                          onClick={() => setIsMobileMenuOpen(false)}
-                          className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
-                        >
-                          <TicketIcon className="w-4 h-4" />
-                          <span className="text-sm">Quét vé</span>
-                        </Link>
+                        {/* Show restriction message for unassigned staff */}
+                        {!user?.cinemaId && (
+                          <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 mb-2">
+                            <div className="flex items-center space-x-2">
+                              <ExclamationTriangleIcon className="h-4 w-4 text-red-400 flex-shrink-0" />
+                              <div>
+                                <p className="text-xs text-red-400 font-semibold">Chưa được phân công</p>
+                                <p className="text-xs text-gray-300">Liên hệ Quản lý để được phân công rạp</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        
+                        {/* Only show navigation if staff is assigned to cinema */}
+                        {user?.cinemaId && (
+                          <>
+                            <Link
+                              to="/showtimes"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="flex items-center space-x-2 px-3 py-2 text-blue-400 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
+                            >
+                              <ClockIcon className="w-4 h-4" />
+                              <span className="text-sm">Lịch chiếu</span>
+                            </Link>
+                            <Link
+                              to="/staff/scanner"
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="flex items-center space-x-2 px-3 py-2 text-gray-300 hover:text-[#FFD875] hover:bg-[#FFD875]/5 rounded-lg transition-colors"
+                            >
+                              <TicketIcon className="w-4 h-4" />
+                              <span className="text-sm">Quét vé</span>
+                            </Link>
+                          </>
+                        )}
                       </>
                     ) : (
                       /* Customer/other roles mobile menu */

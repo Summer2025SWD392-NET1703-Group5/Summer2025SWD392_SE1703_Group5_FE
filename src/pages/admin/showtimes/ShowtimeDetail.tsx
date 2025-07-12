@@ -19,13 +19,6 @@ import showtimeService from '../../../services/showtimeService';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
 import { toast } from 'react-hot-toast';
 
-// Ánh xạ ID rạp với tên rạp (dùng làm dữ liệu dự phòng khi API lỗi)
-const cinemaNames: Record<string, string> = {
-  '1': 'Galaxy Nguyễn Du',
-  '2': 'Galaxy Tân Bình',
-  '3': 'Galaxy Kinh Dương Vương',
-};
-
 interface Showtime {
   id: string;
   movieTitle: string;
@@ -39,7 +32,7 @@ interface Showtime {
   totalSeats: number;
   bookedSeats: number;
   availableSeats: number;
-  status: 'scheduled' | 'completed';
+  status: 'scheduled' | 'hidden';
   revenue: number;
   createdAt: Date;
   updatedAt: Date;
@@ -106,7 +99,7 @@ const ShowtimeDetail: React.FC = () => {
       // Lấy thông tin phòng chiếu
       if (data.roomId) {
         promises.push(
-          cinemaRoomService.getCinemaRoomById(data.roomId)
+          cinemaRoomService.getCinemaRoomById(parseInt(data.roomId))
             .then(room => ({ type: 'room', data: room }))
             .catch(error => {
               console.error('Lỗi khi lấy thông tin phòng:', error);
@@ -140,8 +133,7 @@ const ShowtimeDetail: React.FC = () => {
 
       // Lấy tên rạp từ API hoặc fallback
       const cinemaName = cinemaDetails?.name || cinemaDetails?.Name ||
-        data.cinemaName || data.cinema?.name ||
-        cinemaNames[data.cinemaId] || 'Galaxy Cinema';
+        data.cinemaName || data.cinema?.name || 'Galaxy Cinema';
 
       // Xử lý dữ liệu ngày giờ an toàn
       let formattedDate = '';
@@ -193,13 +185,14 @@ const ShowtimeDetail: React.FC = () => {
       const revenue = ticketPrice * bookedSeats;
 
       // Xử lý status an toàn
-      let safeStatus: 'scheduled' | 'completed' = 'scheduled';
-      if (data.status === 'completed') {
-        safeStatus = 'completed';
-      } else if (data.status === 'scheduled') {
-        safeStatus = 'scheduled';
+      let safeStatus: 'scheduled' | 'hidden' = 'scheduled';
+      
+      // Map các status từ API sang status của frontend
+      const statusValue = data.status as string;
+      if (statusValue === 'hidden' || statusValue === 'cancelled' || statusValue === 'completed') {
+        safeStatus = 'hidden';
       } else {
-        // Fallback cho các status khác (ongoing, cancelled, etc.)
+        // Mặc định là scheduled cho tất cả các trường hợp khác
         safeStatus = 'scheduled';
       }
 
@@ -229,8 +222,6 @@ const ShowtimeDetail: React.FC = () => {
       console.error('Error fetching showtime details:', error);
       toast.error('Không thể tải thông tin suất chiếu');
 
-      // Sử dụng mock data nếu API lỗi
-      setShowtime(mockShowtime);
     } finally {
       setLoading(false);
     }
@@ -258,7 +249,7 @@ const ShowtimeDetail: React.FC = () => {
     }
   };
 
-  const handleStatusUpdate = async (newStatus: 'scheduled' | 'completed') => {
+  const handleStatusUpdate = async (newStatus: 'scheduled' | 'hidden') => {
     if (!showtime) return;
 
     setStatusUpdating(true);
@@ -298,7 +289,7 @@ const ShowtimeDetail: React.FC = () => {
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       'scheduled': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Đã lên lịch' },
-      'completed': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Đã hoàn thành' },
+      'hidden': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Đã ẩn' },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
@@ -317,34 +308,13 @@ const ShowtimeDetail: React.FC = () => {
   const getStatusLabel = (status: string) => {
     const labels: { [key: string]: string } = {
       'scheduled': 'Đã lên lịch',
-      'completed': 'Đã hoàn thành',
+      'hidden': 'Đã ẩn',
     };
     return labels[status] || status;
   };
 
   const getOccupancyPercentage = (booked: number, total: number) => {
     return total > 0 ? Math.round((booked / total) * 100) : 0;
-  };
-
-  // Thêm mockShowtime để sử dụng khi API lỗi
-  const mockShowtime: Showtime = {
-    id: id || '1',
-    movieTitle: 'Chưa xác định',
-    moviePoster: 'https://placehold.co/300x450/darkgray/white?text=No+Image',
-    cinemaName: 'Galaxy Cinema',
-    roomName: 'Phòng 04',
-    date: '2025-06-06',
-    time: '22:13',
-    duration: 90,
-    price: 90000,
-    totalSeats: 50,
-    bookedSeats: 0,
-    availableSeats: 50,
-    status: 'scheduled' as const,
-    revenue: 0,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-    createdBy: 'admin',
   };
 
   if (loading || !showtime) {
@@ -498,34 +468,11 @@ const ShowtimeDetail: React.FC = () => {
               <button
                 onClick={() => setShowCancelDialog(true)}
                 className="flex items-center gap-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                disabled={showtime.status === 'completed'}
+                disabled={showtime.status === 'hidden'}
               >
                 <TrashIcon className="w-5 h-5" />
                 Hủy lịch chiếu
               </button>
-            </div>
-          </div>
-
-          <div className="bg-slate-800 rounded-lg p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Thông tin chi tiết</h3>
-
-            <div className="space-y-3 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-400">ID lịch chiếu:</span>
-                <span className="text-white">{showtime.id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Tạo bởi:</span>
-                <span className="text-white">{showtime.createdBy}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Ngày tạo:</span>
-                <span className="text-white">{showtime.createdAt.toLocaleDateString('vi-VN')}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Cập nhật lần cuối:</span>
-                <span className="text-white">{showtime.updatedAt.toLocaleDateString('vi-VN')}</span>
-              </div>
             </div>
           </div>
         </div>

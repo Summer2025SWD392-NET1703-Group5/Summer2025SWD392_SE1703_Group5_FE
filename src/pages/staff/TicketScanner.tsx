@@ -3,7 +3,6 @@ import {
     QrCodeIcon,
     ClockIcon,
     CheckCircleIcon,
-    ListBulletIcon,
     ArrowPathIcon,
     UserIcon,
     CalendarDaysIcon,
@@ -14,22 +13,22 @@ import {
     BuildingLibraryIcon,
 } from '@heroicons/react/24/outline';
 import { motion, AnimatePresence } from 'framer-motion';
-import { toast } from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import QRScanner from '../../components/QRScanner';
 import TicketInfo from '../../components/TicketInfo';
 import { ticketService } from '../../services/ticketService';
 import { cinemaService } from '../../services/cinemaService';
+import { useAuth } from '../../contexts/SimpleAuthContext';
 import type { ScanResult, ScanListItem } from '../../types/ticket';
 import type { Cinema } from '../../types/cinema';
 
 const TicketScanner: React.FC = () => {
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [showScanner, setShowScanner] = useState(false);
     const [scanResult, setScanResult] = useState<ScanResult | null>(null);
     const [scanList, setScanList] = useState<ScanListItem[]>([]);
     const [pendingTickets, setPendingTickets] = useState<any[]>([]);
-    const [loading, setLoading] = useState(false);
     const [activeTab, setActiveTab] = useState('pending'); // 'pending' hoặc 'scanned'
     const [stats, setStats] = useState({
         totalScanned: 0,
@@ -39,14 +38,13 @@ const TicketScanner: React.FC = () => {
     const [cinema, setCinema] = useState<Cinema | null>(null);
     const [loadingCinema, setLoadingCinema] = useState(false);
     const [refreshAnimation, setRefreshAnimation] = useState(false);
-
     useEffect(() => {
         const loadInitialData = async () => {
             try {
                 await Promise.all([
                     loadScanList(),
                     loadPendingTickets(),
-                    loadCinema()
+                    user?.cinemaId ? loadCinema(user.cinemaId) : Promise.resolve()
                 ]);
             } catch (error) {
                 console.error('Failed to load initial data:', error);
@@ -54,12 +52,12 @@ const TicketScanner: React.FC = () => {
         };
 
         loadInitialData();
-    }, []);
+    }, [user?.cinemaId]);
 
-    const loadCinema = async () => {
+    const loadCinema = async (cinemaId: number) => {
         try {
             setLoadingCinema(true);
-            const cinemaData = await cinemaService.getCinemaById(1);
+            const cinemaData = await cinemaService.getCinemaById(cinemaId);
             setCinema(cinemaData);
         } catch (error) {
             console.error('Error loading cinema:', error);
@@ -106,10 +104,19 @@ const TicketScanner: React.FC = () => {
         }
     };
 
-    const handleRefresh = () => {
+    const handleRefresh = async () => {
         setRefreshAnimation(true);
-        Promise.all([loadScanList(), loadPendingTickets(), loadCinema()]);
-        setTimeout(() => setRefreshAnimation(false), 1000);
+        try {
+            await Promise.all([
+                loadScanList(), 
+                loadPendingTickets(), 
+                user?.cinemaId ? loadCinema(user.cinemaId) : Promise.resolve()
+            ]);
+        } catch (error) {
+            console.error('Error refreshing data:', error);
+        } finally {
+            setTimeout(() => setRefreshAnimation(false), 1000);
+        }
     };
 
     const handleScan = async (qrData: string) => {
@@ -126,7 +133,7 @@ const TicketScanner: React.FC = () => {
             setScanResult({
                 success: false,
                 message: 'Có lỗi xảy ra khi quét vé',
-                ticket: null
+                ticket: undefined
             });
         }
     };
@@ -143,7 +150,7 @@ const TicketScanner: React.FC = () => {
             setScanResult({
                 success: false,
                 message: 'Có lỗi xảy ra khi quét vé',
-                ticket: null
+                ticket: undefined
             });
         }
     };
@@ -340,12 +347,12 @@ const TicketScanner: React.FC = () => {
                         {/* Secondary Action - Refresh */}
                         <motion.button
                             onClick={handleRefresh}
-                            disabled={loading}
+                            disabled={refreshAnimation}
                             className="w-full py-3.5 bg-gradient-to-br from-slate-700/80 to-slate-800/80 backdrop-blur-md text-white rounded-xl hover:from-slate-600/80 hover:to-slate-700/80 transition-all duration-300 flex items-center justify-center gap-2.5 border border-slate-600/30 shadow-lg"
                             whileHover={{ y: -1 }}
                             whileTap={{ scale: 0.98 }}
                         >
-                            <ArrowPathIcon className={`w-5 h-5 ${loading || refreshAnimation ? 'animate-spin' : ''}`} />
+                            <ArrowPathIcon className={`w-5 h-5 ${refreshAnimation ? 'animate-spin' : ''}`} />
                             Làm mới danh sách
                         </motion.button>
                         
@@ -416,7 +423,7 @@ const TicketScanner: React.FC = () => {
                                     <UserIcon className="w-5 h-5 text-slate-300" />
                                 </div>
                                 <div>
-                                    <h3 className="text-white font-medium">Nhân viên</h3>
+                                    <h3 className="text-white font-medium">{user?.fullName}</h3>
                                     <p className="text-slate-400 text-sm flex items-center gap-1">
                                         <BuildingLibraryIcon className="w-4 h-4 text-[#FFD875]" />
                                         {loadingCinema ? (

@@ -1,11 +1,12 @@
 // pages/ShowtimePage.tsx
 import React, { useState, useEffect } from 'react';
-import { Calendar, Clock, MapPin, Filter, ChevronLeft, Users, Star, Film, Building2, Sparkles, SlidersHorizontal, CalendarDays } from 'lucide-react';
-import { Link, useNavigate, useSearchParams } from 'react-router-dom';
+import { Clock, MapPin, Filter, ChevronLeft, ChevronRight, Users, Star, Film, Building2, Sparkles, SlidersHorizontal, CalendarDays } from 'lucide-react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import showtimesPageService from '../services/ShowtimesPageService';
 import { useAuth } from '../contexts/SimpleAuthContext';
 import AuthModal from '../components/AuthModal';
+import { toast } from 'react-hot-toast';
 
 
 // Interfaces
@@ -16,6 +17,7 @@ interface Movie {
   duration: number;
   genre: string;
   rating: string;
+  language?: string;
 }
 
 
@@ -32,6 +34,9 @@ interface Showtime {
   movieId: number;
   movieTitle: string;
   moviePoster?: string;
+  movieDuration?: number;
+  movieGenre?: string;
+  movieRating?: string;
   cinemaId: number;
   cinemaName: string;
   cinemaAddress: string;
@@ -45,13 +50,26 @@ interface Showtime {
   availableSeats: number;
   totalSeats: number;
   language: string;
+  isSoldOut?: boolean;
+  seatStatus?: string;
 }
 
 
 const ShowtimePage: React.FC = () => {
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user, isLoading } = useAuth();
   const [searchParams] = useSearchParams();
+
+  // Check if unassigned staff trying to access showtimes
+  useEffect(() => {
+    // Wait for user data to be loaded before checking restrictions
+    if (!isLoading && user && user.role === 'Staff' && !user.cinemaId) {
+      console.log("[ShowtimePage] Blocking unassigned staff access:", user);
+      toast.error('Bạn chưa được phân công làm việc tại rạp nào. Vui lòng liên hệ Quản lý hoặc Admin để được phân công.');
+      navigate('/profile/settings', { replace: true });
+      return;
+    }
+  }, [user, isLoading, navigate]);
 
   // Auth modal state
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
@@ -76,7 +94,7 @@ const ShowtimePage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [expandedCinemas, setExpandedCinemas] = useState<Record<number, boolean>>({});
-  const [showtimesPerCinema, setShowtimesPerCinema] = useState<number>(10);
+  const showtimesPerCinema = 10;
 
 
   // Generate dates for the next 7 days
@@ -84,15 +102,12 @@ const ShowtimePage: React.FC = () => {
     const dates = [];
     const today = new Date();
 
-
     for (let i = 0; i < 7; i++) {
       const date = new Date();
       date.setDate(today.getDate() + i);
 
-
       const dayNames = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
       const monthNames = ['01', '02', '03', '04', '05', '06', '07', '08', '09', '10', '11', '12'];
-
 
       dates.push({
         value: date.toISOString().split('T')[0],
@@ -107,8 +122,23 @@ const ShowtimePage: React.FC = () => {
     return dates;
   };
 
-
   const dates = generateDates();
+
+  // Lock cinema filter for assigned staff
+  useEffect(() => {
+    // Wait for user data to be loaded and check if user is assigned staff
+    if (!isLoading && user && user.role === 'Staff' && user.cinemaId && cinemas.length > 0) {
+      console.log("[ShowtimePage] Locking cinema filter for staff to cinema:", user.cinemaId);
+      setSelectedCinema(user.cinemaId);
+      
+      // Also set the city filter to the staff's cinema city
+      const staffCinema = cinemas.find(c => c.id === user.cinemaId);
+      if (staffCinema && staffCinema.city) {
+        console.log("[ShowtimePage] Locking city filter for staff to city:", staffCinema.city);
+        setSelectedCity(staffCinema.city);
+      }
+    }
+  }, [user, isLoading, cinemas]);
 
 
   // Handle showtime selection with authentication check
@@ -230,7 +260,6 @@ const ShowtimePage: React.FC = () => {
         timeSlot: selectedTimeSlot !== 'all' ? selectedTimeSlot : undefined,
       };
 
-
       const showtimesData = await showtimesPageService.getAllShowtimes(filters);
       console.log('Fetched showtimes:', showtimesData);
 
@@ -242,7 +271,6 @@ const ShowtimePage: React.FC = () => {
             // Get movie details
             const movie = moviesData.find(m => m.id === showtime.movieId);
 
-
             // Get room details
             let roomInfo = null;
             try {
@@ -251,10 +279,8 @@ const ShowtimePage: React.FC = () => {
               console.error('Error fetching room info:', error);
             }
 
-
             // Get cinema info
             const cinema = cinemasData.find(c => c.id === showtime.cinemaId);
-
 
             // Get seats info from API
             let seatsInfo = null;
@@ -263,7 +289,6 @@ const ShowtimePage: React.FC = () => {
             } catch (error) {
               console.log('Getting seats info for showtime:', showtime.id);
             }
-
 
             return {
               ...showtime,
@@ -281,7 +306,7 @@ const ShowtimePage: React.FC = () => {
               endTime: showtime.endTime?.substring(0, 5) || '00:00',
               language: movie?.language || 'Vietsub',
               date: showtime.showDate,
-              // Cập nhật thông tin ghế từ API
+              // Update seat information from API
               availableSeats: seatsInfo?.AvailableSeats || showtime.availableSeats || 50,
               totalSeats: seatsInfo?.TotalSeats || showtime.totalSeats || 100,
               bookedSeats: seatsInfo?.BookedSeats || 0,
@@ -305,7 +330,6 @@ const ShowtimePage: React.FC = () => {
         })
       );
 
-
       console.log('Enriched showtimes:', enrichedShowtimes);
       setShowtimes(enrichedShowtimes);
     } catch (error) {
@@ -313,7 +337,6 @@ const ShowtimePage: React.FC = () => {
       setShowtimes([]);
     }
   };
-
 
   // Fetch showtimes
   const fetchShowtimes = async () => {
@@ -394,11 +417,6 @@ const ShowtimePage: React.FC = () => {
       [cinemaId]: !prev[cinemaId]
     }));
   };
-
-
-
-
-
 
   return (
     <div className="min-h-screen bg-black pt-20">
@@ -504,24 +522,47 @@ const ShowtimePage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {/* City Filter */}
             <div className="group">
-              <label className="block text-[#FFD875] text-sm mb-2 font-medium">Thành phố</label>
+              <label className="block text-[#FFD875] text-sm mb-2 font-medium">
+                Thành phố
+                {user && user.role === 'Staff' && user.cinemaId && (
+                  <span className="ml-2 text-xs bg-[#FFD875]/20 text-[#FFD875] px-2 py-1 rounded-lg">
+                    Theo rạp được phân công
+                  </span>
+                )}
+              </label>
               <div className="relative">
                 <MapPin className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875]/70 w-5 h-5 pointer-events-none" />
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/70 text-white rounded-xl border border-slate-700 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/90 hover:border-[#FFD875]/50"
+                  disabled={!!(user && user.role === 'Staff' && user.cinemaId)}
+                  className={`w-full pl-10 pr-4 py-3 ${
+                    user && user.role === 'Staff' && user.cinemaId 
+                      ? 'bg-slate-700/50 text-slate-300 cursor-not-allowed border-slate-600' 
+                      : 'bg-slate-800/70 text-white cursor-pointer hover:bg-slate-800/90 hover:border-[#FFD875]/50'
+                  } rounded-xl border border-slate-700 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/30 transition-all duration-300 appearance-none`}
                   style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFD875'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                    backgroundImage: user && user.role === 'Staff' && user.cinemaId 
+                      ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`
+                      : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFD875'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 0.7rem center',
                     backgroundSize: '1.5em 1.5em'
                   }}
                 >
                   <option value="all">Tất cả thành phố</option>
-                  {cities.map(city => (
-                    <option key={city} value={city}>{city}</option>
-                  ))}
+                  {cities
+                    .filter(city => {
+                      // If user is staff, only show their assigned cinema's city
+                      if (user && user.role === 'Staff' && user.cinemaId) {
+                        const staffCinema = cinemas.find(c => c.id === user.cinemaId);
+                        return city === staffCinema?.city;
+                      }
+                      return true;
+                    })
+                    .map(city => (
+                      <option key={city} value={city}>{city}</option>
+                    ))}
                 </select>
               </div>
             </div>
@@ -529,15 +570,29 @@ const ShowtimePage: React.FC = () => {
 
             {/* Cinema Filter */}
             <div className="group">
-              <label className="block text-[#FFD875] text-sm mb-2 font-medium">Rạp chiếu phim</label>
+              <label className="block text-[#FFD875] text-sm mb-2 font-medium">
+                Rạp chiếu phim
+                {user && user.role === 'Staff' && user.cinemaId && (
+                  <span className="ml-2 text-xs bg-[#FFD875]/20 text-[#FFD875] px-2 py-1 rounded-lg">
+                    Rạp được phân công
+                  </span>
+                )}
+              </label>
               <div className="relative">
                 <Building2 className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875]/70 w-5 h-5 pointer-events-none" />
                 <select
                   value={selectedCinema || ''}
                   onChange={(e) => setSelectedCinema(e.target.value ? Number(e.target.value) : null)}
-                  className="w-full pl-10 pr-4 py-3 bg-slate-800/70 text-white rounded-xl border border-slate-700 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/30 transition-all duration-300 appearance-none cursor-pointer hover:bg-slate-800/90 hover:border-[#FFD875]/50"
+                  disabled={!!(user && user.role === 'Staff' && user.cinemaId)}
+                  className={`w-full pl-10 pr-4 py-3 ${
+                    user && user.role === 'Staff' && user.cinemaId 
+                      ? 'bg-slate-700/50 text-slate-300 cursor-not-allowed border-slate-600' 
+                      : 'bg-slate-800/70 text-white cursor-pointer hover:bg-slate-800/90 hover:border-[#FFD875]/50'
+                  } rounded-xl border border-slate-700 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/30 transition-all duration-300 appearance-none`}
                   style={{
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFD875'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
+                    backgroundImage: user && user.role === 'Staff' && user.cinemaId 
+                      ? `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23888'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`
+                      : `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23FFD875'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`,
                     backgroundRepeat: 'no-repeat',
                     backgroundPosition: 'right 0.7rem center',
                     backgroundSize: '1.5em 1.5em'
@@ -546,6 +601,13 @@ const ShowtimePage: React.FC = () => {
                   <option value="">Tất cả rạp</option>
                   {cinemas
                     .filter(cinema => selectedCity === 'all' || cinema.city === selectedCity)
+                    .filter(cinema => {
+                      // If user is staff, only show their assigned cinema
+                      if (user && user.role === 'Staff' && user.cinemaId) {
+                        return cinema.id === user.cinemaId;
+                      }
+                      return true;
+                    })
                     .map(cinema => (
                       <option key={cinema.id} value={cinema.id}>{cinema.name}</option>
                     ))}
@@ -780,15 +842,9 @@ const ShowtimePage: React.FC = () => {
                                       </div>
                                     </div>
 
-
                                     <div className="text-slate-400 text-sm mb-2">
                                       {showtime.roomName} • {showtime.language}
                                     </div>
-
-
-
-
-
 
                                     <div className={`text-xs mt-2 flex items-center ${getAvailabilityColor(showtime.availableSeats, showtime.totalSeats)}`}>
                                       <Users className="w-4 h-4 mr-1" />
@@ -850,18 +906,14 @@ const ShowtimePage: React.FC = () => {
             </div>
           </motion.div>
         )}
-      </div>
-
-
-      {/* Authentication Modal */}
+      </div>      {/* Authentication Modal */}
       <AuthModal
         isOpen={isAuthModalOpen}
         onClose={handleAuthModalClose}
         onSuccess={handleAuthSuccess}
       />
 
-
-      <style jsx>{`
+      <style>{`
         .scrollbar-hide {
           -ms-overflow-style: none;
           scrollbar-width: none;
@@ -894,10 +946,4 @@ const ShowtimePage: React.FC = () => {
   );
 };
 
-
 export default ShowtimePage;
-
-
-
-
-

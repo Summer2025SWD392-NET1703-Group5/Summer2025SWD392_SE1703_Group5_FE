@@ -13,7 +13,7 @@ import {
   HomeIcon,
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
 import { cinemaService } from '../../../services/cinemaService';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
@@ -70,8 +70,17 @@ const CinemaRoomsList: React.FC = () => {
             // Lấy ID của rạp manager quản lý
             const cinemaId = fetchedCinema.Cinema_ID;
             
+            // Đặt cinemaId vào URL params để đồng bộ
+            setSearchParams({ cinemaId: cinemaId.toString() });
+            
             // Lấy danh sách phòng của rạp đó
             await fetchRoomsForCinema(cinemaId);
+          } else {
+            // Manager không có rạp được phân công
+            toast.error('Bạn chưa được phân công quản lý rạp nào.');
+            setCinemas([]);
+            setRooms([]);
+            setFilteredRooms([]);
           }
         }
       } catch (error) {
@@ -88,14 +97,15 @@ const CinemaRoomsList: React.FC = () => {
     try {
       setLoading(true);
       
-      // Sử dụng API khác nhau tùy thuộc vào vai trò người dùng
-      let fetchedRooms;
-      if (isAdmin) {
-        fetchedRooms = await cinemaRoomService.getRoomsByCinemaId(cinemaId);
-      } else {
-        // Manager - gọi API riêng để lấy phòng trong rạp của họ
-        fetchedRooms = await cinemaRoomService.getRoomsByCinemaId(cinemaId);
+      // Manager chỉ có thể truy cập phòng trong rạp được phân công
+      // Admin có thể truy cập phòng của bất kỳ rạp nào
+      if (!isAdmin && managerCinema && cinemaId !== managerCinema.Cinema_ID) {
+        toast.error('Bạn không có quyền truy cập vào rạp này.');
+        return;
       }
+      
+      // Gọi API lấy danh sách phòng theo cinema ID
+      const fetchedRooms = await cinemaRoomService.getRoomsByCinemaId(cinemaId);
       
       setRooms(fetchedRooms);
       setFilteredRooms(fetchedRooms);
@@ -114,9 +124,18 @@ const CinemaRoomsList: React.FC = () => {
 
   useEffect(() => {
     if (selectedCinemaId) {
+      // Kiểm tra quyền truy cập cho Manager
+      if (!isAdmin && managerCinema) {
+        // Manager chỉ được truy cập vào rạp được phân công
+        if (selectedCinemaId !== managerCinema.Cinema_ID.toString()) {
+          // Nếu Manager cố gắng truy cập rạp khác, chuyển hướng về rạp của họ
+          setSearchParams({ cinemaId: managerCinema.Cinema_ID.toString() });
+          return;
+        }
+      }
       fetchRoomsForCinema(Number(selectedCinemaId));
     }
-  }, [selectedCinemaId]);
+  }, [selectedCinemaId, isAdmin, managerCinema]);
 
   // Filtering logic
   useEffect(() => {
@@ -544,7 +563,7 @@ const CinemaRoomsList: React.FC = () => {
                               <PencilSquareIcon className="w-4 h-4" />
                             </Link>
                             <Link
-                              to={`/admin/cinema-rooms/${room.Cinema_Room_ID}/seats`}
+                              to={`/admin/cinema-rooms/${room.Cinema_Room_ID}/seats?cinemaId=${selectedCinemaId}`}
                               className="p-2 bg-slate-700/70 backdrop-blur-md text-gray-300 hover:text-blue-400 rounded-lg transition-all duration-300 border border-slate-600/50"
                               title="Cấu hình sơ đồ ghế"
                             >

@@ -934,7 +934,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950">
       {/* Header with back button */}
-      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 sticky top-0 z-40">
+      <div className="bg-slate-800/50 backdrop-blur-sm border-b border-slate-700/50 mt-20 lg:mt-24 pt-4">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <button

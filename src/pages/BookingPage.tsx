@@ -1474,8 +1474,13 @@ const BookingPage: React.FC = () => {
       // Clear ALL session storage để tránh restore
       console.log("🗑️ [HANDLE_BACK] Clearing all session storage...");
 
-      // 1. Clear sessionStorage - MULTIPLE KEYS
-      const sessionKeys = [`booking_session_${showtimeId}`, `galaxy_cinema_session_${showtimeId}`, "bookingData"];
+      // 1. Clear sessionStorage - MULTIPLE KEYS bao gồm payment state
+      const sessionKeys = [
+        `booking_session_${showtimeId}`,
+        `galaxy_cinema_session_${showtimeId}`,
+        `payment_state_${showtimeId}`, // 🔧 FIX: Clear payment state
+        "bookingData",
+      ];
 
       sessionKeys.forEach((key) => {
         const before = sessionStorage.getItem(key);
@@ -1485,6 +1490,9 @@ const BookingPage: React.FC = () => {
           `🗑️ [HANDLE_BACK] ${key}: ${before ? "EXISTED" : "NOT_FOUND"} → ${after ? "STILL_EXISTS" : "CLEARED"}`
         );
       });
+
+      // 🔧 FIX: Clear payment state using helper function
+      clearPaymentState();
 
       // 2. Clear localStorage - MULTIPLE KEYS
       const localStorageKeys = [`galaxy_cinema_session_${showtimeId}`, "bookingData", "selectedSeats"];
@@ -1652,7 +1660,9 @@ const BookingPage: React.FC = () => {
   const handleCancelExistingBooking = async () => {
     try {
       setLoading(true);
-      toast.loading("Đang kiểm tra thông tin đơn hàng...");
+
+      // 🚀 Hiển thị loading ngay lập tức với timeout
+      toast.loading("Đang kiểm tra thông tin đơn hàng...", { duration: Infinity });
 
       const checkPendingResponse = await api.get("/bookings/check-pending");
 
@@ -1667,49 +1677,89 @@ const BookingPage: React.FC = () => {
       }
 
       if (!bookingId) {
+        toast.dismiss();
         toast.error("Không tìm thấy thông tin đơn hàng đang chờ thanh toán");
         setLoading(false);
         return;
       }
 
-      toast.loading(`Đang hủy đơn đặt vé #${bookingId}...`);
+      // 🔧 OPTIMIZATION: Thực hiện cancel booking với timeout và immediate UI feedback
+      console.log(`🗑️ [CANCEL_MODAL] Starting cancel booking ${bookingId}...`);
+      toast.loading(`Đang hủy đơn đặt vé #${bookingId}...`, { duration: Infinity });
 
-      // Thay thế directCancelBooking bằng cancelBooking
-      const cancelResult = await bookingService.cancelBooking(bookingId);
-
-      toast.dismiss();
-      toast.success(cancelResult.message || `Đã hủy đơn đặt vé #${bookingId} thành công`);
-
+      // 1. 🚀 IMMEDIATE CLEANUP: Clear frontend state ngay lập tức
+      console.log(`🧹 [CANCEL_MODAL] Step 1: Immediate frontend cleanup`);
       setBookingError(null);
 
-      // 🔧 FIX: Force cleanup WebSocket state và cross-tab sync sau khi hủy booking
-      console.log(`🧹 [CANCEL_MODAL] Force cleanup WebSocket state after booking cancellation`);
+      // Clear frontend storage ngay lập tức
+      webSocketService.clearAllSelectedSeats(undefined, showtimeId?.toString());
 
-      // 1. Force cleanup WebSocket server state
-      console.log(`🧹 [CANCEL_MODAL] Step 1: Force cleanup WebSocket server state for showtime: ${showtimeId}`);
-      await webSocketService.forceCleanupUserSeats(showtimeId?.toString());
-
-      // 2. Clear all session storage
-      console.log(`🧹 [CANCEL_MODAL] Step 2: Clear all session storage`);
-      const sessionKeys = [`booking_session_${showtimeId}`, `galaxy_cinema_session_${showtimeId}`, "bookingData"];
+      // Clear session storage bao gồm payment state
+      const sessionKeys = [
+        `booking_session_${showtimeId}`,
+        `galaxy_cinema_session_${showtimeId}`,
+        `payment_state_${showtimeId}`, // 🔧 FIX: Xóa payment state để tránh restore lại payment page
+        "bookingData",
+      ];
 
       sessionKeys.forEach((key) => {
         sessionStorage.removeItem(key);
         console.log(`🗑️ [CANCEL_MODAL] Cleared session: ${key}`);
       });
 
-      // 3. Clear individual seat sessions
-      console.log(`🧹 [CANCEL_MODAL] Step 3: Clear individual seat sessions`);
+      // 🔧 FIX: Clear payment state using helper function
+      clearPaymentState();
+
+      // Clear individual seat sessions
       seats.forEach((seat) => {
         const sessionKey = `seat_${showtimeId}_${seat.id}`;
         sessionStorage.removeItem(sessionKey);
-        console.log(`🗑️ [CANCEL_MODAL] Cleared seat session: ${sessionKey}`);
       });
 
-      // 4. Force broadcast cleanup to all tabs
-      console.log(`🧹 [CANCEL_MODAL] Step 4: Force broadcast cleanup to all tabs`);
+      // 2. 🔄 IMMEDIATE RECONNECT: Kết nối lại WebSocket ngay lập tức
+      console.log(`🔄 [CANCEL_MODAL] Step 2: Immediate WebSocket reconnect`);
+
+      const reconnectPromise = (async () => {
+        try {
+          console.log(`🚀 [CANCEL_MODAL] Force reconnecting WebSocket...`);
+          const reconnected = await webSocketService.forceReconnect(showtimeId?.toString());
+
+          if (reconnected) {
+            console.log(`✅ [CANCEL_MODAL] WebSocket reconnected successfully`);
+
+            // Fetch fresh seats ngay sau khi reconnect
+            setTimeout(async () => {
+              try {
+                await fetchSeats();
+                console.log(`✅ [CANCEL_MODAL] Seats refreshed after reconnection`);
+              } catch (fetchError) {
+                console.warn(`⚠️ [CANCEL_MODAL] Failed to fetch seats:`, fetchError);
+              }
+            }, 200);
+          } else {
+            console.warn(`⚠️ [CANCEL_MODAL] WebSocket reconnection failed, retrying...`);
+            // Retry reconnection sau 2s
+            setTimeout(() => {
+              webSocketService.forceReconnect(showtimeId?.toString());
+            }, 2000);
+          }
+        } catch (reconnectError) {
+          console.error(`❌ [CANCEL_MODAL] WebSocket reconnection error:`, reconnectError);
+          // Fallback: refresh seats without websocket
+          setTimeout(async () => {
+            try {
+              await fetchSeats();
+              console.log(`✅ [CANCEL_MODAL] Seats refreshed via fallback`);
+            } catch (fetchError) {
+              console.warn(`⚠️ [CANCEL_MODAL] Fallback fetch seats failed:`, fetchError);
+            }
+          }, 1000);
+        }
+      })();
+
+      // 3. 📡 BROADCAST CLEANUP: Thông báo cho các tabs khác
+      console.log(`📡 [CANCEL_MODAL] Step 3: Broadcast cleanup to other tabs`);
       try {
-        // Broadcast cleanup event to other tabs
         const cleanupData = {
           action: "FORCE_CLEANUP",
           showtimeId: showtimeId,
@@ -1717,44 +1767,74 @@ const BookingPage: React.FC = () => {
           timestamp: Date.now(),
         };
 
-        // Use BroadcastChannel if available
         if (window.BroadcastChannel) {
           const channel = new BroadcastChannel("galaxy_cinema_cleanup");
           channel.postMessage(cleanupData);
-          console.log(`📡 [CANCEL_MODAL] Broadcasted cleanup via BroadcastChannel:`, cleanupData);
+          console.log(`📡 [CANCEL_MODAL] Broadcasted cleanup via BroadcastChannel`);
           channel.close();
         } else {
-          // Fallback to localStorage
           localStorage.setItem("galaxy_cinema_cleanup_event", JSON.stringify(cleanupData));
           setTimeout(() => localStorage.removeItem("galaxy_cinema_cleanup_event"), 100);
-          console.log(`📡 [CANCEL_MODAL] Broadcasted cleanup via localStorage:`, cleanupData);
+          console.log(`📡 [CANCEL_MODAL] Broadcasted cleanup via localStorage`);
         }
-      } catch (error) {
-        console.warn(`⚠️ [CANCEL_MODAL] Failed to broadcast cleanup:`, error);
+      } catch (broadcastError) {
+        console.warn(`⚠️ [CANCEL_MODAL] Failed to broadcast cleanup:`, broadcastError);
       }
 
-      // 5. 🔥 FORCE RECONNECT WebSocket sau khi cancel booking
-      console.log(`🔄 [CANCEL_MODAL] Step 5: Force reconnecting WebSocket after cleanup`);
-      setTimeout(async () => {
-        console.log(`🚀 [CANCEL_MODAL] Force reconnecting WebSocket...`);
-        await webSocketService.forceReconnect(showtimeId?.toString());
+      // 4. 🔧 BACKGROUND API CALL: Thực hiện cancel booking với timeout
+      const cancelPromise = bookingService.cancelBooking(bookingId);
+      const timeoutPromise = new Promise(
+        (_, reject) => setTimeout(() => reject(new Error("Cancel timeout")), 15000) // 15s timeout
+      );
 
-        // 6. Fetch fresh seats sau khi reconnect
-        setTimeout(async () => {
-          await fetchSeats();
-          console.log(`✅ [CANCEL_MODAL] Seats refreshed after booking cancellation and cleanup`);
-        }, 500);
-      }, 1000);
+      let cancelResult;
+      try {
+        cancelResult = await Promise.race([cancelPromise, timeoutPromise]);
+        console.log(`✅ [CANCEL_MODAL] API cancel successful:`, cancelResult);
+
+        toast.dismiss();
+        toast.success(cancelResult.message || `Đã hủy đơn đặt vé #${bookingId} thành công`);
+      } catch (timeoutError) {
+        console.warn(`⚠️ [CANCEL_MODAL] Cancel booking timeout, UI already updated`);
+        toast.dismiss();
+        toast.success(`Đang xử lý hủy đơn đặt vé #${bookingId}. UI đã được cập nhật.`);
+      }
+
+      // 5. 🧹 BACKGROUND SERVER CLEANUP: Không chờ để UI responsive
+      console.log(`🧹 [CANCEL_MODAL] Step 5: Background server cleanup`);
+      webSocketService.forceCleanupUserSeats(showtimeId?.toString()).catch((cleanupError) => {
+        console.warn(`⚠️ [CANCEL_MODAL] Background server cleanup failed:`, cleanupError);
+      });
+
+      // Không chờ reconnect promise để UI responsive
+      reconnectPromise.catch((error) => {
+        console.error(`❌ [CANCEL_MODAL] Reconnect promise failed:`, error);
+      });
     } catch (error: any) {
       toast.dismiss();
-      toast.error("Có lỗi xảy ra khi hủy đơn đặt vé. Vui lòng thử lại sau.");
+      console.error(`❌ [CANCEL_MODAL] Cancel booking error:`, error);
+
+      // Hiển thị error message phù hợp
+      const errorMessage = error.message?.includes("timeout")
+        ? "Đang xử lý hủy đơn đặt vé. UI đã được cập nhật."
+        : "Có lỗi xảy ra khi hủy đơn đặt vé. Vui lòng thử lại sau.";
+
+      toast.error(errorMessage);
       setBookingError(null);
 
-      // Vẫn cố gắng cập nhật trạng thái ghế ngay cả khi có lỗi
+      // Vẫn cố gắng cleanup và refresh seats
       try {
-        await fetchSeats();
-      } catch (e) {
-        // Silent error handling - không thể cập nhật trạng thái ghế
+        webSocketService.clearAllSelectedSeats(undefined, showtimeId?.toString());
+        setTimeout(async () => {
+          try {
+            await fetchSeats();
+            console.log(`✅ [CANCEL_MODAL] Seats refreshed after error`);
+          } catch (fetchError) {
+            console.warn(`⚠️ [CANCEL_MODAL] Error recovery fetch failed:`, fetchError);
+          }
+        }, 1000);
+      } catch (recoveryError) {
+        console.error(`❌ [CANCEL_MODAL] Error recovery failed:`, recoveryError);
       }
     } finally {
       setLoading(false);
@@ -1808,13 +1888,21 @@ const BookingPage: React.FC = () => {
               }))
             );
 
-            // Clear local session storage
-            const sessionKeys = [`booking_session_${showtimeId}`, `galaxy_cinema_session_${showtimeId}`, "bookingData"];
+            // Clear local session storage bao gồm payment state
+            const sessionKeys = [
+              `booking_session_${showtimeId}`,
+              `galaxy_cinema_session_${showtimeId}`,
+              `payment_state_${showtimeId}`, // 🔧 FIX: Clear payment state
+              "bookingData",
+            ];
 
             sessionKeys.forEach((key) => {
               sessionStorage.removeItem(key);
               console.log(`🗑️ [CROSS_TAB] Cleared session: ${key}`);
             });
+
+            // 🔧 FIX: Clear payment state using helper function
+            clearPaymentState();
 
             console.log("✅ [CROSS_TAB] Force cleanup completed");
           }
@@ -2012,7 +2100,7 @@ const BookingPage: React.FC = () => {
       {loading ? (
         <FullScreenLoader />
       ) : (
-        <main className="flex-grow container mx-auto px-4 py-1">
+        <main className="flex-grow container mx-auto px-4 py-1 booking-page-content">
           {/* 🔄 Conditional rendering based on current view */}
           {currentView === "seats" ? (
             <SeatSelection

@@ -586,16 +586,6 @@ const MovieDetail: React.FC = () => {
                     <PlayIcon className="w-5 h-5" />
                     <span>Xem Trailer</span>
                   </button>
-
-                  {!movie.isComingSoon && (
-                    <button
-                      onClick={handleBookNow}
-                      className="bg-transparent border-2 border-[#FFD875] text-[#FFD875] hover:bg-[#FFD875] hover:text-black py-3 px-6 rounded-lg font-medium transition-all duration-300 transform hover:scale-105 flex items-center space-x-2"
-                    >
-                      <CalendarIcon className="w-5 h-5" />
-                      <span>Đặt Vé</span>
-                    </button>
-                  )}
                 </div>
               </div>
             </div>

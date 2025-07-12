@@ -14,6 +14,7 @@ import StaffProtectedApp from "./components/StaffProtectedApp";
 // Import auth components
 import { GuestAllowedRoute, AdminRoute, AuthRequiredRoute } from "./components/auth";
 import AdminOnlyRoute from "./components/auth/AdminOnlyRoute";
+import { AssignedManagerRoute } from "./components/admin/routes/AssignedManagerRoute";
 
 // Public Pages
 import HomePage from "./pages/HomePage";
@@ -24,29 +25,32 @@ import PromotionsPage from "./pages/PromotionsPage";
 const AppLoader = <FullScreenLoader text="Đang tải..." />;
 const AdminLoader = <FullScreenLoader text="Đang tải trang quản trị..." />;
 
-// Dashboard Route Wrapper - Choose dashboard based on user role
+// Dashboard Route Wrapper - Role-based dashboard access
 const DashboardRouteWrapper: React.FC = () => {
   const { user } = useAuth();
-  
-  if (user?.role === 'Admin') {
+
+  // Only Admin users can access dashboard
+  if (user?.role === "Admin") {
     return <LazyWrapper component={AdminPages.Dashboard} fallback={AdminLoader} />;
-  } else if (user?.role === 'Manager') {
-    return <LazyWrapper component={AdminPages.ManagerDashboard} fallback={AdminLoader} />;
+  } else if (user?.role === "Manager") {
+    // Redirect managers to movies management as their default page
+    return <Navigate to="/admin/movies" replace />;
   }
-  
-  // Default to admin dashboard for backward compatibility
-  return <LazyWrapper component={AdminPages.Dashboard} fallback={AdminLoader} />;
+
+  // Default fallback - redirect to login if no valid role
+  return <Navigate to="/login" replace />;
 };
 
 // Admin Pages - Nhóm các trang admin theo chức năng để tối ưu code splitting
 const AdminPages = {
   Layout: React.lazy(() => import(/* webpackChunkName: "admin-layout" */ "./pages/admin/AdminLayout")),
   Dashboard: React.lazy(() => import(/* webpackChunkName: "admin-core" */ "./pages/admin/AdminDashboard")),
-  ManagerDashboard: React.lazy(() => import(/* webpackChunkName: "manager-core" */ "./pages/manager/ManagerDashboard")),
   Analytics: React.lazy(() => import(/* webpackChunkName: "admin-core" */ "./pages/admin/Analytics")),
 
   // Movie management
-  MovieManagement: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/MovieManagement")),
+  MovieManagement: React.lazy(
+    () => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/MovieManagement")
+  ),
   AddMovie: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/AddMovie")),
   EditMovie: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/EditMovie")),
   MovieDetail: React.lazy(() => import(/* webpackChunkName: "admin-movies" */ "./pages/admin/movies/MovieDetail")),
@@ -137,7 +141,6 @@ const PublicPages = {
   // Booking flow
   BookingPage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/BookingPage")),
   ShowtimePage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/ShowtimePage")),
-  ShowtimeSelection: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/ShowtimeSelectionPage")),
   SeatSelection: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/SeatSelectionPage")),
   PaymentPage: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/PaymentPage")),
   BookingSuccess: React.lazy(() => import(/* webpackChunkName: "booking-flow" */ "./pages/BookingSuccessPage")),
@@ -237,7 +240,7 @@ function App() {
                   path="/staff/scanner"
                   element={
                     <Suspense fallback={AppLoader}>
-                      <AuthRequiredRoute allowAdminAccess={true}>
+                      <AuthRequiredRoute allowAdminAccess={true} requireCinemaAssignment={true}>
                         <LazyWrapper component={PublicPages.TicketScanner} />
                       </AuthRequiredRoute>
                     </Suspense>
@@ -321,25 +324,31 @@ function App() {
                   <Route
                     path="bookings"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.BookingsList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.BookingsList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
                     path="ticket-pricing"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.TicketPricingManagement} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.TicketPricingManagement} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
                     path="customers"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CustomersList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CustomersList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
@@ -373,9 +382,11 @@ function App() {
                   <Route
                     path="cinemas"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CinemasList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CinemasList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
@@ -391,9 +402,11 @@ function App() {
                   <Route
                     path="cinemas/:id"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CinemaDetail} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CinemaDetail} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
@@ -409,73 +422,91 @@ function App() {
                   <Route
                     path="cinema-rooms"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CinemaRoomsList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CinemaRoomsList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="cinema-rooms/new"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CinemaRoomEditor} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CinemaRoomEditor} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="cinema-rooms/:id"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CinemaRoomEditor} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CinemaRoomEditor} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="cinema-rooms/:roomId/seats"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.SeatLayoutPage} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.SeatLayoutPage} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="showtimes"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.ShowtimesList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.ShowtimesList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="showtimes/add"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.AddShowtime} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.AddShowtime} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="showtimes/:id"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.EditShowtime} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.EditShowtime} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="showtimes/:id/detail"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.ShowtimeDetail} fallback={AdminLoader} />
-                      </Suspense>
+                      <AssignedManagerRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.ShowtimeDetail} fallback={AdminLoader} />
+                        </Suspense>
+                      </AssignedManagerRoute>
                     }
                   />
                   <Route
                     path="promotions"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.PromotionsList} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.PromotionsList} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
@@ -503,25 +534,31 @@ function App() {
                   <Route
                     path="reports/daily"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.DailyReports} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.DailyReports} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
                     path="reports/monthly"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.MonthlyReports} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.MonthlyReports} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                   <Route
                     path="reports/custom"
                     element={
-                      <Suspense fallback={AdminLoader}>
-                        <LazyWrapper component={AdminPages.CustomReports} fallback={AdminLoader} />
-                      </Suspense>
+                      <AdminOnlyRoute>
+                        <Suspense fallback={AdminLoader}>
+                          <LazyWrapper component={AdminPages.CustomReports} fallback={AdminLoader} />
+                        </Suspense>
+                      </AdminOnlyRoute>
                     }
                   />
                 </Route>
@@ -549,10 +586,6 @@ function App() {
                                 element={<LazyWrapper component={PublicPages.ForgotPassword} />}
                               />
                               <Route path="/movies" element={<LazyWrapper component={PublicPages.MovieList} />} />
-                              <Route
-                                path="/movies/:id/showtimes"
-                                element={<LazyWrapper component={PublicPages.ShowtimeSelection} />}
-                              />
                               <Route
                                 path="/movies/:id/:slug"
                                 element={<LazyWrapper component={PublicPages.MovieDetail} />}
@@ -682,14 +715,6 @@ function App() {
                     element={
                       <Suspense fallback={AppLoader}>
                         <LazyWrapper component={PublicPages.BookingHistory} />
-                      </Suspense>
-                    }
-                  />
-                  <Route
-                    path="favorites"
-                    element={
-                      <Suspense fallback={AppLoader}>
-                        <LazyWrapper component={PublicPages.Favorites} />
                       </Suspense>
                     }
                   />

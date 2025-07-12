@@ -13,6 +13,7 @@ export interface User {
   avatar?: string;
   role: 'Customer' | 'Staff' | 'Admin' | 'Manager';
   accountStatus: 'Active' | 'Inactive' | 'Pending_Verification' | 'Deleted';
+  cinemaId?: number; // Cinema assignment for Staff users
 }
 
 /**

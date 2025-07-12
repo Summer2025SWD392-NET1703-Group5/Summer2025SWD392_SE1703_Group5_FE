@@ -417,15 +417,27 @@ class CinemaService {
      */
     async getCinemaStaff(cinemaId: number): Promise<User[]> {
         try {
-            // Sử dụng API /user/staff thay vì /cinemas/{id}/staff vì endpoint cũ không tồn tại
+            // Sử dụng endpoint /user/staff và filter theo cinema_id
             const response = await apiClient.get<UserResponse>(`/user/staff`);
-            
-            // Lọc staff theo cinema nếu cần (nếu API trả về thông tin cinema_id)
             let staffList = response.data.data || [];
             
-            // Nếu API không filter theo cinema_id, trả về tất cả staff
-            // TODO: Có thể cần filter dựa trên Cinema_ID nếu API trả về thông tin này
-            return staffList;
+            // Filter staff theo cinema_id nếu có thông tin Cinema_ID trong response
+            const filteredStaff = staffList.filter((staff: any) => {
+                // Kiểm tra các field có thể chứa thông tin cinema
+                return staff.Cinema_ID === cinemaId || 
+                       staff.cinema_id === cinemaId ||
+                       staff.CinemaId === cinemaId ||
+                       staff.assigned_cinema_id === cinemaId;
+            });
+            
+            // Nếu không có staff nào được filter, có thể do API không trả về cinema info
+            // Trong trường hợp này, trả về empty array thay vì tất cả staff
+            if (filteredStaff.length === 0) {
+                console.warn(`No staff found for cinema ${cinemaId}, API might not include cinema assignment info`);
+                return [];
+            }
+            
+            return filteredStaff;
         } catch (error) {
             console.error(`Error fetching staff for cinema with ID ${cinemaId}:`, error);
             throw error;
@@ -438,20 +450,28 @@ class CinemaService {
      */
     async getCinemaManager(cinemaId: number): Promise<User | null> {
         try {
-            // Thử gọi endpoint cũ trước, nếu lỗi thì fallback sang API khác
-            try {
-                const response = await apiClient.get<{ success: boolean, data: User, message?: string }>(`/cinemas/${cinemaId}/manager`);
-                return response.data.data || null;
-            } catch (originalError) {
-                // Fallback: Lấy tất cả managers và tìm theo cinema_id
-                console.log(`Endpoint /cinemas/${cinemaId}/manager không tồn tại, fallback sang /user/managers`);
-                const managersResponse = await apiClient.get<UserResponse>(`/user/managers`);
-                const managers = managersResponse.data.data || [];
-                
-                // TODO: Filter manager theo cinema_id nếu có thông tin này trong API response
-                // Hiện tại trả về manager đầu tiên hoặc null
-                return managers.length > 0 ? managers[0] : null;
+            // Sử dụng endpoint /user/managers và filter theo cinema_id
+            const response = await apiClient.get<UserResponse>(`/user/managers`);
+            let managersList = response.data.data || [];
+            
+            console.log('Fetched managers:', managersList);
+            console.log(`Filtering managers for cinema ID ${cinemaId}`);
+            // Filter managers theo cinema_id nếu có thông tin Cinema_ID trong response
+            const filteredManagers = managersList.filter((manager: any) => {
+                // Kiểm tra các field có thể chứa thông tin cinema
+                return manager.Cinema_ID === cinemaId || 
+                       manager.cinema_id === cinemaId ||
+                       manager.CinemaId === cinemaId ||
+                       manager.assigned_cinema_id === cinemaId;
+            });
+            
+            // Trả về manager đầu tiên nếu tìm thấy, hoặc null nếu không có
+            if (filteredManagers.length > 0) {
+                return filteredManagers[0];
             }
+            
+            console.warn(`No manager found for cinema ${cinemaId}, API might not include cinema assignment info`);
+            return null;
         } catch (error) {
             console.error(`Error fetching manager for cinema with ID ${cinemaId}:`, error);
             return null;

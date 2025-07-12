@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { EnvelopeIcon, PencilIcon, ArrowUpOnSquareIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import ProfileSidebar from '../../components/profile/ProfileSidebar';
+import UnassignedStaffNotice from '../../components/notifications/UnassignedStaffNotice';
 import { useAuth } from '../../contexts/SimpleAuthContext';
 import { userService } from '../../services/userService';
 import imageCompression from 'browser-image-compression';
@@ -19,7 +20,7 @@ const ProfileLayout: React.FC = () => {
 
   useEffect(() => {
     const fetchUserPoints = async () => {
-      if (user) {
+      if (user && user.role === 'Customer') {
         setIsLoadingPoints(true);
         try {
           const response = await userService.getUserPoints();
@@ -135,30 +136,6 @@ const ProfileLayout: React.FC = () => {
                       alt={user.fullName}
                       className="relative w-24 h-24 rounded-full object-cover ring-2 ring-[#FFD875]/40 group-hover:ring-[#FFD875]/60 transition-all duration-500 shadow-[0_0_25px_rgba(255,216,117,0.3)]"
                     />
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      onChange={handleAvatarSelect}
-                      accept="image/png, image/jpeg, image/gif"
-                      className="hidden"
-                    />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute bottom-1 right-1 bg-[#FFD875] text-black p-1.5 rounded-full hover:shadow-[0_0_20px_rgba(255,216,117,0.5)] transition-all duration-300 transform hover:scale-110"
-                    >
-                      <PencilIcon className="h-3 w-3" />
-                    </button>
-                    {avatarPreview && (
-                      <div className="absolute inset-0 bg-black/60 rounded-full flex flex-col items-center justify-center backdrop-blur-sm">
-                        <button
-                          onClick={handleUploadAvatar}
-                          className="text-[#FFD875] hover:text-[#FFD875] hover:brightness-110 transition-all duration-300 transform hover:scale-110"
-                        >
-                          <ArrowUpOnSquareIcon className="w-6 h-6" />
-                        </button>
-                        <p className="text-xs text-white mt-1">Tải lên</p>
-                      </div>
-                    )}
                   </div>
 
                   {/* User Info with Points - Integrated */}
@@ -173,23 +150,25 @@ const ProfileLayout: React.FC = () => {
                       {user.email}
                     </div>
 
-                    {/* Points Display - Integrated with glowing effect */}
-                    <div className="flex items-center justify-center gap-2 mt-3">
-                      <SparklesIcon className="w-5 h-5 text-[#FFD875] animate-pulse" />
-                      <div className="relative">
-                        <div className="absolute inset-0 bg-[#FFD875]/20 blur-xl"></div>
-                        <div className="relative bg-[#FFD875]/10 px-4 py-1.5 rounded-full backdrop-blur-sm border border-[#FFD875]/20">
-                          <span className="text-[#FFD875] font-bold text-lg drop-shadow-[0_0_10px_rgba(255,216,117,0.5)]">
-                            {isLoadingPoints ? (
-                              <div className="inline-block w-4 h-4 border-2 border-[#FFD875] border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                              (userPoints || 0).toLocaleString('vi-VN')
-                            )}
-                          </span>
-                          <span className="text-[#FFD875]/80 text-xs ml-1">điểm</span>
+                    {/* Points Display - Integrated with glowing effect - Hidden for Staff */}
+                    {user.role === 'Customer' && (
+                      <div className="flex items-center justify-center gap-2 mt-3">
+                        <SparklesIcon className="w-5 h-5 text-[#FFD875] animate-pulse" />
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-[#FFD875]/20 blur-xl"></div>
+                          <div className="relative bg-[#FFD875]/10 px-4 py-1.5 rounded-full backdrop-blur-sm border border-[#FFD875]/20">
+                            <span className="text-[#FFD875] font-bold text-lg drop-shadow-[0_0_10px_rgba(255,216,117,0.5)]">
+                              {isLoadingPoints ? (
+                                <div className="inline-block w-4 h-4 border-2 border-[#FFD875] border-t-transparent rounded-full animate-spin"></div>
+                              ) : (
+                                (userPoints || 0).toLocaleString('vi-VN')
+                              )}
+                            </span>
+                            <span className="text-[#FFD875]/80 text-xs ml-1">điểm</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   {/* Upload Progress */}
@@ -223,7 +202,12 @@ const ProfileLayout: React.FC = () => {
           </div>
 
           {/* Main Content */}
-          <div className="lg:flex-1">
+          <div className="lg:flex-1 space-y-6">
+            {/* Show unassigned staff notice */}
+            {user?.role === 'Staff' && !user?.cinemaId && (
+              <UnassignedStaffNotice />
+            )}
+            
             <div className="relative overflow-hidden bg-slate-800/40 backdrop-blur-xl rounded-2xl p-6 border border-[#FFD875]/10 shadow-[0_0_40px_rgba(255,216,117,0.1)] min-h-[600px]">
               <div className="absolute inset-0 bg-gradient-to-br from-[#FFD875]/[0.02] via-transparent to-[#FFD875]/[0.02]"></div>
               <div className="relative z-10">

@@ -75,13 +75,11 @@ class WebSocketService {
 
   // Cross-tab communication
   private storageKey = "galaxy_cinema_seats";
+  private isInitialized = false;
   private broadcastChannel: BroadcastChannel | null = null;
 
   // Fallback mode khi WebSocket không available
   private fallbackMode = false;
-
-  // Current user ID for session management
-  private userId: string | null = null;
 
   constructor(config?: Partial<WebSocketConfig>) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -109,7 +107,7 @@ class WebSocketService {
       console.log(`✅ [SETUP] BroadcastChannel created successfully:`, this.broadcastChannel);
 
       // Listen for messages from other tabs
-      const messageHandler = (event: MessageEvent) => {
+      const messageHandler = (event) => {
         console.log(`🔧 [BROADCAST_RECEIVE] Raw event received:`, event);
         const data = event.data;
         console.log(`🔧 [BROADCAST_RECEIVE] Event data:`, data);
@@ -141,6 +139,7 @@ class WebSocketService {
       this.broadcastChannel.addEventListener("message", messageHandler);
       console.log(`✅ [SETUP] Event listener added to BroadcastChannel`);
 
+      this.isInitialized = true;
       console.log("✅ [SETUP] Cross-tab sync initialized với BroadcastChannel");
 
       // 🧪 Test BroadcastChannel immediately
@@ -153,6 +152,63 @@ class WebSocketService {
       console.warn("⚠️ [SETUP] BroadcastChannel không supported, fallback to localStorage");
       this.setupStorageFallback();
     }
+  }
+
+  /**
+   * Polling fallback as backup for localStorage
+   */
+  private setupPollingFallback(): void {
+    console.log(`🔄 [POLLING_SETUP] Setting up polling fallback as backup...`);
+
+    let lastPollingData: string | null = null;
+
+    const pollInterval = setInterval(() => {
+      try {
+        const currentData = localStorage.getItem(this.storageKey);
+
+        // Only process if data changed
+        if (currentData && currentData !== lastPollingData) {
+          console.log(`🔄 [POLLING_EVENT] Detected localStorage change via polling`);
+          console.log(`🔄 [POLLING_EVENT] New data:`, currentData);
+
+          const data = JSON.parse(currentData);
+          console.log(`🔄 [POLLING_RECEIVE] ===== CROSS-TAB MESSAGE VIA POLLING =====`);
+          console.log(
+            `🔄 [POLLING_RECEIVE] Cross-tab ${data.action} for seat ${data.seatId} by user ${data.userId} in showtime ${data.showtimeId}`
+          );
+          console.log(`🔄 [POLLING_RECEIVE] Current user: ${localStorage.getItem("userId")}`);
+          console.log(`🔄 [POLLING_RECEIVE] Event from user: ${data.userId}`);
+          console.log(`🔄 [POLLING_RECEIVE] Same user? ${localStorage.getItem("userId") === String(data.userId)}`);
+
+          // Skip if from same user
+          if (localStorage.getItem("userId") === String(data.userId)) {
+            console.log(`🔄 [POLLING_RECEIVE] Skipping - same user`);
+            lastPollingData = currentData;
+            return;
+          }
+
+          console.log(`🔄 [POLLING_RECEIVE] Emitting cross-tab-seat-update event...`);
+          this.emit("cross-tab-seat-update", {
+            seatId: data.seatId,
+            userId: data.userId,
+            showtimeId: data.showtimeId,
+            action: data.action,
+            timestamp: data.timestamp,
+          });
+          console.log(`✅ [POLLING_RECEIVE] cross-tab-seat-update event emitted`);
+          console.log(`🔄 [POLLING_RECEIVE] ===== END CROSS-TAB MESSAGE VIA POLLING =====`);
+
+          lastPollingData = currentData;
+        }
+      } catch (error) {
+        // Silent error - polling should not spam console
+      }
+    }, 500); // Poll every 500ms
+
+    console.log(`✅ [POLLING_SETUP] Polling fallback initialized (500ms interval)`);
+
+    // Store interval for cleanup
+    (this as any).pollingInterval = pollInterval;
   }
 
   /**
@@ -185,6 +241,7 @@ class WebSocketService {
       }
     });
 
+    this.isInitialized = true;
     console.log("✅ Cross-tab sync initialized với localStorage fallback");
 
     // 🚫 [STORAGE_TEST] DISABLED - WebSocket-only mode
@@ -283,17 +340,6 @@ class WebSocketService {
       // Lấy auth token từ localStorage nếu không được provide
       const token = authToken || localStorage.getItem("accessToken");
 
-      // 🔧 Initialize userId từ localStorage hoặc decode từ token
-      this.userId = localStorage.getItem("userId");
-      if (!this.userId && token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          this.userId = payload?.id || payload?.userId || null;
-        } catch (e) {
-          console.warn("⚠️ Failed to decode userId from token");
-        }
-      }
-
       console.log("🔑 [DEBUG] Auth token check:", {
         provided: !!authToken,
         fromStorage: !!localStorage.getItem("accessToken"),
@@ -337,6 +383,10 @@ class WebSocketService {
           this.reconnectAttempts = 0;
           console.log("✅ WebSocket connected thành công");
           console.log(`🔌 Client Socket ID: ${this.socket?.id}`);
+
+          // 🔧 FIX: Broadcast connection state change để sync với hooks
+          this.broadcastConnectionState("connected");
+
           resolve(true);
         });
 
@@ -380,7 +430,7 @@ class WebSocketService {
       this.reconnectAttempts = 0;
 
       // 🔧 QUAN TRỌNG: Setup lại event listeners sau reconnect
-      this.setupSocketEventListeners();
+      this.setupEventListeners();
 
       // Rejoin showtime room nếu có
       if (this.currentShowtimeId) {
@@ -477,8 +527,8 @@ class WebSocketService {
       // 🔧 SIMPLE FIX: Auto refresh seats when any seat is released
       console.log("🔄 [AUTO_REFRESH] Seat released detected - refreshing seats from server...");
       setTimeout(() => {
-        if (this.socket?.connected && this.currentShowtimeId) {
-          this.requestCurrentSeatsState(this.currentShowtimeId);
+        if (this.socket?.connected && this.currentShowtime) {
+          this.requestCurrentSeatsState(this.currentShowtime);
           console.log("✅ [AUTO_REFRESH] Requested fresh seats from server");
         }
       }, 500);
@@ -516,9 +566,9 @@ class WebSocketService {
 
       // Handle specific backend errors
       if (error.message === "Failed to join showtime") {
-        console.log("🔄 Backend database error - switching to fallback mode");
+        console.warn("⚠️ Backend database error - switching to fallback mode");
         this.emit("fallback-mode", { reason: "backend-error", error: error.error });
-        toast.error("Chuyển sang chế độ offline - một số tính năng real-time có thể bị hạn chế");
+        toast.warning("Chuyển sang chế độ offline - một số tính năng real-time có thể bị hạn chế");
         return;
       }
 
@@ -585,6 +635,13 @@ class WebSocketService {
 
     // 🎭 Simulate server response với current state từ localStorage
     this.simulateCurrentSeatsStateResponse(showtimeId);
+  }
+
+  /**
+   * Alias method for requestCurrentSeatsState
+   */
+  requestSeatsState(showtimeId: string): void {
+    this.requestCurrentSeatsState(showtimeId);
   }
 
   /**
@@ -692,7 +749,7 @@ class WebSocketService {
 
     if (!finalUserId) {
       // Try localStorage
-      finalUserId = localStorage.getItem("userId") || undefined;
+      finalUserId = localStorage.getItem("userId");
     }
 
     if (!finalUserId) {
@@ -871,6 +928,39 @@ class WebSocketService {
       this.connectionState = state;
       this.emit("connection-state-changed", state);
       console.log(`🔌 Connection state changed: ${state}`);
+
+      // 🔧 FIX: Broadcast state change để sync với hooks
+      this.broadcastConnectionState(state);
+    }
+  }
+
+  /**
+   * Broadcast connection state change để sync với hooks
+   */
+  private broadcastConnectionState(state: ConnectionState): void {
+    // Broadcast qua BroadcastChannel chính
+    if (this.broadcastChannel) {
+      this.broadcastChannel.postMessage({
+        type: "CONNECTION_STATE_CHANGE",
+        state: state,
+        isConnected: state === "connected",
+        timestamp: Date.now(),
+      });
+      console.log(`📡 [BROADCAST] Connection state broadcasted: ${state}`);
+    }
+
+    // Cũng broadcast qua channel riêng cho WebSocket
+    try {
+      const wsChannel = new BroadcastChannel("galaxy_cinema_websocket");
+      wsChannel.postMessage({
+        type: "CONNECTION_STATE_CHANGE",
+        state: state,
+        isConnected: state === "connected",
+        timestamp: Date.now(),
+      });
+      wsChannel.close();
+    } catch (error) {
+      console.warn("⚠️ Failed to broadcast via WebSocket channel:", error);
     }
   }
 
@@ -946,16 +1036,18 @@ class WebSocketService {
   private enableFallbackMode(): void {
     this.fallbackMode = true;
     this.setConnectionState("error");
-    console.warn("⚠️ Fallback mode enabled - sử dụng localStorage và API calls");      // Safe toast call
-      try {
-        if (typeof toast?.error === "function") {
-          toast.error("Chế độ offline: Một số tính năng real-time có thể không khả dụng");
-        } else {
-          console.warn("⚠️ Toast not available, fallback mode enabled silently");
-        }
-      } catch (error) {
-        console.warn("⚠️ Toast error:", error);
+    console.warn("⚠️ Fallback mode enabled - sử dụng localStorage và API calls");
+
+    // Safe toast call
+    try {
+      if (typeof toast?.warning === "function") {
+        toast.warning("Chế độ offline: Một số tính năng real-time có thể không khả dụng");
+      } else {
+        console.warn("⚠️ Toast not available, fallback mode enabled silently");
       }
+    } catch (error) {
+      console.warn("⚠️ Toast error:", error);
+    }
   }
 
   /**
@@ -963,8 +1055,9 @@ class WebSocketService {
    */
   private showExpirationWarning(data: SeatExpirationWarning): void {
     const minutes = Math.ceil(data.timeRemaining / 60000);
-    toast.error(`Ghế ${data.seatId} sẽ hết hạn sau ${minutes} phút. Nhấn để gia hạn.`, {
+    toast.warning(`Ghế ${data.seatId} sẽ hết hạn sau ${minutes} phút. Nhấn để gia hạn.`, {
       duration: 10000,
+      onClick: () => this.extendSeatHold(data.seatId),
     });
   }
 
@@ -1144,7 +1237,7 @@ class WebSocketService {
         resolve(true);
       }, 5000);
 
-      const handleCompletion = () => {
+      const handleCompletion = (data: any) => {
         clearTimeout(timeoutId);
         this.socket?.off("force-cleanup-completed", handleCompletion);
 
@@ -1192,7 +1285,7 @@ class WebSocketService {
         resolve(true);
       }, 5000);
 
-      const handleCompletion = () => {
+      const handleCompletion = (data: any) => {
         clearTimeout(timeoutId);
         this.socket?.off("force-cleanup-completed", handleCompletion);
 
@@ -1306,7 +1399,7 @@ class WebSocketService {
   }
 
   /**
-   * 🔥 FORCE RECONNECT - Buộc kết nối lại ngay lập tức
+   * 🔥 FORCE RECONNECT - Buộc kết nối lại ngay lập tức với retry logic
    */
   forceReconnect(showtimeId?: string): Promise<boolean> {
     return new Promise((resolve) => {
@@ -1314,8 +1407,15 @@ class WebSocketService {
 
       console.log(`🔥 Force reconnecting WebSocket${targetShowtimeId ? ` for showtime ${targetShowtimeId}` : ""}...`);
 
+      // Clear any existing reconnect timers
+      if (this.reconnectTimer) {
+        clearTimeout(this.reconnectTimer);
+        this.reconnectTimer = null;
+      }
+
       // Disconnect trước
       if (this.socket?.connected) {
+        console.log(`🔌 Disconnecting current socket...`);
         this.socket.disconnect();
       }
 
@@ -1323,12 +1423,52 @@ class WebSocketService {
       this.setConnectionState("disconnected");
       this.reconnectAttempts = 0;
 
-      // Connect lại
-      setTimeout(() => {
-        this.connect()
-          .then(resolve)
-          .catch(() => resolve(false));
-      }, 100);
+      // 🚀 IMMEDIATE RECONNECT với retry logic
+      const attemptReconnect = async (attempt: number = 1): Promise<boolean> => {
+        const maxAttempts = 3;
+        const delay = Math.min(100 * attempt, 1000); // 100ms, 200ms, 1000ms
+
+        console.log(`🔄 Reconnect attempt ${attempt}/${maxAttempts} (delay: ${delay}ms)`);
+
+        try {
+          // Đợi delay trước khi thử
+          if (delay > 0) {
+            await new Promise((resolve) => setTimeout(resolve, delay));
+          }
+
+          const connected = await this.connect();
+
+          if (connected) {
+            console.log(`✅ Force reconnect successful on attempt ${attempt}`);
+
+            // Join showtime room nếu có
+            if (targetShowtimeId) {
+              setTimeout(() => {
+                this.joinShowtime(targetShowtimeId);
+                console.log(`🏠 Rejoined showtime ${targetShowtimeId} after force reconnect`);
+              }, 100);
+            }
+
+            return true;
+          } else {
+            throw new Error(`Connection failed on attempt ${attempt}`);
+          }
+        } catch (error) {
+          console.warn(`⚠️ Reconnect attempt ${attempt} failed:`, error);
+
+          if (attempt < maxAttempts) {
+            return attemptReconnect(attempt + 1);
+          } else {
+            console.error(`❌ Force reconnect failed after ${maxAttempts} attempts`);
+            return false;
+          }
+        }
+      };
+
+      // Bắt đầu reconnect process
+      attemptReconnect()
+        .then(resolve)
+        .catch(() => resolve(false));
     });
   }
 

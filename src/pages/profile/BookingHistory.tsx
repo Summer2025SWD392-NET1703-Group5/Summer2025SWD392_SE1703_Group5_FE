@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { userService } from '../../services/userService';
-import type { Booking } from '../../types/booking';
-import PayOSQRModal from '../../components/PayOSQRModal';
+import React, { useState, useEffect, useCallback, useRef } from "react";
+import { userService } from "../../services/userService";
+import type { Booking } from "../../types/booking";
+import PayOSQRModal from "../../components/PayOSQRModal";
+import CountdownTimer from "../../components/CountdownTimer";
 import {
   MapPinIcon,
   ClockIcon,
@@ -14,10 +15,10 @@ import {
   XCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
-  CreditCardIcon
-} from '@heroicons/react/24/outline';
-import { toast } from 'react-hot-toast';
-import api from '../../services/apiClient';
+  CreditCardIcon,
+} from "@heroicons/react/24/outline";
+import { toast } from "react-hot-toast";
+import api from "../../services/apiClient";
 
 const ITEMS_PER_PAGE = 3; // Show 3 bookings per page
 
@@ -31,7 +32,7 @@ const BookingHistory: React.FC = () => {
 
   // PayOS QR Modal states
   const [showPayOSModal, setShowPayOSModal] = useState(false);
-  const [selectedBookingId, setSelectedBookingId] = useState<string>('');
+  const [selectedBookingId, setSelectedBookingId] = useState<string>("");
 
   // Thêm state cho modal QR
   const [showQrModal, setShowQrModal] = useState(false);
@@ -51,7 +52,7 @@ const BookingHistory: React.FC = () => {
       setBookings(bookingsArray);
       setTotalPages(Math.ceil(bookingsArray.length / ITEMS_PER_PAGE));
     } catch (err: any) {
-      setError(err.message || 'Không thể tải lịch sử đặt vé.');
+      setError(err.message || "Không thể tải lịch sử đặt vé.");
       setBookings([]); // Reset to empty array on error
     } finally {
       setIsLoading(false);
@@ -65,7 +66,7 @@ const BookingHistory: React.FC = () => {
   useEffect(() => {
     // Scroll to top when page changes
     if (containerRef.current) {
-      containerRef.current.scrollIntoView({ behavior: 'smooth' });
+      containerRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [currentPage]);
 
@@ -79,14 +80,52 @@ const BookingHistory: React.FC = () => {
   const confirmCancelBooking = async () => {
     if (!bookingToCancel) return;
 
-      try {
+    try {
       await userService.cancelBooking(bookingToCancel);
+
+      // 🔧 FIX: Clear payment state để tránh vào lại phim vẫn thấy payment page
+      console.log(`🗑️ [CANCEL_BOOKING] Clearing payment state for cancelled booking ${bookingToCancel}`);
+
+      // Tìm booking đã cancel để lấy showtime ID
+      const cancelledBooking = bookings.find((b) => b.Booking_ID === bookingToCancel);
+      if (cancelledBooking && cancelledBooking.Showtime?.Showtime_ID) {
+        const showtimeId = cancelledBooking.Showtime.Showtime_ID;
+
+        // Clear payment state cho showtime này
+        const paymentStateKey = `payment_state_${showtimeId}`;
+        sessionStorage.removeItem(paymentStateKey);
+        console.log(`🗑️ [CANCEL_BOOKING] Cleared payment state: ${paymentStateKey}`);
+
+        // Clear các session storage khác liên quan
+        const sessionKeys = [`booking_session_${showtimeId}`, `galaxy_cinema_session_${showtimeId}`, "bookingData"];
+
+        sessionKeys.forEach((key) => {
+          sessionStorage.removeItem(key);
+          console.log(`🗑️ [CANCEL_BOOKING] Cleared session: ${key}`);
+        });
+
+        // Broadcast cleanup event cho các tabs khác
+        try {
+          const cleanupEvent = {
+            action: "CLEAR_PAYMENT_STATE",
+            showtimeId: showtimeId,
+            timestamp: Date.now(),
+            source: "booking_history_cancel",
+          };
+          localStorage.setItem("galaxy_cinema_cleanup_event", JSON.stringify(cleanupEvent));
+          setTimeout(() => localStorage.removeItem("galaxy_cinema_cleanup_event"), 100);
+          console.log(`📡 [CANCEL_BOOKING] Broadcasted cleanup event for showtime ${showtimeId}`);
+        } catch (broadcastError) {
+          console.warn("⚠️ [CANCEL_BOOKING] Failed to broadcast cleanup event:", broadcastError);
+        }
+      }
+
       // Refresh danh sách sau khi hủy
-        fetchBookingHistory();
-      toast.success('Đã hủy vé thành công');
-      } catch (err: any) {
-        setError(err.message || 'Hủy vé không thành công.');
-      toast.error('Không thể hủy vé. Vui lòng thử lại sau.');
+      fetchBookingHistory();
+      toast.success("Đã hủy vé thành công");
+    } catch (err: any) {
+      setError(err.message || "Hủy vé không thành công.");
+      toast.error("Không thể hủy vé. Vui lòng thử lại sau.");
     } finally {
       // Đóng modal xác nhận
       setShowConfirmModal(false);
@@ -97,44 +136,68 @@ const BookingHistory: React.FC = () => {
   // Hàm mở modal và hiển thị QR thanh toán
   const handleShowPaymentQR = async (booking: Booking) => {
     try {
-      const bookingId = booking.Booking_ID?.toString() || '';
+      const bookingId = booking.Booking_ID?.toString() || "";
       setSelectedBookingId(bookingId);
-      
+
       // Thêm log để debug
       console.log(`Mở QR thanh toán cho booking #${booking.Booking_ID} với số tiền ${booking.Total_Amount}đ`);
-      
+
       // Sử dụng API pending-payment-url để lấy QR code
-      const response = await api.get('/payos/pending-payment-url');
+      const response = await api.get("/payos/pending-payment-url");
       const responseData = response.data?.data || response.data;
-      
+
       // Nếu lấy được QR code từ API, hiển thị modal
       if (responseData) {
         // Lưu thông tin booking để hiển thị trong modal
         setSelectedBooking(booking);
-        
+
         // Mở modal
         setShowQrModal(true);
       } else {
-        throw new Error('Không lấy được thông tin thanh toán từ server');
+        throw new Error("Không lấy được thông tin thanh toán từ server");
       }
     } catch (error: any) {
-      toast.error('Không thể tạo mã QR thanh toán. Vui lòng thử lại sau.');
+      toast.error("Không thể tạo mã QR thanh toán. Vui lòng thử lại sau.");
     }
   };
 
   // Xử lý khi thanh toán thành công
   const handlePaymentSuccess = (transactionId: string) => {
     setShowPayOSModal(false);
-    setSelectedBookingId('');
-    
+    setSelectedBookingId("");
+
     // Refresh booking history to update status
     fetchBookingHistory();
+  };
+
+  // Xử lý khi countdown timer hết hạn
+  const handleBookingTimeout = async (bookingId: number) => {
+    console.log(`Xử lý timeout cho booking ${bookingId}`);
+
+    try {
+      // Gọi API để hủy booking
+      await api.put(`/bookings/${bookingId}/cancel`, {
+        reason: "payment_timeout",
+      });
+
+      toast.error(`Đơn đặt vé #${bookingId} đã hết hạn thanh toán và được hủy tự động.`);
+
+      // Refresh booking history để cập nhật trạng thái
+      fetchBookingHistory();
+    } catch (error: any) {
+      console.error(`Lỗi khi hủy booking ${bookingId}:`, error);
+
+      // Vẫn refresh để kiểm tra trạng thái từ server
+      fetchBookingHistory();
+
+      toast.error(`Đơn đặt vé #${bookingId} đã hết hạn thanh toán.`);
+    }
   };
 
   // Đóng PayOS modal
   const closePayOSModal = () => {
     setShowPayOSModal(false);
-    setSelectedBookingId('');
+    setSelectedBookingId("");
   };
 
   const handlePageChange = (page: number) => {
@@ -155,9 +218,11 @@ const BookingHistory: React.FC = () => {
         <button
           onClick={() => handlePageChange(Math.max(1, currentPage - 1))}
           disabled={currentPage === 1}
-          className={`p-2 rounded-lg ${currentPage === 1
-            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            : 'bg-slate-700 text-white hover:bg-slate-600'}`}
+          className={`p-2 rounded-lg ${
+            currentPage === 1
+              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+              : "bg-slate-700 text-white hover:bg-slate-600"
+          }`}
         >
           <ChevronLeftIcon className="w-5 h-5" />
         </button>
@@ -176,10 +241,11 @@ const BookingHistory: React.FC = () => {
               <button
                 key={pageNumber}
                 onClick={() => handlePageChange(pageNumber)}
-                className={`w-10 h-10 rounded-lg ${isCurrentPage
-                  ? 'bg-[#FFD875] text-slate-900 shadow-[0_0_10px_rgba(255,216,117,0.5)]'
-                  : 'bg-slate-700 text-white hover:bg-slate-600'
-                  }`}
+                className={`w-10 h-10 rounded-lg ${
+                  isCurrentPage
+                    ? "bg-[#FFD875] text-slate-900 shadow-[0_0_10px_rgba(255,216,117,0.5)]"
+                    : "bg-slate-700 text-white hover:bg-slate-600"
+                }`}
               >
                 {pageNumber}
               </button>
@@ -191,7 +257,11 @@ const BookingHistory: React.FC = () => {
             (pageNumber === 2 && currentPage > 3) ||
             (pageNumber === totalPages - 1 && currentPage < totalPages - 2)
           ) {
-            return <span key={pageNumber} className="flex items-center justify-center w-10 h-10">...</span>;
+            return (
+              <span key={pageNumber} className="flex items-center justify-center w-10 h-10">
+                ...
+              </span>
+            );
           }
 
           return null;
@@ -200,9 +270,11 @@ const BookingHistory: React.FC = () => {
         <button
           onClick={() => handlePageChange(Math.min(totalPages, currentPage + 1))}
           disabled={currentPage === totalPages}
-          className={`p-2 rounded-lg ${currentPage === totalPages
-            ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-            : 'bg-slate-700 text-white hover:bg-slate-600'}`}
+          className={`p-2 rounded-lg ${
+            currentPage === totalPages
+              ? "bg-gray-700 text-gray-500 cursor-not-allowed"
+              : "bg-slate-700 text-white hover:bg-slate-600"
+          }`}
         >
           <ChevronRightIcon className="w-5 h-5" />
         </button>
@@ -223,22 +295,22 @@ const BookingHistory: React.FC = () => {
   }
 
   const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
+    return new Intl.NumberFormat("vi-VN", {
+      style: "currency",
+      currency: "VND",
     }).format(price);
   };
 
   const formatDate = (dateString: string) => {
     try {
-      if (!dateString) return 'N/A';
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+      if (!dateString) return "N/A";
+      return new Date(dateString).toLocaleDateString("vi-VN", {
+        year: "numeric",
+        month: "long",
+        day: "numeric",
+      });
     } catch (error) {
-      return 'Invalid Date';
+      return "Invalid Date";
     }
   };
 
@@ -246,64 +318,64 @@ const BookingHistory: React.FC = () => {
     try {
       if (!dateString) {
         return {
-          date: 'N/A',
-          time: timeString || 'N/A'
+          date: "N/A",
+          time: timeString || "N/A",
         };
       }
-      
-    const date = new Date(dateString);
+
+      const date = new Date(dateString);
       if (isNaN(date.getTime())) {
         return {
-          date: 'Invalid Date',
-          time: timeString || 'N/A'
+          date: "Invalid Date",
+          time: timeString || "N/A",
         };
       }
-      
-    return {
-      date: date.toLocaleDateString('vi-VN', {
-        weekday: 'short',
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-      }),
-        time: timeString || 'N/A'
+
+      return {
+        date: date.toLocaleDateString("vi-VN", {
+          weekday: "short",
+          day: "2-digit",
+          month: "2-digit",
+          year: "numeric",
+        }),
+        time: timeString || "N/A",
       };
     } catch (error) {
       return {
-        date: 'Invalid Date',
-        time: timeString || 'N/A'
-    };
+        date: "Invalid Date",
+        time: timeString || "N/A",
+      };
     }
   };
 
   const getStatusChip = (status: string) => {
     const statusText = translateStatus(status);
     switch (status) {
-      case 'Confirmed':
-        return 'bg-[#FFD875]/20 text-[#FFD875] shadow-[0_0_10px_rgba(255,216,117,0.3)]';
-      case 'Pending':
-        return 'bg-yellow-500/20 text-yellow-400';
-      case 'Cancelled':
-        return 'bg-red-500/20 text-red-400';
-      case 'Unknown':
-        return 'bg-gray-500/20 text-gray-400';
+      case "Confirmed":
+        return "bg-[#FFD875]/20 text-[#FFD875] shadow-[0_0_10px_rgba(255,216,117,0.3)]";
+      case "Pending":
+        return "bg-yellow-500/20 text-yellow-400";
+      case "Cancelled":
+        return "bg-red-500/20 text-red-400";
+      case "Unknown":
+        return "bg-gray-500/20 text-gray-400";
       default:
-        return 'bg-gray-500/20 text-gray-400';
+        return "bg-gray-500/20 text-gray-400";
     }
   };
 
   const translateStatus = (status: string) => {
     switch (status) {
-      case 'Confirmed':
-        return 'Đã xác nhận';
-      case 'Pending':
-        return 'Đang chờ';
-      case 'Cancelled':
-        return 'Đã hủy';
-      case 'Unknown':
-        return 'Không xác định';
+      case "Confirmed":
+        return "Đã xác nhận";
+      case "Pending":
+        return "Đang chờ";
+      case "Cancelled":
+        return "Đã hủy";
+      case "Unknown":
+        return "Không xác định";
       default:
-        return status || 'Không xác định';
+        return status || "Không xác định";
     }
   };
 
@@ -311,32 +383,53 @@ const BookingHistory: React.FC = () => {
     <div className="animate-fadeInUp space-y-6" ref={containerRef}>
       <h2 className="text-2xl font-normal text-white mb-6">Lịch sử đặt vé</h2>
       {paginatedBookings.map((booking) => {
-        const showDateTime = formatDateTime(booking.Show_Date || '', booking.Start_Time || '');
-        const isPendingPayment = booking.Status === 'Pending';
-        const canCancel = booking.Status === 'Pending' && booking.Booking_ID;
-        
+        const showDateTime = formatDateTime(booking.Show_Date || "", booking.Start_Time || "");
+        const isPendingPayment = booking.Status === "Pending";
+        const canCancel = booking.Status === "Pending" && booking.Booking_ID;
+
         return (
-          <div key={booking.Booking_ID || Math.random()} className="glass-dark-card p-5 border border-gray-700/50 rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(255,216,117,0.2)] transition-shadow duration-300">
+          <div
+            key={booking.Booking_ID || Math.random()}
+            className="glass-dark-card p-5 border border-gray-700/50 rounded-lg shadow-lg hover:shadow-[0_0_15px_rgba(255,216,117,0.2)] transition-shadow duration-300"
+          >
             <div className="flex flex-col md:flex-row gap-5">
               <img
-                src={booking.PosterURL || '/placeholder-movie.jpg'}
-                alt={booking.MovieName || 'Movie'}
+                src={booking.PosterURL || "/placeholder-movie.jpg"}
+                alt={booking.MovieName || "Movie"}
                 className="w-full md:w-32 h-auto object-cover rounded-md bg-gray-800"
                 onError={(e) => {
-                  (e.target as HTMLImageElement).src = '/placeholder-movie.jpg';
+                  (e.target as HTMLImageElement).src = "/placeholder-movie.jpg";
                 }}
               />
               <div className="flex-grow">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-xl font-bold text-[#FFD875]">{booking.MovieName || 'Unknown Movie'}</h3>
+                    <h3 className="text-xl font-bold text-[#FFD875]">{booking.MovieName || "Unknown Movie"}</h3>
                     <p className="text-sm text-gray-400 flex items-center gap-2 mt-1">
-                      <MapPinIcon className="w-4 h-4" /> {booking.RoomName || 'Unknown Room'}
+                      <MapPinIcon className="w-4 h-4" /> {booking.RoomName || "Unknown Room"}
                     </p>
                   </div>
-                  <span className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusChip(booking.Status || 'Unknown')}`}>
-                    {translateStatus(booking.Status || 'Unknown')}
-                  </span>
+                  <div className="flex flex-col items-end gap-2">
+                    <span
+                      className={`px-3 py-1 text-xs font-semibold rounded-full ${getStatusChip(
+                        booking.Status || "Unknown"
+                      )}`}
+                    >
+                      {translateStatus(booking.Status || "Unknown")}
+                    </span>
+
+                    {/* Countdown Timer cho booking đang chờ thanh toán */}
+                    {isPendingPayment && (
+                      <CountdownTimer
+                        bookingId={booking.Booking_ID}
+                        showtimeId={booking.Showtime_ID}
+                        selectedSeats={booking.Seats}
+                        createdAt={booking.Booking_Date}
+                        onTimeout={() => handleBookingTimeout(booking.Booking_ID)}
+                        className="text-xs"
+                      />
+                    )}
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4 text-sm text-gray-300">
@@ -358,14 +451,14 @@ const BookingHistory: React.FC = () => {
                     <TicketIcon className="w-5 h-5 text-[#FFD875]" />
                     <div>
                       <p className="font-semibold">Ghế</p>
-                      <p>{booking.Seats || 'N/A'}</p>
+                      <p>{booking.Seats || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
                     <TagIcon className="w-5 h-5 text-[#FFD875]" />
                     <div>
                       <p className="font-semibold">Phương thức</p>
-                      <p>{booking.PaymentMethod || 'N/A'}</p>
+                      <p>{booking.PaymentMethod || "N/A"}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -378,7 +471,7 @@ const BookingHistory: React.FC = () => {
                 </div>
               </div>
             </div>
-            
+
             {/* Action buttons - chỉ hiển thị khi booking chưa bị hủy và có Booking_ID */}
             {canCancel && (
               <div className="mt-4 pt-4 border-t border-gray-700/50 flex justify-end gap-3">
@@ -392,7 +485,7 @@ const BookingHistory: React.FC = () => {
                     Thanh toán
                   </button>
                 )}
-                
+
                 {/* Nút hủy */}
                 <button
                   onClick={() => handleCancelBooking(booking.Booking_ID)}
@@ -416,6 +509,7 @@ const BookingHistory: React.FC = () => {
         onClose={closePayOSModal}
         bookingId={selectedBookingId}
         onPaymentSuccess={handlePaymentSuccess}
+        isStaff={false} // BookingHistory là cho user thường
       />
 
       {/* Thêm modal QR thanh toán */}
@@ -427,6 +521,7 @@ const BookingHistory: React.FC = () => {
           amount={Number(selectedBooking.Total_Amount)}
           ticketInfo={`${selectedBooking.Seats?.length || 0} ghế`}
           skipConfirmation={true}
+          isStaff={false} // BookingHistory là cho user thường
         />
       )}
 
@@ -436,7 +531,7 @@ const BookingHistory: React.FC = () => {
           <div className="bg-slate-800 p-6 rounded-xl max-w-md w-full border border-gray-700/50 shadow-lg m-4 relative">
             <h3 className="text-xl font-medium text-white mb-4">Xác nhận hủy vé</h3>
             <p className="text-gray-300 mb-6">Bạn có chắc chắn muốn hủy đặt vé này không?</p>
-            
+
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setShowConfirmModal(false)}
@@ -458,4 +553,4 @@ const BookingHistory: React.FC = () => {
   );
 };
 
-export default BookingHistory; 
+export default BookingHistory;

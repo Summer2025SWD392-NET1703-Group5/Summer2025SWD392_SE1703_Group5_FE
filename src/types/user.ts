@@ -17,12 +17,18 @@ export interface User {
   updatedAt?: string;
   lastLoginAt?: string;
   
+  // Snake_case API response properties
+  User_ID?: number;
+  Full_Name?: string;
+  Phone_Number?: string;
+  Date_Of_Birth?: string;
+  Sex?: 'Male' | 'Female' | 'Other';
+  Address?: string;
+  Account_Status?: 'Active' | 'Inactive' | 'Pending_Verification' | 'Deleted';
+  Cinema_ID?: number;
+  Cinema_Name?: string;
+  
   // Additional backwards compatibility properties
-  User_ID?: number; // Maps to id
-  Full_Name?: string; // Maps to fullName
-  Phone_Number?: string; // Maps to phoneNumber
-  Cinema_ID?: number; // For staff assignment
-  Cinema_Name?: string; // For staff assignment
   total_points?: number; // For customer points
   username?: string; // Legacy username field
   firstName?: string; // Legacy firstName field

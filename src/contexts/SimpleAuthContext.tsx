@@ -1,5 +1,5 @@
 // Simple AuthContext backup without useReducer
-import React, { createContext, useContext, useState, useEffect, type ReactNode } from "react";
+import { createContext, useContext, useState, useEffect, type ReactNode } from "react";
 import type { User, LoginCredentials, RegisterData } from "../types/auth";
 import { authService } from "../services/authService";
 import { userService } from "../services/userService";
@@ -74,7 +74,12 @@ export const SimpleAuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(true);
     setError(null);
     try {
-      const userData = await authService.login(credentials);
+      // First, perform login to get tokens
+      await authService.login(credentials);
+      
+      // Then fetch the complete user profile to ensure all fields (including cinemaId) are loaded
+      const userData = await userService.getUserProfile();
+      console.log("[AuthContext] Complete user profile loaded:", userData);
 
       // 🔥 Clear all booking sessions when user changes (but preserve pending booking info)
       console.log("🧹 [AUTH] Clearing all booking sessions for new user login");
