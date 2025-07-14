@@ -13,7 +13,7 @@ import {
   HomeIcon,
 } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
 import { cinemaService } from '../../../services/cinemaService';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
@@ -544,7 +544,7 @@ const CinemaRoomsList: React.FC = () => {
                               <PencilSquareIcon className="w-4 h-4" />
                             </Link>
                             <Link
-                              to={`/admin/cinema-rooms/${room.Cinema_Room_ID}/seats`}
+                              to={`/admin/cinema-rooms/${room.Cinema_Room_ID}/seats?cinemaId=${selectedCinemaId}`}
                               className="p-2 bg-slate-700/70 backdrop-blur-md text-gray-300 hover:text-blue-400 rounded-lg transition-all duration-300 border border-slate-600/50"
                               title="Cấu hình sơ đồ ghế"
                             >

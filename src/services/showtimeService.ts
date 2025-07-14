@@ -421,9 +421,11 @@ function transformBackendShowtime(item: any): Showtime | null {
         };
 
 
-        // Xác định cinemaId từ CinemaRoom nếu có
+        // Xác định cinemaId từ các nguồn có thể
         let cinemaId = item.cinemaId || item.Cinema_ID || '1'; // Default
-        if (item.CinemaRoom?.Cinema?.Cinema_ID) {
+        if (item.Cinema?.Cinema_ID) {
+            cinemaId = String(item.Cinema.Cinema_ID);
+        } else if (item.CinemaRoom?.Cinema?.Cinema_ID) {
             cinemaId = String(item.CinemaRoom.Cinema.Cinema_ID);
         }
 
@@ -472,7 +474,9 @@ function transformBackendShowtime(item: any): Showtime | null {
 
         // Lấy tên rạp từ dữ liệu có sẵn
         let cinemaName = '';
-        if (item.CinemaRoom?.Cinema?.Cinema_Name) {
+        if (item.Cinema?.Cinema_Name) {
+            cinemaName = item.Cinema.Cinema_Name;
+        } else if (item.CinemaRoom?.Cinema?.Cinema_Name) {
             cinemaName = item.CinemaRoom.Cinema.Cinema_Name;
         } else if (item.cinema && item.cinema.name) {
             cinemaName = item.cinema.name;
@@ -485,12 +489,12 @@ function transformBackendShowtime(item: any): Showtime | null {
 
         // Lấy tên phòng từ dữ liệu có sẵn
         let roomName = '';
-        if (item.Room?.Room_Name) {
+        if (item.Room_Name) {
+            roomName = item.Room_Name;
+        } else if (item.Room?.Room_Name) {
             roomName = item.Room.Room_Name;
         } else if (item.CinemaRoom?.Room_Name) {
             roomName = item.CinemaRoom.Room_Name;
-        } else if (item.Room_Name) {
-            roomName = item.Room_Name;
         } else if (item.room && item.room.name) {
             roomName = item.room.name;
         } else if (item.roomName) {
@@ -545,7 +549,7 @@ function transformBackendShowtime(item: any): Showtime | null {
             },
             cinema: {
                 name: cinemaName,
-                address: item.CinemaRoom?.Cinema?.Location || item.cinema?.address || 'Hà Nội'
+                address: item.Cinema?.Address || item.CinemaRoom?.Cinema?.Location || item.cinema?.address || 'Hà Nội'
             },
             room: {
                 name: roomName,
@@ -661,13 +665,27 @@ export const getShowtimesByMovieAndDate = async (movieId: string, date: string) 
 export const getShowtimesByCinema = async (cinemaId: string) => {
     console.log(`showtimeService - Fetching showtimes for cinema ID: ${cinemaId}`);
     try {
-        const response = await apiClient.get(`/showtimes/cinema/${cinemaId}`);
-
+        const response = await apiClient.get(`/showtimes`);
 
         if (response.data && Array.isArray(response.data)) {
-            return response.data.map(item => transformBackendShowtime(item)).filter(Boolean);
-        }
+            // Filter showtimes by cinema ID and transform them
+            const filteredShowtimes = response.data
+                .filter(item => {
+                    // Check various possible locations for cinema ID in the data structure
+                    const itemCinemaId = 
+                        item.Cinema?.Cinema_ID?.toString() ||           // From Cinema.Cinema_ID
+                        item.CinemaRoom?.Cinema?.Cinema_ID?.toString() || // From CinemaRoom.Cinema.Cinema_ID
+                        item.Cinema_ID?.toString() ||                    // Direct Cinema_ID
+                        item.cinemaId?.toString();                       // Direct cinemaId
 
+                    return itemCinemaId === cinemaId;
+                })
+                .map(item => transformBackendShowtime(item))
+                .filter(Boolean);
+
+            console.log(`Found ${filteredShowtimes.length} showtimes for cinema ID: ${cinemaId}`);
+            return filteredShowtimes;
+        }
 
         return [];
     } catch (error) {

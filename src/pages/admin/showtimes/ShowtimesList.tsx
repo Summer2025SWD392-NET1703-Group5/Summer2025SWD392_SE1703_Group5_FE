@@ -1,6 +1,6 @@
 // src/pages/admin/showtimes/ShowtimesList.tsx
 import React, { useState, useEffect, useMemo } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-hot-toast';
 import { motion } from 'framer-motion';
 import '../../../components/admin/cinema-rooms/SeatMap.css';
@@ -19,6 +19,7 @@ import {
   ChevronRightIcon,
   TicketIcon,
   CubeIcon,
+  HomeIcon,
 } from '@heroicons/react/24/outline';
 import FullScreenLoader from '../../../components/FullScreenLoader';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
@@ -440,6 +441,7 @@ const formatCurrency = (amount: number) => {
 
 const ShowtimesList: React.FC = () => {
   const location = useLocation();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { user } = useAuth(); // Lấy thông tin người dùng
   const isAdmin = user?.role === 'Admin'; // Kiểm tra xem người dùng có phải là Admin không
   
@@ -463,6 +465,8 @@ const ShowtimesList: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // Cinema tab selection similar to CinemaRoomsList
+  const selectedCinemaId = searchParams.get('cinemaId');
 
   // Thêm loading states riêng cho movies và cinemas
   const [moviesLoading, setMoviesLoading] = useState(true);
@@ -574,6 +578,13 @@ const ShowtimesList: React.FC = () => {
           cinemasPromise,
           roomsPromise,
         ]);
+
+        // Set initial cinema selection for Admin users (similar to CinemaRoomsList)
+        if (isAdmin && cinemasData.length > 0) {
+          const currentCinemaId = searchParams.get('cinemaId');
+          // Only set default if there's a specific cinema in URL params
+          // Otherwise, let it default to "All Cinemas" (no cinemaId)
+        }
 
         // Fetch showtimes dựa trên vai trò người dùng
         let showtimesData: Showtime[] = [];
@@ -689,6 +700,25 @@ const ShowtimesList: React.FC = () => {
     }
   };
 
+  // Handle cinema tab click similar to CinemaRoomsList
+  const handleCinemaTabClick = (cinemaId: number) => {
+    setSearchTerm('');
+    setStatusFilter('all');
+    setSelectedMovie('all');
+    setSelectedDate('all');
+    setSelectedCinema('all');
+    
+    if (cinemaId === 0) {
+      // "All Cinemas" selected - remove cinemaId param
+      setSearchParams({});
+    } else {
+      // Specific cinema selected
+      setSearchParams({ cinemaId: cinemaId.toString() });
+    }
+    
+    setCurrentPage(1);
+  };
+
   // Lọc danh sách suất chiếu
   const filteredShowtimes = useMemo(() => {
     if (!showtimes || showtimes.length === 0) {
@@ -708,7 +738,19 @@ const ShowtimesList: React.FC = () => {
       // Movie filter
       if (selectedMovie !== 'all' && showtime.Movie_ID?.toString() !== selectedMovie) return false;
       
-      // Cinema filter (if applicable)
+      // Cinema filter by selectedCinemaId (similar to CinemaRoomsList)
+      if (selectedCinemaId && isAdmin) {
+        const cinemaIdToCheck = Number(selectedCinemaId);
+        // Check multiple possible cinema ID fields in the showtime object
+        const showtimeCinemaId = 
+          showtime.Cinema?.Cinema_ID ||
+          showtime.CinemaRoom?.Cinema?.Cinema_ID ||
+          (showtime.cinemaId ? Number(showtime.cinemaId) : null);
+        
+        if (showtimeCinemaId !== cinemaIdToCheck) return false;
+      }
+      
+      // Legacy cinema filter for dropdown (keep for compatibility)
       if (selectedCinema !== 'all' && showtime.cinemaId !== selectedCinema) return false;
 
       // Date filter
@@ -733,7 +775,7 @@ const ShowtimesList: React.FC = () => {
     });
     
     return result;
-  }, [showtimes, searchTerm, selectedMovie, selectedCinema, selectedDate, statusFilter, timeFilter, roomTypeFilter]);
+  }, [showtimes, searchTerm, selectedMovie, selectedCinema, selectedCinemaId, selectedDate, statusFilter, timeFilter, roomTypeFilter, isAdmin]);
 
   // Phân trang
   const paginatedShowtimes = useMemo(() => {
@@ -873,7 +915,7 @@ const ShowtimesList: React.FC = () => {
             onImport={handleImportShowtimes}
           />
           <Link
-                  to="/admin/showtimes/add"
+                  to={`/admin/showtimes/add?cinemaId=${selectedCinemaId || ''}`}
                   className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#FFD875] to-[#FFE055] text-black font-semibold rounded-xl hover:shadow-lg hover:shadow-[#FFD875]/25 transition-all duration-300 hover:scale-105"
           >
             <PlusIcon className="w-5 h-5" />
@@ -883,7 +925,7 @@ const ShowtimesList: React.FC = () => {
             )}
             {!isAdmin && (
               <Link
-                to="/admin/showtimes/add"
+                to={`/admin/showtimes/add?cinemaId=${managerCinema?.id || ''}`}
                 className="flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#FFD875] to-[#FFE055] text-black font-semibold rounded-xl hover:shadow-lg hover:shadow-[#FFD875]/25 transition-all duration-300 hover:scale-105"
               >
                 <PlusIcon className="w-5 h-5" />
@@ -892,6 +934,51 @@ const ShowtimesList: React.FC = () => {
             )}
         </div>
       </motion.div>
+
+        {/* Cinema Tabs - Chỉ hiển thị cho Admin */}
+        {isAdmin && (
+        <motion.div
+          className="mb-8 bg-slate-800/50 backdrop-blur-md rounded-2xl p-6 border border-slate-700/50 shadow-lg"
+          style={{ boxShadow: '0 0 40px rgba(255, 216, 117, 0.1)' }}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+        >
+          <div className="flex items-center overflow-x-auto gap-2">
+            {/* All Cinemas tab */}
+            <button
+              onClick={() => handleCinemaTabClick(0)} // 0 means all cinemas
+              className={`px-6 py-3 text-sm font-semibold transition-all duration-300 whitespace-nowrap rounded-xl border ${!selectedCinemaId
+                ? 'bg-[#FFD875] text-black border-[#FFD875] shadow-lg'
+                : 'bg-slate-700/50 text-gray-300 border-slate-600/50 hover:bg-slate-600/50 hover:text-[#FFD875] hover:border-[#FFD875]/50'
+                }`}
+              style={!selectedCinemaId ? {
+                boxShadow: '0 4px 15px rgba(255, 216, 117, 0.4)'
+              } : {}}
+            >
+              <HomeIcon className="w-4 h-4 inline mr-2" />
+              Tất cả rạp
+            </button>
+            
+            {cinemas.map((cinema) => (
+              <button
+                key={cinema.Cinema_ID || cinema.id}
+                onClick={() => handleCinemaTabClick(Number(cinema.Cinema_ID || cinema.id))}
+                className={`px-6 py-3 text-sm font-semibold transition-all duration-300 whitespace-nowrap rounded-xl border ${selectedCinemaId === (cinema.Cinema_ID || cinema.id)?.toString()
+                  ? 'bg-[#FFD875] text-black border-[#FFD875] shadow-lg'
+                  : 'bg-slate-700/50 text-gray-300 border-slate-600/50 hover:bg-slate-600/50 hover:text-[#FFD875] hover:border-[#FFD875]/50'
+                  }`}
+                style={selectedCinemaId === (cinema.Cinema_ID || cinema.id)?.toString() ? {
+                  boxShadow: '0 4px 15px rgba(255, 216, 117, 0.4)'
+                } : {}}
+              >
+                <HomeIcon className="w-4 h-4 inline mr-2" />
+                {cinema.Cinema_Name || cinema.name}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+        )}
 
         {/* Filters */}
       <motion.div
@@ -930,25 +1017,6 @@ const ShowtimesList: React.FC = () => {
               ))}
             </select>
           </div>
-
-            {/* Cinema filter - Chỉ hiển thị cho Admin */}
-            {isAdmin && (
-              <div className="relative">
-                <BuildingOfficeIcon className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <select
-              value={selectedCinema}
-              onChange={(e) => setSelectedCinema(e.target.value)}
-                  className="w-full pl-12 pr-4 py-3 bg-slate-700/70 backdrop-blur-md text-white rounded-xl border border-slate-600 focus:border-[#FFD875] focus:outline-none focus:ring-2 focus:ring-[#FFD875]/30 transition-all duration-300 appearance-none"
-            >
-                  <option value="all">Tất cả rạp</option>
-                  {cinemas.map((cinema) => (
-                    <option key={cinema.id} value={cinema.id}>
-                      {cinema.name}
-                </option>
-              ))}
-            </select>
-              </div>
-            )}
 
             {/* Movie filter */}
           <div className="relative">
@@ -1056,6 +1124,10 @@ const ShowtimesList: React.FC = () => {
                           setSelectedCinema('all');
                           setSelectedDate('all');
                           setSearchTerm('');
+                          // Reset cinema selection for Admin users
+                          if (isAdmin) {
+                            setSearchParams({});
+                          }
                         }}
                         className="mt-2 px-4 py-1 bg-[#FFD875] text-black rounded-md"
                       >

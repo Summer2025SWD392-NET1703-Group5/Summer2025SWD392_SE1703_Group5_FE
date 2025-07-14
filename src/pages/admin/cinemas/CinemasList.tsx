@@ -19,6 +19,8 @@ import { toast } from "react-hot-toast";
 import { cinemaService } from "../../../services/cinemaService";
 import type { Cinema } from "../../../types/cinema";
 import StaffAssignmentModal from "../../../components/admin/forms/StaffAssignmentModal";
+import CinemaRoomsModal from "../../../components/admin/cinema/CinemaRoomsModal";
+import ShowtimesModal from "../../../components/admin/cinema/ShowtimesModal";
 import ExcelImportExport from "../../../components/admin/common/ExcelImportExport";
 import { AddButton } from "../../../components/admin/common/ActionButtons";
 import { useAuth } from "../../../contexts/SimpleAuthContext";
@@ -64,6 +66,11 @@ const CinemasList: React.FC = () => {
   const [assignmentType, setAssignmentType] = useState<"manager" | "staff">("manager");
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [selectedDescription, setSelectedDescription] = useState<{ name: string; description: string } | null>(null);
+  
+  // New modal states for rooms and showtimes
+  const [showRoomsModal, setShowRoomsModal] = useState(false);
+  const [showShowtimesModal, setShowShowtimesModal] = useState(false);
+  const [selectedCinemaForModal, setSelectedCinemaForModal] = useState<{ id: number; name: string } | null>(null);
 
   useEffect(() => {
     fetchCinemas();
@@ -211,6 +218,16 @@ const CinemasList: React.FC = () => {
   const handleOpenDescriptionModal = (cinemaName: string, description: string) => {
     setSelectedDescription({ name: cinemaName, description });
     setShowDescriptionModal(true);
+  };
+
+  const handleOpenRoomsModal = (cinema: CinemaWithStats) => {
+    setSelectedCinemaForModal({ id: cinema.Cinema_ID, name: cinema.Cinema_Name });
+    setShowRoomsModal(true);
+  };
+
+  const handleOpenShowtimesModal = (cinema: CinemaWithStats) => {
+    setSelectedCinemaForModal({ id: cinema.Cinema_ID, name: cinema.Cinema_Name });
+    setShowShowtimesModal(true);
   };
 
   const filteredCinemas = cinemas.filter((cinema) => {
@@ -593,7 +610,7 @@ const CinemasList: React.FC = () => {
               {paginatedCinemas.map((cinema, index) => (
                 <motion.div
                   key={cinema.Cinema_ID}
-                  className="relative bg-gradient-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl group transition-all duration-700 h-[700px] flex flex-col"
+                  className="relative bg-gradient-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl group transition-all duration-700 h-[820px] flex flex-col"
                   style={{
                     boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 216, 117, 0.1)",
                   }}
@@ -771,6 +788,35 @@ const CinemasList: React.FC = () => {
                         <span className="text-sm font-medium">Nhân viên</span>
                       </button>
                     </div>
+
+                    {/* Additional Action buttons */}
+                    <div className="grid grid-cols-2 gap-3 mt-3">
+                      <button
+                        onClick={() => handleOpenRoomsModal(cinema)}
+                        className="flex flex-col items-center gap-2 py-4 px-3 bg-gradient-to-br from-slate-700/50 to-slate-800/50 hover:from-blue-500/20 hover:to-blue-600/20 text-gray-300 hover:text-blue-400 rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-blue-500/30 group/btn"
+                        title="Xem phòng chiếu"
+                      >
+                        <div className="p-2 bg-blue-500/10 rounded-lg group-hover/btn:bg-blue-500/20 transition-colors">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium">Phòng chiếu</span>
+                      </button>
+
+                      <button
+                        onClick={() => handleOpenShowtimesModal(cinema)}
+                        className="flex flex-col items-center gap-2 py-4 px-3 bg-gradient-to-br from-slate-700/50 to-slate-800/50 hover:from-orange-500/20 hover:to-orange-600/20 text-gray-300 hover:text-orange-400 rounded-xl transition-all duration-300 border border-slate-600/50 hover:border-orange-500/30 group/btn"
+                        title="Xem lịch chiếu"
+                      >
+                        <div className="p-2 bg-orange-500/10 rounded-lg group-hover/btn:bg-orange-500/20 transition-colors">
+                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-sm font-medium">Lịch chiếu</span>
+                      </button>
+                    </div>
                   </div>
                 </motion.div>
               ))}
@@ -849,6 +895,26 @@ const CinemasList: React.FC = () => {
           cinema={selectedCinema}
           type={assignmentType}
           onSuccess={fetchCinemas}
+        />
+      )}
+
+      {/* Cinema Rooms Modal */}
+      {showRoomsModal && selectedCinemaForModal && (
+        <CinemaRoomsModal
+          isOpen={showRoomsModal}
+          onClose={() => setShowRoomsModal(false)}
+          cinemaId={selectedCinemaForModal.id}
+          cinemaName={selectedCinemaForModal.name}
+        />
+      )}
+
+      {/* Showtimes Modal */}
+      {showShowtimesModal && selectedCinemaForModal && (
+        <ShowtimesModal
+          isOpen={showShowtimesModal}
+          onClose={() => setShowShowtimesModal(false)}
+          cinemaId={selectedCinemaForModal.id}
+          cinemaName={selectedCinemaForModal.name}
         />
       )}
 

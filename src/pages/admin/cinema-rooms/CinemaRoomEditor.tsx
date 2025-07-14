@@ -106,7 +106,7 @@ const CinemaRoomEditor: React.FC = () => {
       onSubmit={handleFormSubmit}
       onCancel={handleCancel}
       loading={saving}
-      cinemaId={cinemaId}
+      cinemaId={cinemaId || undefined}
     />
   );
 };

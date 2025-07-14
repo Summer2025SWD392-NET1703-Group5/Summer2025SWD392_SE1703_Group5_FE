@@ -1,11 +1,8 @@
 // src/pages/admin/showtimes/AddShowtime.tsx
 import React, { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { toast } from 'react-hot-toast';
-import LoadingSpinner from '../../../components/LoadingSpinner';
-import ButtonWithSpinner from '../../../components/admin/common/ButtonWithSpinner';
-import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 import showtimeService from '../../../services/showtimeService';
 import { movieService } from '../../../services/movieService';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
@@ -17,7 +14,6 @@ import {
   FilmIcon,
   BuildingOfficeIcon,
   ClockIcon,
-  CurrencyDollarIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/SimpleAuthContext';
 
@@ -91,46 +87,7 @@ const fetchMovies = async (): Promise<Movie[]> => {
   } catch (error) {
     console.error('Error fetching movies:', error);
     toast.error('Không thể tải danh sách phim');
-
-    // Return fallback data in case of error
-    return [
-      {
-        id: '1',
-        title: 'Avengers: Endgame (Đang chiếu)',
-        poster: 'https://m.media-amazon.com/images/M/MV5BMTc5MDE2ODcwNV5BMl5BanBnXkFtZTgwMzI2NzQ2NzM@._V1_.jpg',
-        duration: 181,
-        releaseDate: '2023-04-26',
-        premiereDate: '2023-04-28',
-        endDate: '2023-05-26',
-      },
-      {
-        id: '2',
-        title: 'Spider-Man: No Way Home (Đang chiếu)',
-        poster: 'https://m.media-amazon.com/images/M/MV5BZWMyYzFjYTYtNTRjYi00OGExLWE2YzgtOGRmYjAxZTU3NzBiXkEyXkFqcGdeQXVyMzQ0MzA0NTM@._V1_.jpg',
-        duration: 148,
-        releaseDate: '2023-12-17',
-        premiereDate: '2023-12-19',
-        endDate: '2024-01-17',
-      },
-      {
-        id: '3',
-        title: 'The Batman (Đang chiếu)',
-        poster: 'https://m.media-amazon.com/images/M/MV5BMDdmMTBiNTYtMDIzNi00NGVlLWIzMDYtZTk3MTQ3NGQxZGEwXkEyXkFqcGdeQXVyMzMwOTU5MDk@._V1_.jpg',
-        duration: 176,
-        releaseDate: '2023-03-04',
-        premiereDate: '2023-03-06',
-        endDate: '2023-04-04',
-      },
-      {
-        id: '4',
-        title: 'Avatar: The Way of Water (Đang chiếu)',
-        poster: 'https://m.media-amazon.com/images/M/MV5BYjhiNjBlODctY2ZiOC00YjVlLWFlNzAtNTVhNzM1YjI1NzMxXkEyXkFqcGdeQXVyMjQxNTE1MDA@._V1_.jpg',
-        duration: 192,
-        releaseDate: '2022-12-16',
-        premiereDate: '2022-12-18',
-        endDate: '2023-01-16',
-      },
-    ];
+    return [];
   }
 };
 
@@ -218,6 +175,7 @@ const fetchRooms = async (cinemaId: string): Promise<CinemaRoom[]> => {
 
 const AddShowtime: React.FC = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth(); // Lấy thông tin người dùng
@@ -247,12 +205,19 @@ const AddShowtime: React.FC = () => {
   // Load initial data
   useEffect(() => {
     const loadData = async () => {
+      const cinemaId = searchParams.get("cinemaId");
       setLoading(true);
       try {
         // Luôn tải danh sách phim
         const moviesData = await fetchMovies();
         setMovies(moviesData);
-
+        
+        // Set cinema from URL parameter if available
+        if (cinemaId && isAdmin) {
+          console.log('Setting cinema from URL parameter:', cinemaId);
+          setSelectedCinema(cinemaId);
+          console.log(`Selected cinema set to: ${cinemaId}`);
+        }
         // Nếu là Manager, lấy thông tin rạp của họ
         if (!isAdmin) {
           try {
@@ -276,6 +241,17 @@ const AddShowtime: React.FC = () => {
           // Nếu là Admin, lấy tất cả rạp
           const cinemasData = await fetchCinemas();
           setCinemas(cinemasData);
+          
+          // After loading cinemas, set the selected cinema from URL if available
+          if (cinemaId && cinemasData.length > 0) {
+            const cinemaExists = cinemasData.find(c => c.id === cinemaId);
+            if (cinemaExists) {
+              console.log('Setting cinema from URL after loading cinemas:', cinemaId);
+              setSelectedCinema(cinemaId);
+            } else {
+              console.warn('Cinema ID from URL not found in loaded cinemas:', cinemaId);
+            }
+          }
         }
 
         // Set default date to tomorrow
@@ -292,7 +268,19 @@ const AddShowtime: React.FC = () => {
     };
 
     loadData();
-  }, [isAdmin]);
+  }, [isAdmin, searchParams]);
+
+  // Handle cinema selection from URL parameters when cinemas are loaded
+  useEffect(() => {
+    const cinemaId = searchParams.get("cinemaId");
+    if (cinemaId && isAdmin && cinemas.length > 0) {
+      const cinemaExists = cinemas.find(c => c.id === cinemaId);
+      if (cinemaExists && selectedCinema !== cinemaId) {
+        console.log('Setting cinema from URL in separate useEffect:', cinemaId);
+        setSelectedCinema(cinemaId);
+      }
+    }
+  }, [cinemas, searchParams, isAdmin, selectedCinema]);
 
   // Load rooms when cinema changes
   useEffect(() => {
@@ -389,14 +377,6 @@ const AddShowtime: React.FC = () => {
     return endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Format currency for display
-  const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(Number(amount));
-  };
-
   // Handle early premiere modal confirm
   const handleEarlyPremiereConfirm = async () => {
     setShowEarlyPremiereModal(false);
@@ -469,8 +449,14 @@ const AddShowtime: React.FC = () => {
       if (result) {
         toast.success('Thêm suất chiếu thành công');
         console.log('Suất chiếu được tạo thành công, chuyển về trang quản lý suất chiếu');
-        // Redirect to showtimes page without filter parameters
-        navigate('/admin/showtimes');
+        
+        // Redirect to showtimes page, preserving cinema selection if available
+        const cinemaId = searchParams.get("cinemaId");
+        if (cinemaId && isAdmin) {
+          navigate(`/admin/showtimes?cinemaId=${cinemaId}`);
+        } else {
+          navigate('/admin/showtimes');
+        }
       }
     } catch (error: any) {
       console.error('Error creating showtime:', error);
@@ -507,7 +493,10 @@ const AddShowtime: React.FC = () => {
       {/* Back button and header */}
       <div className="mb-6">
         <Link
-          to="/admin/showtimes"
+          to={(() => {
+            const cinemaId = searchParams.get("cinemaId");
+            return cinemaId && isAdmin ? `/admin/showtimes?cinemaId=${cinemaId}` : '/admin/showtimes';
+          })()}
           className="flex items-center text-gray-400 hover:text-FFD875 mb-4"
         >
           <ArrowLeftIcon className="w-4 h-4 mr-1" />
@@ -674,7 +663,14 @@ const AddShowtime: React.FC = () => {
             <div className="flex justify-end space-x-4 mt-8">
               <button
                 type="button"
-                onClick={() => navigate('/admin/showtimes')}
+                onClick={() => {
+                  const cinemaId = searchParams.get("cinemaId");
+                  if (cinemaId && isAdmin) {
+                    navigate(`/admin/showtimes?cinemaId=${cinemaId}`);
+                  } else {
+                    navigate('/admin/showtimes');
+                  }
+                }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                 disabled={submitting}
               >
