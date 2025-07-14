@@ -88,36 +88,162 @@ const BookingHistory: React.FC = () => {
 
       // Tìm booking đã cancel để lấy showtime ID
       const cancelledBooking = bookings.find((b) => b.Booking_ID === bookingToCancel);
-      if (cancelledBooking && cancelledBooking.Showtime?.Showtime_ID) {
-        const showtimeId = cancelledBooking.Showtime.Showtime_ID;
 
-        // Clear payment state cho showtime này
-        const paymentStateKey = `payment_state_${showtimeId}`;
-        sessionStorage.removeItem(paymentStateKey);
-        console.log(`🗑️ [CANCEL_BOOKING] Cleared payment state: ${paymentStateKey}`);
+      // 🔍 DEBUG: Log booking structure để hiểu cấu trúc dữ liệu
+      console.log(`🔍 [CANCEL_BOOKING] Cancelled booking structure:`, cancelledBooking);
+      console.log(`🔍 [CANCEL_BOOKING] Available keys:`, cancelledBooking ? Object.keys(cancelledBooking) : 'No booking found');
 
-        // Clear các session storage khác liên quan
-        const sessionKeys = [`booking_session_${showtimeId}`, `galaxy_cinema_session_${showtimeId}`, "bookingData"];
+      // 🔧 ENHANCED: Try multiple ways to get showtimeId
+      let showtimeId = null;
+      if (cancelledBooking) {
+        // Method 1: From nested Showtime object
+        if (cancelledBooking.Showtime?.Showtime_ID) {
+          showtimeId = cancelledBooking.Showtime.Showtime_ID;
+          console.log(`🔍 [CANCEL_BOOKING] Got showtimeId from Showtime.Showtime_ID: ${showtimeId}`);
+        }
+        // Method 2: Direct Showtime_ID field
+        else if (cancelledBooking.Showtime_ID) {
+          showtimeId = cancelledBooking.Showtime_ID;
+          console.log(`🔍 [CANCEL_BOOKING] Got showtimeId from Showtime_ID: ${showtimeId}`);
+        }
+        // Method 3: From any field containing showtime
+        else {
+          const possibleFields = ['showtimeId', 'showtime_id', 'ShowtimeId'];
+          for (const field of possibleFields) {
+            if (cancelledBooking[field]) {
+              showtimeId = cancelledBooking[field];
+              console.log(`🔍 [CANCEL_BOOKING] Got showtimeId from ${field}: ${showtimeId}`);
+              break;
+            }
+          }
+        }
+      }
 
-        sessionKeys.forEach((key) => {
+      // 🚨 FALLBACK: If no showtimeId found, clear all payment states
+      if (!showtimeId) {
+        console.warn(`⚠️ [CANCEL_BOOKING] No showtimeId found for booking ${bookingToCancel}, clearing all payment states`);
+
+        // Clear all payment_state_* keys from sessionStorage
+        const allSessionKeys = Object.keys(sessionStorage);
+        const paymentStateKeys = allSessionKeys.filter(key => key.startsWith('payment_state_'));
+
+        paymentStateKeys.forEach(key => {
           sessionStorage.removeItem(key);
-          console.log(`🗑️ [CANCEL_BOOKING] Cleared session: ${key}`);
+          localStorage.removeItem(key);
+          console.log(`🗑️ [CANCEL_BOOKING] Cleared fallback payment state: ${key}`);
         });
 
-        // Broadcast cleanup event cho các tabs khác
-        try {
-          const cleanupEvent = {
-            action: "CLEAR_PAYMENT_STATE",
-            showtimeId: showtimeId,
-            timestamp: Date.now(),
-            source: "booking_history_cancel",
-          };
-          localStorage.setItem("galaxy_cinema_cleanup_event", JSON.stringify(cleanupEvent));
-          setTimeout(() => localStorage.removeItem("galaxy_cinema_cleanup_event"), 100);
-          console.log(`📡 [CANCEL_BOOKING] Broadcasted cleanup event for showtime ${showtimeId}`);
-        } catch (broadcastError) {
-          console.warn("⚠️ [CANCEL_BOOKING] Failed to broadcast cleanup event:", broadcastError);
-        }
+        // Also clear common session keys
+        const commonKeys = ['bookingData', 'has_pending_booking'];
+        commonKeys.forEach(key => {
+          sessionStorage.removeItem(key);
+          localStorage.removeItem(key);
+          console.log(`🗑️ [CANCEL_BOOKING] Cleared fallback session: ${key}`);
+        });
+      }
+
+      if (showtimeId) {
+
+        // 🔧 ENHANCED: Clear payment state với multiple attempts và delay để đảm bảo
+        const clearPaymentStateCompletely = () => {
+          const paymentStateKey = `payment_state_${showtimeId}`;
+
+          // Clear multiple times với delay để đảm bảo
+          for (let i = 0; i < 5; i++) {
+            setTimeout(() => {
+              sessionStorage.removeItem(paymentStateKey);
+              localStorage.removeItem(paymentStateKey);
+              console.log(`🗑️ [CANCEL_BOOKING] Attempt ${i + 1}: Cleared payment state: ${paymentStateKey}`);
+            }, i * 50); // Delay 50ms giữa mỗi lần clear
+          }
+        };
+
+        clearPaymentStateCompletely();
+
+        // Clear các session storage khác liên quan với delay
+        const sessionKeys = [
+          `booking_session_${showtimeId}`,
+          `galaxy_cinema_session_${showtimeId}`,
+          "bookingData",
+          "has_pending_booking"
+        ];
+
+        sessionKeys.forEach((key, index) => {
+          // Clear ngay lập tức
+          sessionStorage.removeItem(key);
+          localStorage.removeItem(key);
+
+          // Clear lại sau delay để đảm bảo
+          setTimeout(() => {
+            sessionStorage.removeItem(key);
+            localStorage.removeItem(key);
+            console.log(`🗑️ [CANCEL_BOOKING] Delayed clear session: ${key}`);
+          }, (index + 1) * 100);
+        });
+
+        // 🔧 ENHANCED: Multiple broadcast events với delay để đảm bảo
+        const broadcastCancelEvent = () => {
+          try {
+            const cancelEvent = {
+              action: 'BOOKING_CANCELLED',
+              bookingId: bookingToCancel,
+              showtimeId: showtimeId,
+              timestamp: Date.now(),
+              source: 'booking_history_cancel'
+            };
+
+            // Broadcast ngay lập tức
+            localStorage.setItem('galaxy_cinema_cancel_event', JSON.stringify(cancelEvent));
+            setTimeout(() => localStorage.removeItem('galaxy_cinema_cancel_event'), 100);
+
+            // Broadcast lại sau 200ms để đảm bảo
+            setTimeout(() => {
+              localStorage.setItem('galaxy_cinema_cancel_event', JSON.stringify({
+                ...cancelEvent,
+                timestamp: Date.now(),
+                retry: true
+              }));
+              setTimeout(() => localStorage.removeItem('galaxy_cinema_cancel_event'), 100);
+            }, 200);
+
+            console.log(`📡 [CANCEL_BOOKING] Broadcasted cancel event for booking ${bookingToCancel}`);
+          } catch (error) {
+            console.warn('⚠️ [CANCEL_BOOKING] Failed to broadcast cancel event:', error);
+          }
+        };
+
+        const broadcastCleanupEvent = () => {
+          try {
+            const cleanupEvent = {
+              action: "CLEAR_PAYMENT_STATE",
+              showtimeId: showtimeId,
+              timestamp: Date.now(),
+              source: "booking_history_cancel",
+            };
+
+            // Broadcast ngay lập tức
+            localStorage.setItem("galaxy_cinema_cleanup_event", JSON.stringify(cleanupEvent));
+            setTimeout(() => localStorage.removeItem("galaxy_cinema_cleanup_event"), 100);
+
+            // Broadcast lại sau 300ms để đảm bảo
+            setTimeout(() => {
+              localStorage.setItem("galaxy_cinema_cleanup_event", JSON.stringify({
+                ...cleanupEvent,
+                timestamp: Date.now(),
+                retry: true
+              }));
+              setTimeout(() => localStorage.removeItem("galaxy_cinema_cleanup_event"), 100);
+            }, 300);
+
+            console.log(`📡 [CANCEL_BOOKING] Broadcasted cleanup event for showtime ${showtimeId}`);
+          } catch (broadcastError) {
+            console.warn("⚠️ [CANCEL_BOOKING] Failed to broadcast cleanup event:", broadcastError);
+          }
+        };
+
+        // Execute broadcasts
+        broadcastCancelEvent();
+        broadcastCleanupEvent();
       }
 
       // Refresh danh sách sau khi hủy

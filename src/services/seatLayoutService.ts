@@ -171,6 +171,83 @@ const getSeatUsageStats = async (roomId: number, days: number = 30): Promise<Api
     }
 };
 
+/**
+ * Create seat layout for new room
+ */
+const createSeatLayoutForNewRoom = async (roomId: number, config: {
+    rowsInput: string;
+    seatsPerRow: number;
+    seatType: 'Regular' | 'VIP';
+    hiddenSeats: number[];
+}): Promise<ApiResponse<any>> => {
+    console.log('seatLayoutService - Creating seat layout for new room ID:', roomId, 'Config:', config);
+
+    try {
+        // Step 1: Create basic seat layout (without hidden seats)
+        const bulkData: BulkSeatConfigurationRequest = {
+            SeatType: config.seatType,
+            RowsInput: config.rowsInput,
+            ColumnsPerRow: config.seatsPerRow
+            // Note: EmptyColumns không được gửi ở bước này
+        };
+
+        console.log('seatLayoutService - Step 1: Creating basic layout...');
+        const createResponse = await apiClient.post<ApiResponse<any>>(`/seat-layouts/bulk/${roomId}`, bulkData);
+        console.log('seatLayoutService - Basic layout created:', createResponse.data);
+
+        // Step 2: Hide seats if needed
+        if (config.hiddenSeats && config.hiddenSeats.length > 0) {
+            console.log('seatLayoutService - Step 2: Hiding seats:', config.hiddenSeats);
+
+            // Get all seat layouts for this room to find IDs of seats to hide
+            const seatMapResponse = await getSeatLayoutByRoomId(roomId);
+            console.log('seatLayoutService - Seat map response:', seatMapResponse);
+
+            if (seatMapResponse.success && seatMapResponse.data) {
+                const seatMap = seatMapResponse.data;
+                console.log('seatLayoutService - Seat map data:', seatMap);
+
+                // Check if rows exist and is an array
+                if (seatMap.rows && Array.isArray(seatMap.rows)) {
+                    const seatsToHide: number[] = [];
+
+                    // Find layout IDs for seats that need to be hidden
+                    seatMap.rows.forEach(row => {
+                        if (row.seats && Array.isArray(row.seats)) {
+                            row.seats.forEach(seat => {
+                                if (config.hiddenSeats.includes(seat.column_number)) {
+                                    seatsToHide.push(seat.layout_id);
+                                }
+                            });
+                        }
+                    });
+
+                    if (seatsToHide.length > 0) {
+                        const hideData: BulkDeleteLayoutsRequest = {
+                            LayoutIds: seatsToHide
+                        };
+
+                        console.log('seatLayoutService - Hiding seats with IDs:', seatsToHide);
+                        await apiClient.delete<ApiResponse<any>>('/seat-layouts/bulk-delete', { data: hideData });
+                        console.log('seatLayoutService - Seats hidden successfully');
+                    } else {
+                        console.log('seatLayoutService - No seats found to hide');
+                    }
+                } else {
+                    console.warn('seatLayoutService - No rows found in seat map or rows is not an array');
+                }
+            } else {
+                console.warn('seatLayoutService - Failed to get seat map or no data returned');
+            }
+        }
+
+        return createResponse.data;
+    } catch (error) {
+        console.error('seatLayoutService - Error creating seat layout:', error);
+        throw error;
+    }
+};
+
 export const seatLayoutService = {
     getAllSeatLayouts,
     getSeatLayoutById,
@@ -181,5 +258,6 @@ export const seatLayoutService = {
     configureSeatLayout,
     bulkConfigureSeatLayout,
     softDeleteSeatLayouts,
-    getSeatUsageStats
-}; 
+    getSeatUsageStats,
+    createSeatLayoutForNewRoom
+};
