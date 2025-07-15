@@ -63,6 +63,7 @@ interface InteractiveSeatPreviewProps {
     roomId?: number;
     isNewRoom?: boolean;
     readOnly?: boolean; // Chế độ chỉ xem, không cho chỉnh sửa
+    showStats?: boolean; // Hiển thị thống kê hay không
     onSeatTypeChange?: (seatIndex: number, newType: 'Regular' | 'VIP') => void;
     onToggleHiddenSeat?: (seatIndex: number) => void;
     onStatsUpdate?: (stats: { total: number; regular: number; vip: number; hidden: number }) => void;
@@ -78,6 +79,7 @@ const InteractiveSeatPreview: React.FC<InteractiveSeatPreviewProps> = ({
     roomId,
     isNewRoom = true,
     readOnly = false,
+    showStats = true,
     onSeatTypeChange,
     onToggleHiddenSeat,
     onStatsUpdate
@@ -577,48 +579,50 @@ const InteractiveSeatPreview: React.FC<InteractiveSeatPreviewProps> = ({
                 </div>
 
                 {/* Statistics - Compact size */}
-                <motion.div
-                    className="bg-gradient-to-br from-slate-700/40 to-slate-800/30 rounded-lg p-3 border border-slate-600/30"
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.5, delay: 0.3 }}
-                >
-                    <h4 className="text-[#FFD875] font-bold text-center mb-2 text-sm">Thống kê nhanh</h4>
-                    <div className="grid grid-cols-4 gap-2">
-                        <motion.div
-                            className="text-center bg-slate-600/30 rounded p-2 border border-slate-500/30"
-                            whileHover={{ scale: 1.02 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-lg font-bold text-white">{stats.total}</div>
-                            <div className="text-gray-400 text-xs">Tổng</div>
-                        </motion.div>
-                        <motion.div
-                            className="text-center bg-gradient-to-br from-green-500/20 to-green-600/10 rounded p-2 border border-green-500/30"
-                            whileHover={{ scale: 1.02 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-lg font-bold text-green-400">{stats.regular}</div>
-                            <div className="text-green-300 text-xs">Thường</div>
-                        </motion.div>
-                        <motion.div
-                            className="text-center bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded p-2 border border-purple-500/30"
-                            whileHover={{ scale: 1.02 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-lg font-bold text-purple-400">{stats.vip}</div>
-                            <div className="text-purple-300 text-xs">VIP</div>
-                        </motion.div>
-                        <motion.div
-                            className="text-center bg-gradient-to-br from-gray-500/20 to-gray-600/10 rounded p-2 border border-gray-500/30"
-                            whileHover={{ scale: 1.02 }}
-                            transition={{ duration: 0.2 }}
-                        >
-                            <div className="text-lg font-bold text-gray-400">{stats.hidden}</div>
-                            <div className="text-gray-300 text-xs">Ẩn</div>
-                        </motion.div>
-                    </div>
-                </motion.div>
+                {showStats && (
+                    <motion.div
+                        className="bg-gradient-to-br from-slate-700/40 to-slate-800/30 rounded-lg p-3 border border-slate-600/30"
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.5, delay: 0.3 }}
+                    >
+                        <h4 className="text-[#FFD875] font-bold text-center mb-2 text-sm">Thống kê nhanh</h4>
+                        <div className="grid grid-cols-4 gap-2">
+                            <motion.div
+                                className="text-center bg-slate-600/30 rounded p-2 border border-slate-500/30"
+                                whileHover={{ scale: 1.02 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="text-lg font-bold text-white">{stats.total}</div>
+                                <div className="text-gray-400 text-xs">Tổng</div>
+                            </motion.div>
+                            <motion.div
+                                className="text-center bg-gradient-to-br from-green-500/20 to-green-600/10 rounded p-2 border border-green-500/30"
+                                whileHover={{ scale: 1.02 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="text-lg font-bold text-green-400">{stats.regular}</div>
+                                <div className="text-green-300 text-xs">Thường</div>
+                            </motion.div>
+                            <motion.div
+                                className="text-center bg-gradient-to-br from-purple-500/20 to-purple-600/10 rounded p-2 border border-purple-500/30"
+                                whileHover={{ scale: 1.02 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="text-lg font-bold text-purple-400">{stats.vip}</div>
+                                <div className="text-purple-300 text-xs">VIP</div>
+                            </motion.div>
+                            <motion.div
+                                className="text-center bg-gradient-to-br from-gray-500/20 to-gray-600/10 rounded p-2 border border-gray-500/30"
+                                whileHover={{ scale: 1.02 }}
+                                transition={{ duration: 0.2 }}
+                            >
+                                <div className="text-lg font-bold text-gray-400">{stats.hidden}</div>
+                                <div className="text-gray-300 text-xs">Ẩn</div>
+                            </motion.div>
+                        </div>
+                    </motion.div>
+                )}
 
                 {/* Quick Instructions - Very compact */}
                 {!readOnly && (

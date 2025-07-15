@@ -19,6 +19,7 @@ import { toast } from "react-hot-toast";
 import api from "../config/api";
 import { bookingService } from "../services/bookingService";
 import { promotionService } from "../services/promotionService";
+import { useCountdown } from "../hooks/useCountdown";
 
 const mockPromoCodes = [
   { code: "CINEMA10", description: "Giảm 10,000đ", value: 10000 },
@@ -32,6 +33,7 @@ interface PaymentComponentProps {
   isAuthenticated: boolean;
   onBack: () => void;
   onPaymentSuccess: (bookingId: string, paymentResult: any) => void;
+  onUpdateSession?: (updatedSession: BookingSession) => void;
 }
 
 const PaymentComponent: React.FC<PaymentComponentProps> = ({
@@ -40,6 +42,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   isAuthenticated,
   onBack,
   onPaymentSuccess,
+  onUpdateSession,
 }) => {
   // State variables
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState<string>("");
@@ -56,9 +59,48 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   const [isCreatingCustomer, setIsCreatingCustomer] = useState<boolean>(false);
   const [promoError, setPromoError] = useState<string | null>(null);
   const [pointsError, setPointsError] = useState<string | null>(null);
-  const [timeLeft, setTimeLeft] = useState<number>(0);
-  const [isExpired, setIsExpired] = useState<boolean>(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  // 🔧 FIX: Sử dụng countdown service thống nhất
+  const { timeLeft, isExpired, formattedTime } = useCountdown({
+    bookingId: bookingSession?.bookingId || 0,
+    showtimeId: bookingSession?.showtimeId || 0,
+    duration: 5 * 60, // 5 phút
+    onTimeout: async () => {
+      console.log("⏰ Payment timeout - hủy booking và quay về chọn ghế");
+
+      try {
+        // Hủy booking qua API
+        if (bookingSession?.bookingId) {
+          console.log(`🗑️ Hủy booking: ${bookingSession.bookingId}`);
+          await api.put(`/bookings/${bookingSession.bookingId}/cancel`, {
+            reason: "payment_timeout",
+          });
+          console.log("✅ Đã hủy booking thành công");
+        }
+
+        // Xóa session storage
+        if (bookingSession?.bookingId) {
+          sessionStorage.removeItem(`booking_timestamp_${bookingSession.bookingId}`);
+        }
+        if (bookingSession?.showtimeId) {
+          sessionStorage.removeItem(`booking_session_${bookingSession.showtimeId}`);
+        }
+
+        // Hiển thị thông báo
+        toast.error("Hết thời gian thanh toán! Đang chuyển về trang chọn ghế...");
+
+        // Chuyển về trang chọn ghế sau 2 giây
+        setTimeout(() => {
+          onBack(); // Gọi callback để quay về
+        }, 2000);
+      } catch (error) {
+        console.error("❌ Lỗi khi hủy booking:", error);
+        toast.error("Hết thời gian thanh toán! Đang chuyển về trang chọn ghế...");
+        setTimeout(() => {
+          onBack();
+        }, 2000);
+      }
+    }
+  });
   const [userPoints, setUserPoints] = useState<number>(0);
   const [isLoadingPoints, setIsLoadingPoints] = useState<boolean>(false);
   const [isApplyingPromo, setIsApplyingPromo] = useState<boolean>(false);
@@ -108,6 +150,45 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     fetchAvailablePromotions();
   }, [user, bookingSession.bookingId]);
 
+  // 🔄 Restore promotion và points state từ sessionStorage khi reload
+  useEffect(() => {
+    if (!bookingSession.showtimeId) return;
+
+    const restorePaymentUIState = () => {
+      try {
+        const paymentStateKey = `payment_state_${bookingSession.showtimeId}`;
+        const savedPaymentState = sessionStorage.getItem(paymentStateKey);
+
+        if (savedPaymentState) {
+          const paymentData = JSON.parse(savedPaymentState);
+          const session = paymentData.paymentBookingSession;
+
+          console.log('🔄 [PAYMENT_UI] Restoring promotion and points state...');
+
+          // Restore promotion state nếu có
+          if (session.appliedPromotion) {
+            console.log('🎫 [PAYMENT_UI] Restoring promotion:', session.appliedPromotion);
+            setPromoCode(session.appliedPromotion.code || '');
+            setAppliedDiscount(session.appliedPromotion.discountAmount || 0);
+          }
+
+          // Restore points state nếu có
+          if (session.usedPoints && session.usedPoints > 0) {
+            console.log('💎 [PAYMENT_UI] Restoring points:', session.usedPoints);
+            setPointsToUse(session.usedPoints.toString());
+            setAppliedPointsValue(session.usedPoints);
+          }
+
+          console.log('✅ [PAYMENT_UI] Payment UI state restored successfully');
+        }
+      } catch (error) {
+        console.error('❌ [PAYMENT_UI] Error restoring payment UI state:', error);
+      }
+    };
+
+    restorePaymentUIState();
+  }, [bookingSession.showtimeId]);
+
   // 🎯 Lấy danh sách mã khuyến mãi phù hợp
   const fetchAvailablePromotions = async () => {
     if (!bookingSession.bookingId) {
@@ -117,16 +198,13 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
     try {
       setIsLoadingPromotions(true);
-      console.log("Đang lấy mã khuyến mãi phù hợp cho booking:", bookingSession.bookingId);
 
-      const promotions = await promotionService.getAvailablePromotionsForBooking(bookingSession.bookingId);
-      console.log("🎯 Raw promotions từ service:", promotions);
-      console.log("🎯 Kiểu dữ liệu promotions:", typeof promotions, Array.isArray(promotions));
+      const promotions = await promotionService.getAvailablePromotionsForBooking(
+        bookingSession.bookingId,
+        bookingSession.totalAmount || 0
+      );
 
       setAvailablePromotions(promotions);
-
-      console.log(`🎯 Đã set availablePromotions với ${promotions.length} mã:`, promotions);
-      console.log("🎯 State availablePromotions sau khi set:", availablePromotions);
     } catch (error) {
       console.error("Lỗi khi lấy mã khuyến mãi:", error);
       setAvailablePromotions([]);
@@ -150,22 +228,29 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
       setIsApplyingPromo(true);
       setPromoError(null);
 
-      console.log("Áp dụng mã giảm giá từ dropdown:", {
-        bookingId: bookingSession.bookingId,
-        promoCode: promotionCode,
-      });
-
       const response = await bookingService.applyPromotion({
         bookingId: bookingSession.bookingId,
         promoCode: promotionCode,
       });
 
-      console.log("Kết quả áp dụng mã giảm giá:", response);
-
       if (response.success) {
-        setAppliedDiscount(response.discount_amount || 0);
+        const discountAmount = response.discount_amount || 0;
+        setAppliedDiscount(discountAmount);
         setPromoCode("");
-        toast.success(`Đã áp dụng mã giảm giá: -${(response.discount_amount || 0).toLocaleString("vi-VN")}đ`);
+        toast.success(`Đã áp dụng mã giảm giá: -${discountAmount.toLocaleString("vi-VN")}đ`);
+
+        // Cập nhật session với thông tin promotion
+        if (onUpdateSession) {
+          const updatedSession = {
+            ...bookingSession,
+            appliedPromotion: {
+              code: promotionCode,
+              discountAmount: discountAmount
+            }
+          };
+          onUpdateSession(updatedSession);
+          console.log('✅ [PAYMENT] Updated session with promotion:', updatedSession.appliedPromotion);
+        }
 
         // Refresh danh sách mã khuyến mãi
         await fetchAvailablePromotions();
@@ -191,14 +276,25 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
       setIsApplyingPromo(true);
       setPromoError(null);
 
-      console.log("Xóa mã giảm giá cho booking:", bookingSession.bookingId);
-
       const response = await bookingService.removePromotion(bookingSession.bookingId);
 
       if (response.success) {
         setAppliedDiscount(0);
         setPromoCode("");
         toast.success("Đã xóa mã giảm giá");
+
+        // Cập nhật session để xóa thông tin promotion
+        if (onUpdateSession) {
+          const updatedSession = {
+            ...bookingSession
+          };
+          // Xóa appliedPromotion nếu có
+          if ('appliedPromotion' in updatedSession) {
+            delete updatedSession.appliedPromotion;
+          }
+          onUpdateSession(updatedSession);
+          console.log('✅ [PAYMENT] Removed promotion from session');
+        }
 
         // Refresh danh sách mã khuyến mãi
         await fetchAvailablePromotions();
@@ -211,6 +307,49 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
       setPromoError(errorMessage);
     } finally {
       setIsApplyingPromo(false);
+    }
+  };
+
+  // 🗑️ Xóa điểm đã sử dụng
+  const handleRemovePoints = async () => {
+    if (!bookingSession.bookingId) {
+      return;
+    }
+
+    try {
+      setIsProcessing(true);
+      setPointsError(null);
+
+      const response = await bookingService.removePointsFromBooking(bookingSession.bookingId);
+
+      if (response.success) {
+        // Hoàn lại điểm cho user
+        setUserPoints((prev) => prev + appliedPointsValue);
+        setAppliedPointsValue(0);
+        setPointsToUse("");
+        toast.success("Đã xóa điểm và hoàn lại vào tài khoản");
+
+        // Cập nhật session để xóa thông tin points
+        if (onUpdateSession) {
+          const updatedSession = {
+            ...bookingSession
+          };
+          // Xóa usedPoints nếu có
+          if ('usedPoints' in updatedSession) {
+            delete updatedSession.usedPoints;
+          }
+          onUpdateSession(updatedSession);
+          console.log('✅ [PAYMENT] Removed points from session');
+        }
+      } else {
+        setPointsError(response.message || "Không thể xóa điểm");
+      }
+    } catch (error: any) {
+      console.error("Lỗi khi xóa điểm:", error);
+      const errorMessage = error.response?.data?.message || error.message || "Không thể xóa điểm";
+      setPointsError(errorMessage);
+    } finally {
+      setIsProcessing(false);
     }
   };
 
@@ -230,17 +369,10 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
       setIsApplyingPromo(true);
       setPromoError(null);
 
-      console.log("Áp dụng mã giảm giá:", {
-        bookingId: bookingSession.bookingId,
-        promoCode: promoCode.trim(),
-      });
-
       const response = await bookingService.applyPromotion({
         bookingId: bookingSession.bookingId,
         promoCode: promoCode.trim(),
       });
-
-      console.log("Kết quả áp dụng mã giảm giá:", response);
 
       if (response.success) {
         setAppliedDiscount(response.discount_amount || 0);
@@ -596,89 +728,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
     }
   }, [user]);
 
-  // 🕒 Countdown timer effect - 5 phút
-  useEffect(() => {
-    if (!bookingSession?.bookingId) return;
-
-    const calculateTimeLeft = () => {
-      const bookingTimestamp = sessionStorage.getItem(`booking_timestamp_${bookingSession.bookingId}`);
-      if (!bookingTimestamp) {
-        // Nếu không có timestamp, tạo mới
-        const newTimestamp = Date.now().toString();
-        sessionStorage.setItem(`booking_timestamp_${bookingSession.bookingId}`, newTimestamp);
-        return 5 * 60; // 5 phút
-      }
-
-      const bookingTime = parseInt(bookingTimestamp);
-      const now = Date.now();
-      const elapsed = now - bookingTime;
-      const remaining = Math.max(0, 5 * 60 * 1000 - elapsed); // 5 phút
-
-      return Math.floor(remaining / 1000);
-    };
-
-    const handleTimeout = async () => {
-      console.log("⏰ Payment timeout - hủy booking và quay về chọn ghế");
-      setIsExpired(true);
-
-      try {
-        // Hủy booking qua API
-        if (bookingSession.bookingId) {
-          console.log(`🗑️ Hủy booking: ${bookingSession.bookingId}`);
-          await api.put(`/bookings/${bookingSession.bookingId}/cancel`, {
-            reason: "payment_timeout",
-          });
-          console.log("✅ Đã hủy booking thành công");
-        }
-
-        // Xóa session storage
-        sessionStorage.removeItem(`booking_timestamp_${bookingSession.bookingId}`);
-        sessionStorage.removeItem(`booking_session_${bookingSession.showtimeId}`);
-
-        // Hiển thị thông báo
-        toast.error("Hết thời gian thanh toán! Đang chuyển về trang chọn ghế...");
-
-        // Chuyển về trang chọn ghế sau 2 giây
-        setTimeout(() => {
-          onBack(); // Gọi callback để quay về
-        }, 2000);
-      } catch (error) {
-        console.error("❌ Lỗi khi hủy booking:", error);
-        toast.error("Hết thời gian thanh toán! Đang chuyển về trang chọn ghế...");
-        setTimeout(() => {
-          onBack();
-        }, 2000);
-      }
-    };
-
-    const updateTimer = () => {
-      const remaining = calculateTimeLeft();
-      setTimeLeft(remaining);
-
-      if (remaining <= 0 && !isExpired) {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-        handleTimeout();
-      }
-    };
-
-    updateTimer();
-    intervalRef.current = setInterval(updateTimer, 1000);
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [bookingSession?.bookingId, isExpired, onBack]);
-
-  // Format time display
-  const formatTime = (seconds: number): string => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = seconds % 60;
-    return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-  };
+  // ✅ Countdown timer đã được thay thế bằng useCountdown hook
 
   // 🔧 Xử lý selectedSeats - có thể là string hoặc array
   const processedSeats = React.useMemo(() => {
@@ -899,6 +949,16 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
             toast.success(
               `Đã sử dụng ${points.toLocaleString("vi-VN")} điểm để giảm giá ${pointsValue.toLocaleString("vi-VN")}đ`
             );
+
+            // Cập nhật session với thông tin points
+            if (onUpdateSession) {
+              const updatedSession = {
+                ...bookingSession,
+                usedPoints: points
+              };
+              onUpdateSession(updatedSession);
+              console.log('✅ [PAYMENT] Updated session with points:', points);
+            }
           } else {
             throw new Error(response.data?.message || "Không thể áp dụng điểm");
           }
@@ -948,7 +1008,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
             {/* Timer */}
             <div className="flex items-center gap-2 text-[#FFD875]">
               <ClockIcon className="w-5 h-5" />
-              <span className="font-mono text-lg">{isExpired ? "00:00" : formatTime(timeLeft)}</span>
+              <span className="font-mono text-lg">{isExpired ? "00:00" : formattedTime}</span>
             </div>
           </div>
         </div>
@@ -1231,14 +1291,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
                 {/* Dropdown mã khuyến mãi phù hợp */}
                 {(() => {
-                  // 🔧 FIX: Chỉ log khi có thay đổi thực sự
                   const shouldShow = availablePromotions.length > 0 && !appliedDiscount;
-                  if (shouldShow) {
-                    console.log("🎯 Showing promotion dropdown:", {
-                      availablePromotionsLength: availablePromotions.length,
-                      appliedDiscount: appliedDiscount,
-                    });
-                  }
                   return shouldShow;
                 })() && (
                   <div className="mb-4">
@@ -1417,9 +1470,26 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
                 {pointsError && <div className="text-red-400 text-sm mb-4">{pointsError}</div>}
 
                 {appliedPointsValue > 0 && (
-                  <div className="bg-[#FFD875]/20 border border-[#FFD875]/50 rounded-lg p-3 text-[#FFD875] text-sm">
-                    ✅ Đã sử dụng {appliedPointsValue.toLocaleString("vi-VN")} điểm: -
-                    {appliedPointsValue.toLocaleString("vi-VN")}đ
+                  <div className="bg-[#FFD875]/20 border border-[#FFD875]/50 rounded-lg p-3 text-[#FFD875] text-sm flex items-center justify-between">
+                    <span>
+                      ✅ Đã sử dụng {appliedPointsValue.toLocaleString("vi-VN")} điểm: -
+                      {appliedPointsValue.toLocaleString("vi-VN")}đ
+                    </span>
+                    <button
+                      onClick={handleRemovePoints}
+                      disabled={isProcessing}
+                      className="ml-3 p-1 text-red-400 hover:text-red-300 hover:bg-red-500/10 rounded-lg transition-colors disabled:opacity-50"
+                      title="Xóa điểm đã sử dụng"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M6 18L18 6M6 6l12 12"
+                        />
+                      </svg>
+                    </button>
                   </div>
                 )}
               </div>

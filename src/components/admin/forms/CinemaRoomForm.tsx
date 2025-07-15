@@ -4,6 +4,7 @@ import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'react-hot-toast';
 import {
     CubeIcon,
     UserGroupIcon,
@@ -16,17 +17,13 @@ import {
     CheckCircleIcon,
     SparklesIcon,
     PlayIcon,
-    UserIcon,
-    InformationCircleIcon,
-    StarIcon
+    InformationCircleIcon
 } from '@heroicons/react/24/outline';
 import type { CinemaRoom, CinemaRoomFormData, CinemaRoomFormStatus } from '../../../types/cinemaRoom';
 import RichTextEditor from '../common/RichTextEditor';
 import SeatLayoutConfig from '../cinema-rooms/SeatLayoutConfig';
-import InteractiveSeatPreview from '../cinema-rooms/InteractiveSeatPreview';
 import { seatLayoutService } from '../../../services/seatLayoutService';
-import { cinemaService } from '../../../services/cinemaService';
-import { toast } from 'react-hot-toast';
+import InteractiveSeatPreview from '../cinema-rooms/InteractiveSeatPreview';
 
 const roomSchema = yup.object({
     Room_Name: yup.string()
@@ -527,11 +524,27 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
         }
     };
 
-    const getSeatTypeIcon = (seatType: string) => {
+    const getSeatTypeIcon = (seatType: string, isActive: boolean = true) => {
+        if (!isActive) {
+            return '🚫'; // Icon ghế bị ẩn
+        }
+
         switch (seatType) {
             case 'VIP': return '★';
             case 'Couple': return '♥';
+            case 'Regular': return '■';
+            case 'Thường': return '■';
             default: return '■';
+        }
+    };
+
+    // Function để hiển thị tên loại ghế
+    const getSeatTypeDisplayName = (seatType: string) => {
+        switch (seatType) {
+            case 'Regular': return 'Thường';
+            case 'VIP': return 'VIP';
+            case 'Couple': return 'Couple';
+            default: return seatType;
         }
     };
 
@@ -545,6 +558,152 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
 
     // State để lưu mapping giữa seatIndex và Layout_ID
     const [seatLayoutMapping, setSeatLayoutMapping] = useState<{[key: number]: any}>({});
+
+    // Handle direct seat editing - toggle seat type (Regular ↔ VIP)
+    const handleSeatTypeToggle = useCallback(async (seat: any) => {
+        if (!seatLayout?.can_modify) {
+            toast.error('Không thể chỉnh sửa ghế vì có booking đang hoạt động');
+            return;
+        }
+
+        // Không cho chỉnh loại ghế khi ghế đã bị ẩn
+        if (!seat.Is_Active) {
+            toast.error('Không thể chỉnh sửa loại ghế đã bị ẩn. Vui lòng hiện ghế trước khi chỉnh sửa.');
+            return;
+        }
+
+        const newSeatType = seat.Seat_Type === 'Regular' ? 'VIP' : 'Regular';
+
+        // Kiểm tra logic VIP chỉ được ở nửa cuối của rạp
+        if (newSeatType === 'VIP' && seatLayout) {
+            const totalRows = seatLayout.dimensions.rows;
+            const halfRows = Math.floor(totalRows / 2); // Làm tròn xuống: 5÷2=2.5→2, 7÷2=3.5→3
+            const currentRowIndex = seatLayout.rows.findIndex(row => row.Row === seat.Row_Label);
+
+            // VIP chỉ được ở nửa cuối, tức là từ index halfRows trở đi
+            if (currentRowIndex < halfRows) {
+                const firstVipRowLabel = seatLayout.rows[halfRows]?.Row || '';
+                toast.error(`Ghế VIP chỉ được đặt ở nửa cuối của rạp (từ hàng ${firstVipRowLabel} trở xuống)`);
+                return;
+            }
+        }
+
+        console.log(`🔄 Đang thay đổi loại ghế ${seat.Row_Label}${seat.Column_Number} từ ${getSeatTypeDisplayName(seat.Seat_Type)} thành ${getSeatTypeDisplayName(newSeatType)}`);
+
+        // Update local state immediately for better UX
+        setSeatLayout(prevLayout => {
+            if (!prevLayout) return prevLayout;
+
+            const updatedRows = prevLayout.rows.map(row => ({
+                ...row,
+                Seats: row.Seats.map(s =>
+                    s.Layout_ID === seat.Layout_ID
+                        ? { ...s, Seat_Type: newSeatType }
+                        : s
+                )
+            }));
+
+            // Update stats
+            const updatedStats = { ...prevLayout.stats };
+            const oldTypeIndex = updatedStats.seat_types.findIndex(t => t.SeatType === seat.Seat_Type);
+            const newTypeIndex = updatedStats.seat_types.findIndex(t => t.SeatType === newSeatType);
+
+            if (oldTypeIndex !== -1) {
+                updatedStats.seat_types[oldTypeIndex].Count -= 1;
+            }
+            if (newTypeIndex !== -1) {
+                updatedStats.seat_types[newTypeIndex].Count += 1;
+            } else {
+                updatedStats.seat_types.push({ SeatType: newSeatType, Count: 1 });
+            }
+
+            return {
+                ...prevLayout,
+                rows: updatedRows,
+                stats: updatedStats
+            };
+        });
+
+        const toastId = toast.loading(`Đang cập nhật ghế ${seat.Row_Label}${seat.Column_Number}...`);
+
+        try {
+            await seatLayoutService.bulkUpdateSeatTypes({
+                LayoutIds: [seat.Layout_ID],
+                SeatType: newSeatType as 'Regular' | 'VIP'
+            });
+
+            toast.success(`Đã cập nhật ghế ${seat.Row_Label}${seat.Column_Number} thành ${getSeatTypeDisplayName(newSeatType)}`, { id: toastId });
+        } catch (error: any) {
+            console.error('Error updating seat type:', error);
+            toast.error(`Lỗi khi cập nhật ghế: ${error.message || 'Lỗi không xác định'}`, { id: toastId });
+
+            // Revert local state on error
+            const roomId = createdRoomId || room?.Cinema_Room_ID;
+            if (roomId) {
+                await fetchSeatLayout(roomId);
+            }
+        }
+    }, [seatLayout, createdRoomId, room?.Cinema_Room_ID]);
+
+    // Handle direct seat visibility toggle (hide/show seat)
+    const handleSeatVisibilityToggle = useCallback(async (seat: any) => {
+        if (!seatLayout?.can_modify) {
+            toast.error('Không thể chỉnh sửa ghế vì có booking đang hoạt động');
+            return;
+        }
+
+        const newVisibility = !seat.Is_Active;
+        const actionText = newVisibility ? 'hiện' : 'ẩn';
+        console.log(`🔄 Đang ${actionText} ghế ${seat.Row_Label}${seat.Column_Number}`);
+
+        // Update local state immediately for better UX
+        setSeatLayout(prevLayout => {
+            if (!prevLayout) return prevLayout;
+
+            const updatedRows = prevLayout.rows.map(row => ({
+                ...row,
+                Seats: row.Seats.map(s =>
+                    s.Layout_ID === seat.Layout_ID
+                        ? { ...s, Is_Active: newVisibility }
+                        : s
+                )
+            }));
+
+            // Update total seats count
+            const updatedStats = { ...prevLayout.stats };
+            if (newVisibility) {
+                updatedStats.total_seats += 1;
+            } else {
+                updatedStats.total_seats -= 1;
+            }
+
+            return {
+                ...prevLayout,
+                rows: updatedRows,
+                stats: updatedStats
+            };
+        });
+
+        const toastId = toast.loading(`Đang ${actionText} ghế ${seat.Row_Label}${seat.Column_Number}...`);
+
+        try {
+            await seatLayoutService.softDeleteSeatLayouts({
+                LayoutIds: [seat.Layout_ID],
+                IsActive: newVisibility
+            });
+
+            toast.success(`Đã ${actionText} ghế ${seat.Row_Label}${seat.Column_Number}`, { id: toastId });
+        } catch (error: any) {
+            console.error('Error toggling seat visibility:', error);
+            toast.error(`Lỗi khi ${actionText} ghế: ${error.message || 'Lỗi không xác định'}`, { id: toastId });
+
+            // Revert local state on error
+            const roomId = createdRoomId || room?.Cinema_Room_ID;
+            if (roomId) {
+                await fetchSeatLayout(roomId);
+            }
+        }
+    }, [seatLayout, createdRoomId, room?.Cinema_Room_ID]);
 
     // Handle toggle hidden seat với API call trực tiếp
     const handleToggleHiddenSeat = useCallback(async (seatIndex: number) => {
@@ -982,6 +1141,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                 onStatsUpdate={handleStatsUpdate}
                                                 isNewRoom={true}
                                                 readOnly={false}
+                                                showStats={true}
                                                 className="w-full"
                                             />
                                         </div>
@@ -1032,26 +1192,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                         <span className="text-gray-400 text-xs block">Ghế/hàng</span>
                                                         <div className="text-white font-bold text-sm mt-1">{seatLayoutConfig.seatsPerRow}</div>
                                                     </motion.div>
-                                                    <motion.div
-                                                        className="bg-slate-700/40 rounded-lg p-2 border border-slate-600/30"
-                                                        whileHover={{ scale: 1.02, backgroundColor: "rgba(51, 65, 85, 0.6)" }}
-                                                        transition={{ duration: 0.2 }}
-                                                    >
-                                                        <span className="text-gray-400 text-xs block">Loại ghế</span>
-                                                        <div className="text-white font-bold text-xs mt-1 flex items-center gap-1">
-                                                            {seatLayoutConfig.seatType === 'VIP' ? (
-                                                                <>
-                                                                    <StarIcon className="w-3 h-3 text-purple-400 flex-shrink-0" />
-                                                                    <span className="truncate">VIP</span>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <UserIcon className="w-3 h-3 text-green-400 flex-shrink-0" />
-                                                                    <span className="truncate">Thường</span>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </motion.div>
+
                                                     <motion.div
                                                         className="bg-gradient-to-br from-[#FFD875]/20 to-[#FFA500]/10 rounded-lg p-2 border border-[#FFD875]/40"
                                                         whileHover={{ scale: 1.02 }}
@@ -1615,6 +1756,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                             onToggleHiddenSeat={handleToggleHiddenSeat}
                                             onStatsUpdate={handleStatsUpdate}
                                             isNewRoom={true}
+                                            showStats={true}
                                         />
                                     </div>
 
@@ -1733,14 +1875,32 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                                     {row.Seats.map(seat => (
                                                                         <motion.div
                                                                             key={seat.Layout_ID}
-                                                                            className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs transition-all duration-200 ${getSeatTypeColor(seat.Seat_Type)} ${!seat.Is_Active ? 'opacity-50' : ''}`}
-                                                                            title={`${seat.Row_Label}${seat.Column_Number} - ${seat.Seat_Type}`}
-                                                                            whileHover={{ scale: 1.1 }}
+                                                                            className={`w-8 h-8 rounded-lg border-2 flex items-center justify-center text-xs transition-all duration-200 ${
+                                                                                !seat.Is_Active
+                                                                                    ? 'bg-gray-500/20 border-gray-500/50 text-gray-400 border-dashed'
+                                                                                    : getSeatTypeColor(seat.Seat_Type)
+                                                                            } ${seatLayout?.can_modify ? 'cursor-pointer hover:ring-2 hover:ring-[#FFD875]/50' : 'cursor-not-allowed'}`}
+                                                                            title={seatLayout?.can_modify
+                                                                                ? `${seat.Row_Label}${seat.Column_Number} - ${getSeatTypeDisplayName(seat.Seat_Type)} ${!seat.Is_Active ? '(Đã ẩn)' : ''} | ${seat.Is_Active ? 'Click: Đổi loại ghế | ' : ''}Ctrl+Click: ${seat.Is_Active ? 'Ẩn' : 'Hiện'} ghế`
+                                                                                : `${seat.Row_Label}${seat.Column_Number} - ${getSeatTypeDisplayName(seat.Seat_Type)} ${!seat.Is_Active ? '(Đã ẩn)' : ''} | Không thể chỉnh sửa (có booking)`
+                                                                            }
+                                                                            whileHover={{ scale: seatLayout?.can_modify ? 1.1 : 1.05 }}
                                                                             initial={{ scale: 0 }}
                                                                             animate={{ scale: 1 }}
                                                                             transition={{ duration: 0.2, delay: seat.Column_Number * 0.02 }}
+                                                                            onClick={(e) => {
+                                                                                if (!seatLayout?.can_modify) return;
+
+                                                                                if (e.ctrlKey || e.metaKey) {
+                                                                                    // Ctrl+Click để ẩn/hiện ghế
+                                                                                    handleSeatVisibilityToggle(seat);
+                                                                                } else {
+                                                                                    // Click thường để đổi loại ghế
+                                                                                    handleSeatTypeToggle(seat);
+                                                                                }
+                                                                            }}
                                                                         >
-                                                                            <span className="text-xs">{getSeatTypeIcon(seat.Seat_Type)}</span>
+                                                                            <span className="text-xs">{getSeatTypeIcon(seat.Seat_Type, seat.Is_Active)}</span>
                                                                         </motion.div>
                                                                     ))}
                                                                 </div>
@@ -1752,12 +1912,21 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
 
                                                 <div className="text-center">
                                                     <div className="bg-slate-700/30 rounded-xl p-4 mb-4">
-                                                        <p className="text-[#FFD875] font-semibold mb-2 flex items-center justify-center gap-2">
-                                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                                                                <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                                                            </svg>
-                                                            Thống kê phòng chiếu
-                                                        </p>
+                                                        <div className="flex items-center justify-center gap-3 mb-2">
+                                                            <p className="text-[#FFD875] font-semibold flex items-center gap-2">
+                                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                                                    <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
+                                                                </svg>
+                                                                Thống kê phòng chiếu
+                                                            </p>
+                                                            <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                                                                seatLayout?.can_modify
+                                                                    ? 'bg-green-500/20 text-green-400 border border-green-500/30'
+                                                                    : 'bg-red-500/20 text-red-400 border border-red-500/30'
+                                                            }`}>
+                                                                {seatLayout?.can_modify ? '✓ Có thể chỉnh sửa' : '✗ Không thể chỉnh sửa'}
+                                                            </span>
+                                                        </div>
                                                         <div className="grid grid-cols-2 gap-4 text-sm">
                                                             <div>
                                                                 <span className="text-gray-400">Loại phòng:</span>
@@ -1768,14 +1937,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                                 <span className="text-[#FFD875] font-bold ml-2">{seatLayout.stats.total_seats}</span>
                                                             </div>
                                                         </div>
-                                                        <div className="mt-3 flex justify-center gap-6 text-xs">
-                                                            {seatLayout.stats.seat_types.map(type => (
-                                                                <span key={type.SeatType} className="flex items-center gap-2 bg-slate-600/30 px-3 py-1 rounded-lg">
-                                                                    <span className="text-lg">{getSeatTypeIcon(type.SeatType)}</span>
-                                                                    <span className="text-white">{type.SeatType}: <span className="font-bold">{type.Count}</span></span>
-                                                                </span>
-                                                            ))}
-                                                        </div>
+
                                                     </div>
                                                 </div>
                                             </>
@@ -1826,6 +1988,30 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                 <span className="text-[#FFD875] mt-0.5">•</span>
                                                 <span>Thiết lập hàng ghế và lối đi</span>
                                             </li>
+                                            {seatLayout && (
+                                                <>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="text-green-400 mt-0.5">•</span>
+                                                        <span><strong>Click ghế:</strong> Đổi loại ghế (Thường ↔ VIP)</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="text-blue-400 mt-0.5">•</span>
+                                                        <span><strong>Ctrl+Click ghế:</strong> Ẩn/hiện ghế</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="text-purple-400 mt-0.5">•</span>
+                                                        <span><strong>VIP chỉ ở nửa cuối rạp:</strong> Hàng {seatLayout.dimensions.rows > 1 ? Math.floor(seatLayout.dimensions.rows / 2) + 1 : 1} trở xuống</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="text-orange-400 mt-0.5">•</span>
+                                                        <span><strong>Ghế ẩn (🚫):</strong> Không thể đổi loại, chỉ có thể hiện lại</span>
+                                                    </li>
+                                                    <li className="flex items-start gap-2">
+                                                        <span className="text-red-400 mt-0.5">•</span>
+                                                        <span>Chỉ có thể chỉnh sửa khi không có booking</span>
+                                                    </li>
+                                                </>
+                                            )}
                                             <li className="flex items-start gap-2">
                                                 <span className="text-[#FFD875] mt-0.5">•</span>
                                                 <span>Xem trước trước khi áp dụng</span>
@@ -1859,6 +2045,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                             onStatsUpdate={handleStatsUpdate}
                                             isNewRoom={true}
                                             readOnly={currentStep === 'layout'} // Chỉ cho xem ở bước layout
+                                            showStats={true}
                                             className="scale-90 origin-top"
                                         />
                                     </div>

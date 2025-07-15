@@ -411,6 +411,38 @@ class CinemaService {
         }
     }
 
+    /**
+     * Remove manager from cinema
+     */
+    async removeManagerFromCinema(managerId: number): Promise<{ success: boolean; message: string }> {
+        try {
+            const response = await apiClient.delete<AssignResponse>(`/user/manager/${managerId}/remove-from-cinema`);
+            return {
+                success: response.data.success,
+                message: response.data.message || 'Xóa gán quản lý thành công'
+            };
+        } catch (error) {
+            console.error('Error removing manager from cinema:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Remove staff from cinema
+     */
+    async removeStaffFromCinema(staffId: number): Promise<{ success: boolean; message: string }> {
+        try {
+            const response = await apiClient.delete<AssignResponse>(`/user/staff/${staffId}/remove-from-cinema`);
+            return {
+                success: response.data.success,
+                message: response.data.message || 'Xóa gán nhân viên thành công'
+            };
+        } catch (error) {
+            console.error('Error removing staff from cinema:', error);
+            throw error;
+        }
+    }
+
 
     /**
      * Get staff assigned to a specific cinema

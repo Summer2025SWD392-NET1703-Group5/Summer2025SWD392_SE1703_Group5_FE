@@ -81,21 +81,30 @@ export const SimpleAuthProvider = ({ children }: { children: ReactNode }) => {
       const userData = await userService.getUserProfile();
       console.log("[AuthContext] Complete user profile loaded:", userData);
 
-      // 🔥 Clear all booking sessions when user changes (but preserve pending booking info)
-      console.log("🧹 [AUTH] Clearing all booking sessions for new user login");
-      Object.keys(sessionStorage).forEach((key) => {
-        if (
-          (key.startsWith("booking_session_") ||
-            key.startsWith("payment_state_") ||
-            key.includes("booking") ||
-            key.includes("payment")) &&
-          key !== "has_pending_booking"
-        ) {
-          // ← Preserve pending booking info
-          console.log(`🗑️ [AUTH] Removing session key: ${key}`);
-          sessionStorage.removeItem(key);
-        }
-      });
+      // 🔧 FIX: Only clear booking sessions if user actually changed (different userId)
+      const previousUserId = user?.User_ID;
+      const newUserId = userData.User_ID;
+
+      if (previousUserId && previousUserId !== newUserId) {
+        console.log(`🧹 [AUTH] User changed (${previousUserId} → ${newUserId}), clearing booking sessions`);
+        Object.keys(sessionStorage).forEach((key) => {
+          if (
+            (key.startsWith("booking_session_") ||
+              key.startsWith("payment_state_") ||
+              key.includes("booking") ||
+              key.includes("payment")) &&
+            key !== "has_pending_booking"
+          ) {
+            // ← Preserve pending booking info
+            console.log(`🗑️ [AUTH] Removing session key: ${key}`);
+            sessionStorage.removeItem(key);
+          }
+        });
+      } else if (!previousUserId) {
+        console.log("ℹ️ [AUTH] First login - preserving any existing booking sessions");
+      } else {
+        console.log(`ℹ️ [AUTH] Same user login (${newUserId}) - preserving booking sessions`);
+      }
 
       setUser(userData);
       setIsAuthenticated(true);

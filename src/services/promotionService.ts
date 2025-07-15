@@ -49,32 +49,32 @@ const mapApiToPromotion = (apiPromotion: ApiPromotion): Promotion => {
 
     // Map badge based on promotion status
     let badge: 'HOT' | 'NEW' | 'LIMITED' | null = null;
-    const createdDate = new Date(apiPromotion.Created_At);
-    const now = new Date();
-    const daysDiff = Math.floor((now.getTime() - createdDate.getTime()) / (1000 * 60 * 60 * 24));
 
-    if (daysDiff < 7) {
-        badge = 'NEW';
-    } else if (apiPromotion.Usage_Limit - apiPromotion.Current_Usage < 10) {
+    // Check if promotion has limited usage remaining
+    if (apiPromotion.Usage_Remaining !== null && apiPromotion.Usage_Remaining < 10) {
         badge = 'LIMITED';
     } else if (apiPromotion.Discount_Value > 30 && apiPromotion.Discount_Type === 'Percentage') {
         badge = 'HOT';
+    } else {
+        // Default to NEW for active promotions
+        badge = 'NEW';
     }
 
-    // Get promotion category
+    // Get promotion category based on title
     let category: Promotion['category'] = 'special';
-    if (apiPromotion.Applicable_For === 'VIP Users') {
+    const titleLower = apiPromotion.Title.toLowerCase();
+
+    if (titleLower.includes('vip') || titleLower.includes('premium')) {
         category = 'premium';
-    } else if (apiPromotion.Title.toLowerCase().includes('member')) {
+    } else if (titleLower.includes('member')) {
         category = 'member';
-    } else if (apiPromotion.Title.toLowerCase().includes('holiday') ||
-        apiPromotion.Title.toLowerCase().includes('festival')) {
+    } else if (titleLower.includes('holiday') || titleLower.includes('festival')) {
         category = 'holiday';
-    } else if (apiPromotion.Title.toLowerCase().includes('pack')) {
+    } else if (titleLower.includes('pack')) {
         category = 'movie-pack';
-    } else if (apiPromotion.Title.toLowerCase().includes('subscription')) {
+    } else if (titleLower.includes('subscription')) {
         category = 'subscription';
-    } else if (apiPromotion.Title.toLowerCase().includes('package')) {
+    } else if (titleLower.includes('package')) {
         category = 'package';
     }
 
@@ -104,9 +104,9 @@ const mapApiToPromotion = (apiPromotion: ApiPromotion): Promotion => {
         }).format(apiPromotion.Maximum_Discount)}`);
     }
 
-    // Thêm điều kiện về đối tượng áp dụng
-    if (apiPromotion.Applicable_For !== 'All Users') {
-        terms.push(`Chỉ áp dụng cho ${apiPromotion.Applicable_For === 'VIP Users' ? 'thành viên VIP' : 'người dùng mới'}`);
+    // Thêm điều kiện về đối tượng áp dụng (dựa vào title vì API không có Applicable_For)
+    if (titleLower.includes('vip') || titleLower.includes('premium')) {
+        terms.push('Chỉ áp dụng cho thành viên VIP');
     }
 
     // Fix cứng điều kiện mỗi người chỉ được sử dụng một lần
@@ -137,12 +137,12 @@ const mapApiToPromotion = (apiPromotion: ApiPromotion): Promotion => {
         validUntil: apiPromotion.End_Date,
         category,
         badge,
-        isActive: apiPromotion.Is_Active,
+        isActive: new Date(apiPromotion.End_Date) > new Date(), // Check if not expired
         terms: uniqueTerms,
         code: apiPromotion.Promotion_Code,
-        usageLimit: apiPromotion.Usage_Limit,
-        currentUsage: apiPromotion.Current_Usage,
-        remainingUsage: apiPromotion.Usage_Limit - apiPromotion.Current_Usage,
+        usageLimit: apiPromotion.Usage_Remaining || 999, // Fallback nếu không có limit
+        currentUsage: 0, // API không trả về current usage
+        remainingUsage: apiPromotion.Usage_Remaining || 999,
         discountType: apiPromotion.Discount_Type,
         discountValue: apiPromotion.Discount_Value,
         minimumPurchase: apiPromotion.Minimum_Purchase
@@ -276,12 +276,12 @@ class PromotionService {
      */
     async applyPromotion(bookingId: number, promotionCode: string): Promise<PromotionApplicationResult> {
         try {
-            const response = await api.post(`/bookings/${bookingId}/apply-promotion`, {
+            const response = await api.post('/promotions/apply', {
+                bookingId,
                 promotionCode
             });
             return keysToCamel(response.data);
         } catch (error) {
-            console.error('Error applying promotion:', error);
             return {
                 Success: false,
                 Message: 'Có lỗi xảy ra khi áp dụng mã khuyến mãi',
@@ -300,10 +300,9 @@ class PromotionService {
      */
     async removePromotion(bookingId: number): Promise<PromotionRemovalResult> {
         try {
-            const response = await api.post(`/bookings/${bookingId}/remove-promotion`);
+            const response = await api.delete(`/promotions/remove/${bookingId}`);
             return keysToCamel(response.data);
         } catch (error) {
-            console.error('Error removing promotion:', error);
             return {
                 Success: false,
                 Message: 'Có lỗi xảy ra khi hủy mã khuyến mãi',
@@ -533,19 +532,59 @@ class PromotionService {
         try {
             console.log('Fetching used promotions from API...');
             const response = await api.get('/promotions/customer/used-promotions');
-            
+
             if (response.data && response.data.success && Array.isArray(response.data.data)) {
                 console.log('Used promotions received:', response.data.data);
                 // API trả về mảng các object chứa thông tin chi tiết, lấy ra Promotion_ID
                 return response.data.data.map((item: any) => item.Promotion_ID);
             }
-            
+
             console.log('No used promotions found or invalid response format');
             return [];
         } catch (error) {
             console.error('Error fetching used promotions:', error);
             // Trả về mảng rỗng nếu API gặp lỗi
             return [];
+        }
+    }
+
+    /**
+     * Lấy các khuyến mãi khả dụng cho booking cụ thể (chưa sử dụng)
+     * Gọi API endpoint: GET /api/promotions/available/{bookingId}
+     */
+    async getAvailablePromotionsForBooking(bookingId: number, totalAmount: number = 0): Promise<Promotion[]> {
+        try {
+            // Gọi API endpoint đúng như server đã implement
+            const response = await api.get(`/promotions/available/${bookingId}`);
+
+            // Xử lý response data
+            let promotionsData = [];
+            if (response.data && response.data.success && Array.isArray(response.data.promotions)) {
+                promotionsData = response.data.promotions;
+            } else {
+                return [];
+            }
+
+            // Convert API promotions to frontend format
+            const availablePromotions = promotionsData.map((apiPromo: ApiPromotion) => {
+                return mapApiToPromotion(apiPromo);
+            });
+
+            // Sắp xếp theo mức độ ưu tiên (giảm giá cao nhất trước)
+            return availablePromotions.sort((a, b) => {
+                // Ưu tiên khuyến mãi có badge HOT
+                if (a.badge === 'HOT' && b.badge !== 'HOT') return -1;
+                if (b.badge === 'HOT' && a.badge !== 'HOT') return 1;
+
+                // Sau đó sắp xếp theo % giảm giá
+                return b.discountPercentage - a.discountPercentage;
+            });
+
+        } catch (error) {
+
+            // Fallback: trả về mock data nếu API lỗi
+            const mockPromotions = this.getMockPromotions();
+            return mockPromotions.filter(p => p.isActive && p.remainingUsage > 0).slice(0, 3);
         }
     }
 }

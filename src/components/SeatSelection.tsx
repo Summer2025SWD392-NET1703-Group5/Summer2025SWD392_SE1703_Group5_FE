@@ -81,6 +81,31 @@ const SeatSelection: React.FC<SeatSelectionProps> = ({
     console.log(`🔌 SeatSelection WebSocket: ${isConnected ? "Connected" : "Disconnected"} (${connectionState})`);
   }, [isConnected, connectionState]);
 
+  // 🔧 ENHANCED: Listen for reset-selections event from BookingPage
+  useEffect(() => {
+    const handleResetSelections = (event: CustomEvent) => {
+      const { seatIds } = event.detail || {};
+
+      if (Array.isArray(seatIds) && seatIds.length > 0) {
+        console.log(`🔄 [SEAT_SELECTION] Received reset-selections event for seats: ${seatIds.join(', ')}`);
+
+        // Force refresh seats from server to get latest state
+        console.log('🔄 [SEAT_SELECTION] Force refreshing seats from server...');
+        refreshSeats();
+
+        console.log('✅ [SEAT_SELECTION] Seats refresh triggered');
+      }
+    };
+
+    // Add event listener
+    window.addEventListener('galaxy-cinema-reset-selections', handleResetSelections as EventListener);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('galaxy-cinema-reset-selections', handleResetSelections as EventListener);
+    };
+  }, [refreshSeats]);
+
   // 🔥 FORCE CONNECT - Luôn đảm bảo WebSocket kết nối
   useEffect(() => {
     if (bookingSession.showtimeId) {
@@ -277,14 +302,20 @@ const SeatSelection: React.FC<SeatSelectionProps> = ({
           });
 
           const rows = Object.keys(seatsByRow).sort();
+
+          // 🔧 FIX: Tìm số cột tối đa trong từng hàng, sau đó lấy max của tất cả hàng
+          const maxColsPerRow = rows.map(row => {
+            const rowSeats = seatsByRow[row];
+            return Math.max(...rowSeats.map(seat => seat.number));
+          });
+          const maxColsInRoom = Math.max(...maxColsPerRow);
+
           const generatedLayout = rows.map((row) => {
             const rowSeats = seatsByRow[row].sort((a, b) => a.number - b.number);
-
-            // Xử lý ghế bị missing/ẩn - tạo array với placeholder cho ghế bị thiếu
-            const maxSeatNumber = Math.max(...rowSeats.map((s) => s.number));
             const fullRowSeats: Seat[] = [];
 
-            for (let i = 1; i <= maxSeatNumber; i++) {
+            // 🔧 FIX: Luôn tạo đủ số cột theo maxColsInRoom để tất cả hàng có cùng số cột
+            for (let i = 1; i <= maxColsInRoom; i++) {
               const existingSeat = rowSeats.find((s) => s.number === i);
               if (existingSeat) {
                 fullRowSeats.push(existingSeat);
@@ -301,6 +332,7 @@ const SeatSelection: React.FC<SeatSelectionProps> = ({
                 });
               }
             }
+
 
             return fullRowSeats;
           });
@@ -689,7 +721,8 @@ const SeatSelection: React.FC<SeatSelectionProps> = ({
                               : "w-8 sm:w-10 lg:w-12" // Ghế thường responsive
                           }`}
                         >
-                          {seat.type !== "hidden" && seat.status !== "hidden" ? seat.number : ""}
+                          {/* 🔧 FIX: Luôn hiển thị số cột, kể cả ghế ẩn */}
+                          {seat.number}
                         </div>
                       ))}
                     </div>

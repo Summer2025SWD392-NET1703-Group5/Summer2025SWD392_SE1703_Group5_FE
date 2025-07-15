@@ -98,57 +98,50 @@ const CinemaRoomsModal: React.FC<CinemaRoomsModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={onClose} />
+    return (
+        <div
+            className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 9999
+            }}
+            onClick={onClose}
+        >
+            <div
+                className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden transform transition-all"
+                style={{
+                    position: 'relative',
+                    zIndex: 10000
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="bg-slate-700 px-6 py-4 flex items-center justify-between">
+                    <h3 className="text-lg font-medium text-white flex items-center">
+                        <HomeIcon className="w-5 h-5 mr-2 text-[#FFD875]" />
+                        Phòng chiếu - {cinema?.Cinema_Name}
+                    </h3>
+                    <button onClick={onClose} className="text-gray-400 hover:text-white">
+                        <XMarkIcon className="w-6 h-6" />
+                    </button>
+                </div>
 
-      {/* Modal */}
-      <motion.div
-        className="relative bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-4xl w-full max-h-[80vh] overflow-hidden border border-slate-700/50 shadow-2xl"
-        style={{
-          boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 216, 117, 0.2)",
-        }}
-        initial={{ opacity: 0, scale: 0.9, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        transition={{ duration: 0.3 }}
-      >
-        {/* Decorative gradient overlay */}
-        <div className="absolute inset-0 bg-gradient-to-br from-[#FFD875]/5 via-transparent to-[#FFA500]/5" />
-
-        {/* Header */}
-        <div className="relative p-6 border-b border-slate-700/50">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
-                <HomeIcon className="w-6 h-6 text-blue-400" />
-              </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Phòng chiếu</h3>
-                <p className="text-sm text-[#FFD875] mt-1">{cinemaName}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Link
-                to={`/admin/cinema-rooms?cinemaId=${cinemaId}`}
-                className="px-4 py-2 bg-[#FFD875] hover:bg-[#FFA500] text-black font-medium rounded-lg transition-all duration-300 flex items-center gap-2"
-                onClick={onClose}
-              >
-                <CogIcon className="w-4 h-4" />
-                Quản lý chi tiết
-              </Link>
-
-              <button
-                onClick={onClose}
-                className="p-2 bg-slate-700/50 hover:bg-slate-600/50 text-gray-400 hover:text-white rounded-lg transition-all duration-300"
-              >
-                <XMarkIcon className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+                <div className="p-6 overflow-y-auto max-h-[calc(90vh-4rem)]">
+                    {loading ? (
+                        <div className="flex justify-center py-8">
+                            <FullScreenLoader variant="inline" />
+                        </div>
+                    ) : rooms.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            {rooms.map(room => (
+                                <div key={room.Cinema_Room_ID} className="bg-slate-700 rounded-lg p-4 border border-slate-600 hover:border-[#FFD875] transition-all hover:shadow-lg hover:translate-y-[-2px]">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <h4 className="text-white font-semibold text-lg">{room.Room_Name}</h4>
+                                        {getRoomStatusBadge(room.Status)}
+                                    </div>
 
         {/* Content */}
         <div className="relative p-6 max-h-96 overflow-y-auto">
