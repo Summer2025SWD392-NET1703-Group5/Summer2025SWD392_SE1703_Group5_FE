@@ -91,8 +91,26 @@ const CinemaRoomsModal: React.FC<CinemaRoomsModalProps> = ({ isOpen, onClose, ci
     if (!isOpen) return null;
 
     return (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70">
-            <div className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden transform transition-all">
+        <div
+            className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+            style={{
+                position: 'fixed',
+                top: 0,
+                left: 0,
+                width: '100vw',
+                height: '100vh',
+                zIndex: 9999
+            }}
+            onClick={onClose}
+        >
+            <div
+                className="bg-slate-800 rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] overflow-hidden transform transition-all"
+                style={{
+                    position: 'relative',
+                    zIndex: 10000
+                }}
+                onClick={(e) => e.stopPropagation()}
+            >
                 <div className="bg-slate-700 px-6 py-4 flex items-center justify-between">
                     <h3 className="text-lg font-medium text-white flex items-center">
                         <HomeIcon className="w-5 h-5 mr-2 text-[#FFD875]" />

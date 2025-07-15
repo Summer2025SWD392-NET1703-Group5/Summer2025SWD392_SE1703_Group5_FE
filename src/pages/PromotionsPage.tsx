@@ -166,7 +166,7 @@ const CopyablePromoCode = ({ code, remainingUsage = 1, isUsed = false }: { code?
             )}
             {isDisabled && (
               <span className="ml-2 text-xs text-gray-500">
-                {isUsed}
+                {isUsed ? 'Đã sử dụng' : 'Hết lượt'}
               </span>
             )}
             {copied && (

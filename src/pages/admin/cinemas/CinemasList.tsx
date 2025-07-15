@@ -18,13 +18,20 @@ import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { cinemaService } from "../../../services/cinemaService";
 import type { Cinema } from "../../../types/cinema";
+import type { User } from "../../../types/user";
 import StaffAssignmentModal from "../../../components/admin/forms/StaffAssignmentModal";
 import ExcelImportExport from "../../../components/admin/common/ExcelImportExport";
 import { AddButton } from "../../../components/admin/common/ActionButtons";
 import { useAuth } from "../../../contexts/SimpleAuthContext";
+import {
+  XMarkIcon,
+  EnvelopeIcon,
+  PhoneIcon,
+  ExclamationTriangleIcon
+} from "@heroicons/react/24/outline";
 import "../../../components/admin/styles/AdminPage.css";
 
-interface User {
+interface CinemaUser {
   User_ID: number;
   Full_Name: string;
   Email: string;
@@ -40,8 +47,8 @@ interface CinemaStats {
 }
 
 interface CinemaWithStats extends Cinema {
-  manager: User | null | undefined;
-  staff: User[];
+  manager: CinemaUser | null | undefined;
+  staff: CinemaUser[];
   stats?: CinemaStats;
 }
 
@@ -65,8 +72,21 @@ const CinemasList: React.FC = () => {
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [selectedDescription, setSelectedDescription] = useState<{ name: string; description: string } | null>(null);
 
+  // User info modal states
+  const [showUserInfoModal, setShowUserInfoModal] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<CinemaUser | null>(null);
+  const [selectedUserType, setSelectedUserType] = useState<"manager" | "staff">("manager");
+  const [selectedCinemaName, setSelectedCinemaName] = useState("");
+
   useEffect(() => {
     fetchCinemas();
+  }, []);
+
+  // Cleanup body scroll on component unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
   }, []);
 
   const fetchCinemas = async () => {
@@ -81,8 +101,8 @@ const CinemasList: React.FC = () => {
             const details = await cinemaService.getCinemaDetails(cinema.Cinema_ID);
 
             // Lấy thông tin manager và staff cho rạp
-            let manager: User | null = null;
-            let staff: User[] = [];
+            let manager: CinemaUser | null = null;
+            let staff: CinemaUser[] = [];
 
             // Lấy manager được gán cho rạp này bằng cinema ID
             try {
@@ -96,7 +116,7 @@ const CinemasList: React.FC = () => {
                   Phone_Number: (managerResponse as any).Phone_Number || '',
                   Cinema_ID: (managerResponse as any).Cinema_ID || null,
                   Cinema_Name: (managerResponse as any).Cinema_Name || null,
-                } as User;
+                } as CinemaUser;
               }
             } catch (error) {
               console.error(`Error fetching manager for cinema ${cinema.Cinema_ID}:`, error);
@@ -106,7 +126,7 @@ const CinemasList: React.FC = () => {
             // Cố gắng lấy thông tin staff từ API
             try {
               const staffResponse = await cinemaService.getCinemaStaff(cinema.Cinema_ID);
-              staff = staffResponse as unknown as User[];
+              staff = staffResponse as unknown as CinemaUser[];
             } catch (error) {
               console.error(`Error fetching staff for cinema ${cinema.Cinema_ID}:`, error);
             }
@@ -131,12 +151,12 @@ const CinemasList: React.FC = () => {
 
             // Vẫn cố gắng lấy thông tin manager và staff nếu có thể
             let manager = null;
-            let staff: User[] = [];
+            let staff: CinemaUser[] = [];
 
             // Lấy manager được gán cho rạp này bằng cinema ID
             try {
               const managerResponse = await cinemaService.getCinemaManager(cinema.Cinema_ID);
-              // Normalize the manager data to match our User interface
+              // Normalize the manager data to match our CinemaUser interface
               if (managerResponse) {
                 manager = {
                   User_ID: managerResponse.User_ID,
@@ -145,7 +165,7 @@ const CinemasList: React.FC = () => {
                   Phone_Number: (managerResponse as any).Phone_Number || '',
                   Cinema_ID: (managerResponse as any).Cinema_ID || null,
                   Cinema_Name: (managerResponse as any).Cinema_Name || null,
-                } as User;
+                } as CinemaUser;
               }
             } catch (error) {
               console.error(`Error fetching manager for cinema ${cinema.Cinema_ID}:`, error);
@@ -154,7 +174,7 @@ const CinemasList: React.FC = () => {
 
             try {
               const staffResponse = await cinemaService.getCinemaStaff(cinema.Cinema_ID);
-              staff = staffResponse as unknown as User[];
+              staff = staffResponse as unknown as CinemaUser[];
             } catch (staffError) {
               console.error(`Error fetching staff for cinema ${cinema.Cinema_ID}:`, staffError);
             }
@@ -206,11 +226,122 @@ const CinemasList: React.FC = () => {
     setSelectedCinema(cinema);
     setAssignmentType(type);
     setShowAssignmentModal(true);
+
+    // Prevent body scroll when modal is open
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+
+    // Force scroll to top and center
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant'
+      });
+    }, 0);
   };
 
   const handleOpenDescriptionModal = (cinemaName: string, description: string) => {
     setSelectedDescription({ name: cinemaName, description });
     setShowDescriptionModal(true);
+
+    // Prevent body scroll when modal is open
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+
+    // Force scroll to top and center
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant'
+      });
+    }, 0);
+  };
+
+  const handleUserClick = (user: CinemaUser, userType: "manager" | "staff", cinemaName: string) => {
+    setSelectedUser(user);
+    setSelectedUserType(userType);
+    setSelectedCinemaName(cinemaName);
+    setShowUserInfoModal(true);
+
+    // Prevent body scroll when modal is open
+    document.body.classList.add('modal-open');
+    document.body.style.overflow = 'hidden';
+
+    // Force scroll to top and center
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        left: 0,
+        behavior: 'instant'
+      });
+    }, 0);
+  };
+
+  const closeUserModal = () => {
+    setShowUserInfoModal(false);
+    setShowConfirmDialog(false);
+    // Restore body scroll
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = 'unset';
+  };
+
+  const closeStaffAssignmentModal = () => {
+    setShowAssignmentModal(false);
+    // Restore body scroll
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = 'unset';
+  };
+
+  const closeDescriptionModal = () => {
+    setShowDescriptionModal(false);
+    // Restore body scroll
+    document.body.classList.remove('modal-open');
+    document.body.style.overflow = 'unset';
+  };
+
+  const handleUserRemoved = () => {
+    // Refresh cinemas data after user is removed
+    fetchCinemas();
+  };
+
+  const [isRemoving, setIsRemoving] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+
+  const handleRemoveUser = async () => {
+    if (!selectedUser) return;
+
+    setIsRemoving(true);
+    const toastId = toast.loading(`Đang xóa phân công ${selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'}...`);
+
+    try {
+      let result;
+      if (selectedUserType === 'manager') {
+        result = await cinemaService.removeManagerFromCinema(selectedUser.User_ID);
+      } else {
+        result = await cinemaService.removeStaffFromCinema(selectedUser.User_ID);
+      }
+
+      if (result.success) {
+        toast.success(result.message, { id: toastId });
+        handleUserRemoved(); // Refresh data
+        closeUserModal(); // Close modal
+      } else {
+        throw new Error(result.message);
+      }
+    } catch (error: any) {
+      console.error('Error removing user:', error);
+      toast.error(
+        error.response?.data?.message ||
+        error.message ||
+        `Không thể xóa phân công ${selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'}`,
+        { id: toastId }
+      );
+    } finally {
+      setIsRemoving(false);
+      setShowConfirmDialog(false);
+    }
   };
 
   const filteredCinemas = cinemas.filter((cinema) => {
@@ -629,12 +760,16 @@ const CinemasList: React.FC = () => {
 
                         {/* Manager description with enhanced design */}
                         {cinema.manager ? (
-                          <div className="flex items-start group/item">
+                          <div
+                            className="flex items-start group/item cursor-pointer hover:bg-purple-500/5 rounded-lg p-2 -m-2 transition-colors"
+                            onClick={() => handleUserClick(cinema.manager!, "manager", cinema.Cinema_Name)}
+                            title="Nhấp để xem thông tin quản lý"
+                          >
                             <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20 mr-4 group-hover/item:bg-purple-500/20 transition-colors">
                               <UserIcon className="w-5 h-5 text-purple-400" />
                             </div>
                             <div className="flex-1">
-                              <div className="text-gray-300 font-medium">{cinema.manager.Full_Name}</div>
+                              <div className="text-gray-300 font-medium group-hover/item:text-purple-300 transition-colors">{cinema.manager.Full_Name}</div>
                               <div className="text-sm text-purple-400 mt-1">Quản lý • ID: {cinema.manager.User_ID}</div>
                             </div>
                           </div>
@@ -671,14 +806,45 @@ const CinemasList: React.FC = () => {
 
                     {/* Enhanced Cinema details - scrollable content area */}
                     <div className="flex-1 min-h-0">
-                      <div className="flex items-start group/item mb-3">
-                        <div className="p-3  bg-purple-500/10 rounded-lg border border-purple-500/20 mr-4 group-hover/item:bg-purple-500/20 transition-colors">
-                          <UsersIcon className="w-5 h-5 text-blue-400" />
+                      <div className="mb-3">
+                        <div className="flex items-start group/item mb-2">
+                          <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 mr-4 group-hover/item:bg-blue-500/20 transition-colors">
+                            <UsersIcon className="w-5 h-5 text-blue-400" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="text-gray-300 font-medium">{cinema.staff.length}</div>
+                            <div className="text-sm text-blue-400 mt-1">Nhân Viên</div>
+                          </div>
                         </div>
-                        <div className="flex-1">
-                          <div className="text-gray-300 font-medium">{cinema.staff.length}</div>
-                          <div className="text-sm text-blue-400 mt-1">Nhân Viên</div>
-                        </div>
+
+                        {/* Staff list */}
+                        {cinema.staff.length > 0 && (
+                          <div className="ml-16 space-y-1">
+                            {cinema.staff.slice(0, 3).map((staffMember) => (
+                              <div
+                                key={staffMember.User_ID}
+                                className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg cursor-pointer hover:bg-blue-500/10 transition-colors group/staff"
+                                onClick={() => handleUserClick(staffMember, "staff", cinema.Cinema_Name)}
+                                title="Nhấp để xem thông tin nhân viên"
+                              >
+                                <div className="flex items-center gap-2">
+                                  <div className="w-6 h-6 bg-blue-500/20 rounded-full flex items-center justify-center">
+                                    <UserIcon className="w-3 h-3 text-blue-400" />
+                                  </div>
+                                  <span className="text-sm text-gray-300 group-hover/staff:text-blue-300 transition-colors">
+                                    {staffMember.Full_Name}
+                                  </span>
+                                </div>
+                                <span className="text-xs text-gray-500">ID: {staffMember.User_ID}</span>
+                              </div>
+                            ))}
+                            {cinema.staff.length > 3 && (
+                              <div className="text-xs text-gray-500 text-center py-1">
+                                +{cinema.staff.length - 3} nhân viên khác
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       
                       <div className="space-y-4 mb-6">
@@ -845,7 +1011,7 @@ const CinemasList: React.FC = () => {
       {showAssignmentModal && selectedCinema && (
         <StaffAssignmentModal
           isOpen={showAssignmentModal}
-          onClose={() => setShowAssignmentModal(false)}
+          onClose={closeStaffAssignmentModal}
           cinema={selectedCinema}
           type={assignmentType}
           onSuccess={fetchCinemas}
@@ -854,19 +1020,26 @@ const CinemasList: React.FC = () => {
 
       {/* Description Modal */}
       {showDescriptionModal && selectedDescription && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          {/* Backdrop */}
-          <div 
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
-            onClick={() => setShowDescriptionModal(false)}
-          />
-          
-          {/* Modal */}
+        <div
+          className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9999
+          }}
+          onClick={closeDescriptionModal}
+        >
           <motion.div
             className="relative bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-slate-700/50 shadow-2xl"
             style={{
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 216, 117, 0.2)",
+              position: 'relative',
+              zIndex: 10000,
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 216, 117, 0.2)"
             }}
+            onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -914,13 +1087,190 @@ const CinemasList: React.FC = () => {
             <div className="relative p-6 border-t border-slate-700/50">
               <div className="flex justify-end">
                 <button
-                  onClick={() => setShowDescriptionModal(false)}
+                  onClick={closeDescriptionModal}
                   className="px-6 py-3 bg-gradient-to-r from-[#FFD875] to-[#FFA500] hover:from-[#FFA500] hover:to-[#FFD875] text-black font-semibold rounded-xl transition-all duration-300 flex items-center gap-2"
                 >
                   Đóng
                 </button>
               </div>
             </div>
+          </motion.div>
+        </div>
+      )}
+
+      {/* User Info Modal */}
+      {showUserInfoModal && selectedUser && (
+        <div
+          className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            width: '100vw',
+            height: '100vh',
+            zIndex: 9999
+          }}
+          onClick={closeUserModal}
+        >
+          <motion.div
+            className="bg-slate-800 rounded-2xl overflow-hidden border border-slate-700 shadow-xl w-full max-w-md max-h-[90vh] overflow-y-auto"
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.9 }}
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              position: 'relative',
+              zIndex: 10000
+            }}
+          >
+            {/* Header */}
+            <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-6 border-b border-slate-600">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`p-3 rounded-lg ${
+                    selectedUserType === 'manager'
+                      ? 'bg-purple-500/20 border border-purple-500/30'
+                      : 'bg-blue-500/20 border border-blue-500/30'
+                  }`}>
+                    <UserIcon className={`w-6 h-6 ${
+                      selectedUserType === 'manager' ? 'text-purple-400' : 'text-blue-400'
+                    }`} />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-bold text-white">
+                      {selectedUserType === 'manager' ? 'Thông tin Quản lý' : 'Thông tin Nhân viên'}
+                    </h3>
+                    <p className="text-sm text-gray-400">{selectedCinemaName}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={closeUserModal}
+                  className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
+                >
+                  <XMarkIcon className="w-5 h-5 text-gray-400" />
+                </button>
+              </div>
+            </div>
+
+            {/* User Info */}
+            <div className="p-6 space-y-4">
+              {/* Name */}
+              <div className="flex items-center gap-3">
+                <UserIcon className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-400">Họ và tên</p>
+                  <p className="text-white font-medium">{selectedUser.Full_Name}</p>
+                </div>
+              </div>
+
+              {/* ID */}
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <span className="text-xs font-bold text-gray-400">ID</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Mã nhân viên</p>
+                  <p className="text-white font-medium">#{selectedUser.User_ID}</p>
+                </div>
+              </div>
+
+              {/* Email */}
+              <div className="flex items-center gap-3">
+                <EnvelopeIcon className="w-5 h-5 text-gray-400" />
+                <div>
+                  <p className="text-sm text-gray-400">Email</p>
+                  <p className="text-white font-medium">{selectedUser.Email}</p>
+                </div>
+              </div>
+
+              {/* Phone */}
+              {selectedUser.Phone_Number && (
+                <div className="flex items-center gap-3">
+                  <PhoneIcon className="w-5 h-5 text-gray-400" />
+                  <div>
+                    <p className="text-sm text-gray-400">Số điện thoại</p>
+                    <p className="text-white font-medium">{selectedUser.Phone_Number}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Role */}
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <span className="text-xs font-bold text-gray-400">R</span>
+                </div>
+                <div>
+                  <p className="text-sm text-gray-400">Vai trò</p>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                    selectedUserType === 'manager'
+                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                      : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
+                  }`}>
+                    {selectedUserType === 'manager' ? 'Quản lý' : 'Nhân viên'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-6 border-t border-slate-700 bg-slate-800/50">
+              <div className="flex gap-3">
+                <button
+                  onClick={closeUserModal}
+                  className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+                >
+                  Đóng
+                </button>
+                <button
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={isRemoving}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white rounded-lg transition-colors"
+                >
+                  <TrashIcon className="w-4 h-4" />
+                  Bỏ phân công
+                </button>
+              </div>
+            </div>
+
+            {/* Confirmation Dialog */}
+            {showConfirmDialog && (
+              <motion.div
+                className="absolute inset-0 bg-black/50 flex items-center justify-center p-4"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  className="bg-slate-700 rounded-lg p-6 max-w-sm w-full border border-slate-600"
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                >
+                  <div className="flex items-center gap-3 mb-4">
+                    <ExclamationTriangleIcon className="w-6 h-6 text-yellow-400" />
+                    <h4 className="text-lg font-semibold text-white">Xác nhận</h4>
+                  </div>
+                  <p className="text-gray-300 mb-6">
+                    Bạn có chắc chắn muốn bỏ phân công {selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'} <strong>{selectedUser.Full_Name}</strong> khỏi rạp <strong>{selectedCinemaName}</strong>?
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowConfirmDialog(false)}
+                      className="flex-1 px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+                    >
+                      Hủy
+                    </button>
+                    <button
+                      onClick={handleRemoveUser}
+                      disabled={isRemoving}
+                      className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white rounded-lg transition-colors"
+                    >
+                      {isRemoving ? 'Đang xử lý...' : 'Xác nhận'}
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
           </motion.div>
         </div>
       )}
@@ -948,6 +1298,23 @@ const CinemasList: React.FC = () => {
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
+          }
+          /* Modal always center screen */
+          .modal-fixed-center {
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            z-index: 9999 !important;
+          }
+          /* Prevent body scroll when modal open */
+          .modal-open {
+            overflow: hidden !important;
+            height: 100vh !important;
           }
         `,
         }}
