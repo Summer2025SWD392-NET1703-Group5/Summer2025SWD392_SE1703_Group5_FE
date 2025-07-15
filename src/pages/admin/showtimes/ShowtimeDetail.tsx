@@ -9,8 +9,6 @@ import {
   UserGroupIcon,
   PencilIcon,
   TrashIcon,
-  PrinterIcon,
-  ArrowDownTrayIcon,
 } from '@heroicons/react/24/outline';
 import FullScreenLoader from '../../../components/FullScreenLoader';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';

@@ -18,7 +18,6 @@ import { motion } from "framer-motion";
 import { toast } from "react-hot-toast";
 import { cinemaService } from "../../../services/cinemaService";
 import type { Cinema } from "../../../types/cinema";
-import type { User } from "../../../types/user";
 import StaffAssignmentModal from "../../../components/admin/forms/StaffAssignmentModal";
 import CinemaRoomsModal from "../../../components/admin/cinema/CinemaRoomsModal";
 import ShowtimesModal from "../../../components/admin/cinema/ShowtimesModal";

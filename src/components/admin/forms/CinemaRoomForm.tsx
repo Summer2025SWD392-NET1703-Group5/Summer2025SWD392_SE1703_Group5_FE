@@ -24,6 +24,7 @@ import RichTextEditor from '../common/RichTextEditor';
 import SeatLayoutConfig from '../cinema-rooms/SeatLayoutConfig';
 import { seatLayoutService } from '../../../services/seatLayoutService';
 import InteractiveSeatPreview from '../cinema-rooms/InteractiveSeatPreview';
+import { cinemaService } from '../../../services/cinemaService';
 
 const roomSchema = yup.object({
     Room_Name: yup.string()
