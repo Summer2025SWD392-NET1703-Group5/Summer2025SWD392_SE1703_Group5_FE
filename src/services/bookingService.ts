@@ -80,7 +80,38 @@ class BookingService {
      */
     async applyPromotion(data: ApplyPromotionRequest): Promise<BookingResponse> {
         try {
-            const response = await api.post('bookings/apply-promo', { bookingId: data.bookingId, promoCode: data.promoCode });
+            const response = await api.post('/promotions/apply', {
+                bookingId: parseInt(data.bookingId),
+                promotionCode: data.promoCode
+            });
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Xóa mã khuyến mãi khỏi booking
+     * @param bookingId - ID của booking
+     * @returns Thông tin booking sau khi xóa khuyến mãi
+     */
+    async removePromotion(bookingId: string | number): Promise<BookingResponse> {
+        try {
+            const response = await api.delete(`/promotions/remove/${bookingId}`);
+            return response.data;
+        } catch (error) {
+            throw error;
+        }
+    }
+
+    /**
+     * Xóa điểm đã sử dụng khỏi booking (hoàn lại điểm)
+     * @param bookingId - ID của booking
+     * @returns Thông tin booking sau khi xóa điểm
+     */
+    async removePointsFromBooking(bookingId: string | number): Promise<BookingResponse> {
+        try {
+            const response = await api.delete(`/promotions/points/${bookingId}`);
             return response.data;
         } catch (error) {
             throw error;

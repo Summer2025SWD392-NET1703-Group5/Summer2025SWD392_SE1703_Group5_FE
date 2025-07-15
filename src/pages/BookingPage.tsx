@@ -41,6 +41,10 @@ const BookingPage: React.FC = () => {
             // 🎯 PRIORITY 2: Check payment state restore (for page reload)
             const urlShowtimeId = window.location.pathname.split('/').pop();
             if (urlShowtimeId) {
+                // 🔧 ENHANCED: Kiểm tra last view trước để xác định có phải reload từ payment không
+                const lastViewKey = `last_view_${urlShowtimeId}`;
+                const lastView = sessionStorage.getItem(lastViewKey);
+
                 // 🔧 Kiểm tra nhiều key để tìm booking session
                 const possibleKeys = [
                     `payment_state_${urlShowtimeId}`,
@@ -55,8 +59,16 @@ const BookingPage: React.FC = () => {
                             const data = JSON.parse(saved);
                             // Nếu có bookingId hoặc currentView = payment, restore payment view
                             if (data.bookingId || data.currentView === 'payment' || data.paymentBookingSession) {
-                                console.log(`🔄 [INIT] Found payment data in ${key}, restoring payment view`);
-                                return 'payment';
+                                // 🔧 ENHANCED: Ưu tiên last view nếu có
+                                if (lastView === 'payment') {
+                                    console.log(`🔄 [INIT] Found payment data in ${key} and last view was payment, restoring payment view`);
+                                    // Clear the last view flag after using it
+                                    sessionStorage.removeItem(lastViewKey);
+                                    return 'payment';
+                                } else {
+                                    console.log(`🔄 [INIT] Found payment data in ${key}, restoring payment view`);
+                                    return 'payment';
+                                }
                             }
                         } catch (e) {
                             console.warn(`⚠️ [INIT] Failed to parse ${key}:`, e);
@@ -283,12 +295,28 @@ const BookingPage: React.FC = () => {
                     webSocketService.clearAllSelectedSeats(undefined, showtimeId.toString());
                 }
 
-                // Clear all session storage related to booking
+                // 🔧 ENHANCED: Check if we should preserve payment state
+                const isReload = isPageReload();
+                const paymentStateKey = `payment_state_${showtimeId}`;
+                const hasPaymentState = sessionStorage.getItem(paymentStateKey);
+
+                console.log(`🔍 [MANDATORY_CLEANUP] Is reload: ${isReload}, Has payment state: ${!!hasPaymentState}`);
+
+                // Clear session storage - but preserve payment state if it's a reload and payment state exists
                 const sessionKeys = [
                     `booking_session_${showtimeId}`,
                     `galaxy_cinema_session_${showtimeId}`,
-                    'bookingData'
+                    'bookingData',
+                    'has_pending_booking' // Clear pending booking flag
                 ];
+
+                // Only clear payment state if it's NOT a reload or if there's no payment state
+                if (!isReload || !hasPaymentState) {
+                    sessionKeys.push(`payment_state_${showtimeId}`);
+                    console.log('🗑️ [MANDATORY_CLEANUP] Will clear payment state - not a reload or no payment state');
+                } else {
+                    console.log('💾 [MANDATORY_CLEANUP] Preserving payment state - reload detected with existing payment state');
+                }
 
                 sessionKeys.forEach(key => {
                     sessionStorage.removeItem(key);
@@ -302,13 +330,23 @@ const BookingPage: React.FC = () => {
                         action: 'MANDATORY_CLEANUP',
                         showtimeId: showtimeId,
                         timestamp: Date.now(),
-                        source: 'page_load'
+                        source: 'page_load',
+                        preservePaymentState: isReload && hasPaymentState
                     };
                     localStorage.setItem('galaxy_cinema_cleanup_event', JSON.stringify(cleanupEvent));
                     setTimeout(() => localStorage.removeItem('galaxy_cinema_cleanup_event'), 100);
                     console.log('📡 [MANDATORY_CLEANUP] Broadcasted cleanup event');
                 } catch (error) {
                     console.warn('⚠️ [MANDATORY_CLEANUP] Failed to broadcast cleanup:', error);
+                }
+
+                // 🔧 ENHANCED: Only force reset to seats view if we don't have payment state to restore
+                if (!isReload || !hasPaymentState) {
+                    setCurrentView('seats');
+                    setPaymentBookingSession(null);
+                    console.log('🔄 [MANDATORY_CLEANUP] Force reset to seats view');
+                } else {
+                    console.log('💾 [MANDATORY_CLEANUP] Preserving current view for payment state restoration');
                 }
 
                 console.log('✅ [MANDATORY_CLEANUP] Mandatory cleanup completed');
@@ -321,7 +359,7 @@ const BookingPage: React.FC = () => {
         if (showtimeId) {
             performMandatoryCleanup();
         }
-    }, [showtimeId]); // Only depend on showtimeId
+    }, [showtimeId, isPageReload]); // Add isPageReload dependency
 
     // 🧹 UNIVERSAL CLEANUP FUNCTION
     const performUniversalCleanup = useCallback((reason: string = 'unknown') => {
@@ -384,12 +422,24 @@ const BookingPage: React.FC = () => {
     // 🚪 CLEANUP ON PAGE UNLOAD/NAVIGATION
     useEffect(() => {
         const handleBeforeUnload = () => {
-            performUniversalCleanup('page_unload');
+            // 🔧 FIX: Don't cleanup on beforeunload - this event fires on both reload and navigation
+            // We'll handle cleanup in other events (popstate for navigation, manual cleanup for back buttons)
+            console.log('ℹ️ [BEFOREUNLOAD] Page unloading - preserving state (could be reload or navigation)');
+
+            // Only clear WebSocket seats to prevent conflicts, but preserve payment state
+            if (webSocketService && showtimeId) {
+                webSocketService.clearAllSelectedSeats(undefined, showtimeId.toString());
+                console.log('🧹 [BEFOREUNLOAD] Cleared WebSocket seats only');
+            }
         };
 
         const handleVisibilityChange = () => {
             if (document.visibilityState === 'hidden') {
-                performUniversalCleanup('page_hidden');
+                // 🔧 FIX: Don't cleanup on page hidden - user might just switch tabs temporarily
+                // Only log for debugging, don't perform cleanup
+                console.log('ℹ️ [VISIBILITY] Page hidden - preserving state (user might return)');
+            } else if (document.visibilityState === 'visible') {
+                console.log('ℹ️ [VISIBILITY] Page visible - user returned');
             }
         };
 
@@ -443,7 +493,13 @@ const BookingPage: React.FC = () => {
                 const isReload = isPageReload();
                 console.log(`🔍 [PAYMENT_RESTORE] Is page reload: ${isReload}`);
 
-                if (isReload) {
+                // 🔧 ENHANCED: Kiểm tra xem có payment state không trước khi thử restore
+                const paymentStateKey = `payment_state_${urlShowtimeId}`;
+                const hasPaymentState = sessionStorage.getItem(paymentStateKey);
+                console.log(`🔍 [PAYMENT_RESTORE] Has payment state: ${!!hasPaymentState}`);
+
+                if (isReload && hasPaymentState) {
+                    console.log('💾 [PAYMENT_RESTORE] Reload detected with payment state, attempting to restore...');
                     // Thử load payment state với URL showtimeId
                     const savedPaymentState = loadPaymentState(urlShowtimeId);
 
@@ -762,16 +818,62 @@ const BookingPage: React.FC = () => {
         // 🗑️ Clear payment state khi user quay lại
         clearPaymentState();
 
-        // 🔧 Broadcast to other tabs that payment state should be cleared
+        // 🔧 ENHANCED: Force update UI immediately to clear selected seats
+        if (paymentBookingSession?.selectedSeats && paymentBookingSession.selectedSeats.length > 0) {
+            console.log('🔄 [BACK_TO_SEATS] Force updating UI to clear selected seats...');
+            const seatIdsToRelease = paymentBookingSession.selectedSeats.map(seat => seat.id);
+
+            console.log(`🔄 [BACK_TO_SEATS] Releasing seats: ${seatIdsToRelease.join(', ')}`);
+
+            // 1. Update seats state to mark released seats as available IMMEDIATELY
+            setSeats(prevSeats =>
+                prevSeats.map(seat =>
+                    seatIdsToRelease.includes(seat.id)
+                        ? { ...seat, status: 'available' as const, userId: undefined }
+                        : seat
+                )
+            );
+
+            // 2. Dispatch reset event IMMEDIATELY (không chờ WebSocket)
+            try {
+                const resetEvent = new CustomEvent('galaxy-cinema-reset-selections', {
+                    detail: { seatIds: seatIdsToRelease }
+                });
+                window.dispatchEvent(resetEvent);
+                console.log('📡 [BACK_TO_SEATS] Dispatched reset-selections event IMMEDIATELY');
+            } catch (error) {
+                console.warn('⚠️ [BACK_TO_SEATS] Failed to dispatch reset event:', error);
+            }
+
+            // 3. Background cleanup through WebSocket service (không block UI)
+            setTimeout(async () => {
+                try {
+                    console.log('🧹 [BACK_TO_SEATS] Background WebSocket cleanup...');
+                    await webSocketService.forceCleanupUserSeats(paymentBookingSession.showtimeId?.toString());
+                    console.log('✅ [BACK_TO_SEATS] Background WebSocket cleanup completed');
+                } catch (error) {
+                    console.warn('⚠️ [BACK_TO_SEATS] Background WebSocket cleanup failed:', error);
+                }
+            }, 100); // Chạy background sau 100ms
+
+            console.log('✅ [BACK_TO_SEATS] UI updated IMMEDIATELY - seats marked as available');
+        }
+
+        // 🔧 Broadcast to other tabs that payment state should be cleared and seats released
         try {
+            const seatIdsToRelease = paymentBookingSession?.selectedSeats?.map(seat => seat.id) || [];
+
             const cleanupEvent = {
                 action: 'CLEAR_PAYMENT_STATE',
                 showtimeId: showtimeId,
-                timestamp: Date.now()
+                timestamp: Date.now(),
+                releaseSeatIds: seatIdsToRelease // Add seat IDs to release in other tabs
             };
             localStorage.setItem('galaxy_cinema_cleanup_event', JSON.stringify(cleanupEvent));
             // Remove immediately để trigger storage event
             setTimeout(() => localStorage.removeItem('galaxy_cinema_cleanup_event'), 100);
+
+            console.log(`📡 [PAYMENT_STATE] Broadcasted payment state clear with ${seatIdsToRelease.length} seats to release`);
         } catch (error) {
             console.warn('⚠️ [PAYMENT_STATE] Failed to broadcast payment state clear:', error);
         }
@@ -831,6 +933,21 @@ const BookingPage: React.FC = () => {
                     // Force cleanup tất cả ghế qua WebSocket
                     await webSocketService.forceCleanupUserSeats(paymentBookingSession.showtimeId?.toString());
                     console.log('✅ [BACKGROUND] Đã release ghế thành công');
+
+                    // 🔧 ENHANCED: Force update UI immediately after cleanup
+                    console.log('🔄 [BACKGROUND] Force updating UI after seat cleanup...');
+                    const seatIdsToRelease = paymentBookingSession.selectedSeats.map(seat => seat.id);
+
+                    // Update seats state to mark released seats as available
+                    setSeats(prevSeats =>
+                        prevSeats.map(seat =>
+                            seatIdsToRelease.includes(seat.id)
+                                ? { ...seat, status: 'available' as const, userId: undefined }
+                                : seat
+                        )
+                    );
+
+                    console.log('✅ [BACKGROUND] UI updated - seats marked as available');
                 } catch (error) {
                     console.warn('⚠️ [BACKGROUND] Lỗi khi release ghế:', error);
                 }
@@ -888,13 +1005,32 @@ const BookingPage: React.FC = () => {
             // 🔄 DO NOT cleanup WebSocket to preserve cross-tab communication
             // webSocketService.cleanup(); // ← REMOVED to preserve cross-tab state
 
-            // Clear payment state khi rời khỏi trang (navigate away, not reload)
-            if (!isPageReload()) {
+            // 🔧 ENHANCED: Only clear payment state when navigating away, not on reload
+            const isReload = isPageReload();
+            console.log(`🔍 [BOOKING_PAGE_CLEANUP] Is page reload: ${isReload}, currentView: ${currentView}`);
+
+            // Only clear payment state if:
+            // 1. Not a page reload
+            // 2. Currently in seats view (don't clear if user is in payment view)
+            if (!isReload && currentView === 'seats') {
                 clearPaymentState();
-                console.log('🗑️ [BOOKING_PAGE_CLEANUP] Cleared payment state on navigation away');
+                console.log('🗑️ [BOOKING_PAGE_CLEANUP] Cleared payment state on navigation away from seats view');
+            } else if (!isReload && currentView === 'payment') {
+                console.log('ℹ️ [BOOKING_PAGE_CLEANUP] Preserving payment state - user was in payment view');
+            } else if (isReload) {
+                // 🔧 ENHANCED: Khi reload, lưu trạng thái view hiện tại vào sessionStorage
+                if (currentView === 'payment') {
+                    try {
+                        sessionStorage.setItem('last_view_' + showtimeId, 'payment');
+                        console.log('💾 [BOOKING_PAGE_CLEANUP] Saved current view (payment) for reload restoration');
+                    } catch (error) {
+                        console.error('❌ [BOOKING_PAGE_CLEANUP] Error saving view state:', error);
+                    }
+                }
+                console.log('ℹ️ [BOOKING_PAGE_CLEANUP] Preserving payment state - page reload detected');
             }
         };
-    }, []);
+    }, [currentView, isPageReload, clearPaymentState, showtimeId]);
 
     const handlePaymentSuccess = useCallback((bookingId: string, paymentResult: any) => {
         console.log('✅ Payment successful:', { bookingId, paymentResult });
@@ -1480,16 +1616,19 @@ const BookingPage: React.FC = () => {
         // Only log when seat count changes
         if (seats.length !== bookingSession.selectedSeats.length) {
             console.log(`🪑 Selected ${seats.length} seats: ${seats.map(s => s.id).join(', ')}`);
-        }
 
-        // 🧹 CLEANUP: Clear any existing payment state when user interacts with seats
-        try {
-            const paymentStateKey = `payment_state_${showtimeId}`;
-            sessionStorage.removeItem(paymentStateKey);
-            localStorage.removeItem(paymentStateKey);
-            console.log(`🧹 [SEAT_INTERACTION] Cleared payment state: ${paymentStateKey}`);
-        } catch (error) {
-            console.warn('⚠️ [SEAT_INTERACTION] Failed to clear payment state:', error);
+            // 🧹 CLEANUP: Only clear payment state when user actually changes seat selection
+            // and we're currently in seats view (not payment view)
+            if (currentView === 'seats') {
+                try {
+                    const paymentStateKey = `payment_state_${showtimeId}`;
+                    sessionStorage.removeItem(paymentStateKey);
+                    localStorage.removeItem(paymentStateKey);
+                    console.log(`🧹 [SEAT_INTERACTION] Cleared payment state due to seat selection change: ${paymentStateKey}`);
+                } catch (error) {
+                    console.warn('⚠️ [SEAT_INTERACTION] Failed to clear payment state:', error);
+                }
+            }
         }
 
         setBookingSession(prev => {
@@ -2072,6 +2211,21 @@ const BookingPage: React.FC = () => {
                             return;
                         }
 
+                        // 🔧 ENHANCED: Release specific seats if provided
+                        if (data.releaseSeatIds && Array.isArray(data.releaseSeatIds) && data.releaseSeatIds.length > 0) {
+                            console.log(`🔄 [CROSS_TAB] Releasing ${data.releaseSeatIds.length} seats: ${data.releaseSeatIds.join(', ')}`);
+
+                            setSeats(prevSeats =>
+                                prevSeats.map(seat =>
+                                    data.releaseSeatIds.includes(seat.id)
+                                        ? { ...seat, status: 'available' as const, userId: undefined }
+                                        : seat
+                                )
+                            );
+
+                            console.log('✅ [CROSS_TAB] Seats released in UI');
+                        }
+
                         // Clear payment state in current tab
                         clearPaymentState();
 
@@ -2408,6 +2562,11 @@ const BookingPage: React.FC = () => {
                             isAuthenticated={isAuthenticated}
                             onBack={handleBackToSeats}
                             onPaymentSuccess={handlePaymentSuccess}
+                            onUpdateSession={(updatedSession) => {
+                                console.log('🔄 [BOOKING_PAGE] Updating payment session with promotion/points data');
+                                setPaymentBookingSession(updatedSession);
+                                savePaymentState(updatedSession);
+                            }}
                         />
                     ) : null}
                 </main>

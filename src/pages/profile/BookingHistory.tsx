@@ -3,6 +3,7 @@ import { userService } from "../../services/userService";
 import type { Booking } from "../../types/booking";
 import PayOSQRModal from "../../components/PayOSQRModal";
 import CountdownTimer from "../../components/CountdownTimer";
+import UnifiedCountdownTimer from "../../components/UnifiedCountdownTimer";
 import {
   MapPinIcon,
   ClockIcon,
@@ -19,6 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
 import api from "../../services/apiClient";
+import { useSyncCountdownFromServer } from "../../hooks/useCountdown";
 
 const ITEMS_PER_PAGE = 3; // Show 3 bookings per page
 
@@ -42,6 +44,9 @@ const BookingHistory: React.FC = () => {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [bookingToCancel, setBookingToCancel] = useState<number | null>(null);
 
+  // 🔧 FIX: Sử dụng countdown service để đồng bộ timer
+  const { syncBookingTimer } = useSyncCountdownFromServer();
+
   const fetchBookingHistory = useCallback(async () => {
     setIsLoading(true);
     setError(null);
@@ -49,6 +54,30 @@ const BookingHistory: React.FC = () => {
       const history = await userService.getBookingHistory();
       // Ensure history is always an array
       const bookingsArray = Array.isArray(history) ? history : [];
+
+      // 🔄 Đồng bộ countdown timer cho các booking đang chờ thanh toán
+      bookingsArray.forEach(booking => {
+        if (booking.Status === 'Pending') {
+          console.log(`🔍 [BookingHistory] Debug booking ${booking.Booking_ID}:`);
+          console.log(`  - Booking_Date: ${booking.Booking_Date}`);
+          console.log(`  - Showtime_ID: ${booking.Showtime_ID}`);
+
+          const isValid = syncBookingTimer(
+            booking.Booking_ID,
+            booking.Booking_Date,
+            booking.Showtime_ID
+          );
+
+          if (!isValid) {
+            console.log(`⏰ Booking ${booking.Booking_ID} đã hết hạn, sẽ được refresh`);
+            // Có thể trigger refresh lại sau một khoảng thời gian ngắn
+            setTimeout(() => {
+              fetchBookingHistory();
+            }, 1000);
+          }
+        }
+      });
+
       setBookings(bookingsArray);
       setTotalPages(Math.ceil(bookingsArray.length / ITEMS_PER_PAGE));
     } catch (err: any) {
@@ -57,7 +86,7 @@ const BookingHistory: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [syncBookingTimer]);
 
   useEffect(() => {
     fetchBookingHistory();
@@ -546,10 +575,9 @@ const BookingHistory: React.FC = () => {
 
                     {/* Countdown Timer cho booking đang chờ thanh toán */}
                     {isPendingPayment && (
-                      <CountdownTimer
+                      <UnifiedCountdownTimer
                         bookingId={booking.Booking_ID}
                         showtimeId={booking.Showtime_ID}
-                        selectedSeats={booking.Seats}
                         createdAt={booking.Booking_Date}
                         onTimeout={() => handleBookingTimeout(booking.Booking_ID)}
                         className="text-xs"

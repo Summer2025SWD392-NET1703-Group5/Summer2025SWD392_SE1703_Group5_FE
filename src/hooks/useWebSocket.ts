@@ -323,7 +323,7 @@ export const useWebSocket = (options: UseWebSocketOptions): UseWebSocketReturn =
 
       webSocketService.extendSeatHold(seatId);
     } else {
-      toast.warning('Tính năng gia hạn chỉ khả dụng khi kết nối real-time');
+      toast.error('Tính năng gia hạn chỉ khả dụng khi kết nối real-time');
     }
   }, [isConnected, isFallbackMode]);
 

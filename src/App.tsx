@@ -1,6 +1,6 @@
-import React, { Suspense, memo } from "react";
+import React, { Suspense, memo, useEffect } from "react";
 import { Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { Toaster, toast } from "react-hot-toast";
 import { SimpleAuthProvider, useAuth } from "./contexts/SimpleAuthContext";
 import { DashboardProvider } from "./contexts/DashboardContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
@@ -202,6 +202,25 @@ const OptimizedProviders = memo(({ children }: { children: React.ReactNode }) =>
 OptimizedProviders.displayName = "OptimizedProviders";
 
 function App() {
+  // Thêm CSS để giới hạn toast
+  useEffect(() => {
+    const style = document.createElement('style');
+    style.textContent = `
+      .toast-container-limited > div:nth-child(n+4) {
+        display: none !important;
+      }
+      .toast-container-limited {
+        max-height: 300px;
+        overflow: hidden;
+      }
+    `;
+    document.head.appendChild(style);
+
+    return () => {
+      document.head.removeChild(style);
+    };
+  }, []);
+
   return (
     <ErrorBoundary>
       <SimpleAuthProvider>
@@ -211,12 +230,22 @@ function App() {
               {/* Toast notifications */}
               <Toaster
                 position="top-right"
+                containerStyle={{
+                  top: 20,
+                  right: 20,
+                  maxHeight: '300px', // Giới hạn chiều cao để chỉ hiển thị ~3 toast
+                  overflow: 'hidden',
+                  display: 'flex',
+                  flexDirection: 'column-reverse', // Toast mới nhất ở trên
+                }}
+                containerClassName="toast-container-limited"
                 toastOptions={{
                   duration: 4000,
                   style: {
                     background: "#1E293B",
                     color: "#F8FAFC",
                     border: "1px solid #334155",
+                    marginBottom: '8px',
                   },
                   success: {
                     iconTheme: {
