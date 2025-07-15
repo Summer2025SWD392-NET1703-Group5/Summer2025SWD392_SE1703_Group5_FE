@@ -446,6 +446,26 @@ const MovieManagement: React.FC = () => {
       ),
     },
     {
+      key: 'Premiere_Date',
+      title: 'Ngày công chiếu',
+      render: (movie: MovieAPI) => (
+        <div className="flex items-center">
+          <CalendarIcon className="w-4 h-4 text-gray-400 mr-1" />
+          <span>{movie.Premiere_Date ? formatDate(movie.Premiere_Date) : 'Chưa xác định'}</span>
+        </div>
+      ),
+    },
+    {
+      key: 'End_Date',
+      title: 'Ngày kết thúc',
+      render: (movie: MovieAPI) => (
+        <div className="flex items-center">
+          <CalendarIcon className="w-4 h-4 text-gray-400 mr-1" />
+          <span>{movie.End_Date ? formatDate(movie.End_Date) : 'Chưa xác định'}</span>
+        </div>
+      ),
+    },
+    {
       key: 'Status',
       title: 'Trạng thái',
       render: (movie: MovieAPI) => {
