@@ -1,20 +1,13 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
-import { EnvelopeIcon, PencilIcon, ArrowUpOnSquareIcon, SparklesIcon } from '@heroicons/react/24/outline';
+import { EnvelopeIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import ProfileSidebar from '../../components/profile/ProfileSidebar';
 import UnassignedStaffNotice from '../../components/notifications/UnassignedStaffNotice';
 import { useAuth } from '../../contexts/SimpleAuthContext';
 import { userService } from '../../services/userService';
-import imageCompression from 'browser-image-compression';
 
 const ProfileLayout: React.FC = () => {
-  const { user, setUser, isLoading } = useAuth();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadError, setUploadError] = useState<string | null>(null);
+  const { user, isLoading } = useAuth();
   const [userPoints, setUserPoints] = useState<number>(0);
   const [isLoadingPoints, setIsLoadingPoints] = useState<boolean>(false);
 
@@ -36,63 +29,6 @@ const ProfileLayout: React.FC = () => {
 
     fetchUserPoints();
   }, [user]);
-
-  const formatDate = (dateString: string | undefined) => {
-    if (!dateString) return 'Không xác định';
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
-  };
-
-  const handleAvatarSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      setUploadError(null);
-      setAvatarPreview(URL.createObjectURL(file));
-
-      const options = {
-        maxSizeMB: 1,
-        maxWidthOrHeight: 800,
-        useWebWorker: true
-      }
-      try {
-        const compressedFile = await imageCompression(file, options);
-        setAvatarFile(compressedFile);
-      } catch (error) {
-        setUploadError('Lỗi khi nén ảnh.');
-        setAvatarFile(null);
-        setAvatarPreview(null);
-      }
-    }
-  };
-
-  const handleUploadAvatar = async () => {
-    if (!avatarFile) return;
-
-    setIsUploading(true);
-    setUploadProgress(0);
-    setUploadError(null);
-
-    try {
-      const { avatarUrl } = await userService.uploadAvatar(avatarFile, (progressEvent) => {
-        const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
-        setUploadProgress(percentCompleted);
-      });
-
-      if (user) {
-        setUser({ ...user, avatar: avatarUrl });
-      }
-
-    } catch (error: any) {
-      setUploadError(error.message || 'Tải lên thất bại.');
-    } finally {
-      setIsUploading(false);
-      setAvatarPreview(null);
-      setAvatarFile(null);
-    }
-  };
 
   if (isLoading) {
     return (
@@ -132,7 +68,7 @@ const ProfileLayout: React.FC = () => {
                   <div className="relative group">
                     <div className="absolute inset-0 bg-[#FFD875]/30 rounded-full blur-xl opacity-30 group-hover:opacity-50 transition-opacity duration-500"></div>
                     <img
-                      src={avatarPreview || user.avatar || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=FFD875&color=000&bold=true&size=150`}
+                      src={`https://ui-avatars.com/api/?name=${encodeURIComponent(user.fullName)}&background=FFD875&color=000&bold=true&size=150`}
                       alt={user.fullName}
                       className="relative w-24 h-24 rounded-full object-cover ring-2 ring-[#FFD875]/40 group-hover:ring-[#FFD875]/60 transition-all duration-500 shadow-[0_0_25px_rgba(255,216,117,0.3)]"
                     />
@@ -170,25 +106,6 @@ const ProfileLayout: React.FC = () => {
                       </div>
                     )}
                   </div>
-
-                  {/* Upload Progress */}
-                  {isUploading && (
-                    <div className="w-full">
-                      <div className="bg-slate-700/30 rounded-full h-1.5 overflow-hidden backdrop-blur-sm">
-                        <div
-                          className="bg-[#FFD875] h-full transition-all duration-300 rounded-full shadow-[0_0_10px_rgba(255,216,117,0.6)]"
-                          style={{ width: `${uploadProgress}%` }}
-                        ></div>
-                      </div>
-                      <div className="text-[#FFD875] text-xs mt-1.5 text-center drop-shadow-[0_0_8px_rgba(255,216,117,0.5)]">Đang tải lên... {uploadProgress}%</div>
-                    </div>
-                  )}
-
-                  {uploadError && (
-                    <div className="w-full text-red-400 text-xs text-center bg-red-500/10 border border-red-500/20 rounded-lg p-2 backdrop-blur-sm">
-                      {uploadError}
-                    </div>
-                  )}
                 </div>
               </div>
             </div>

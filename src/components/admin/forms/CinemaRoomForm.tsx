@@ -24,6 +24,7 @@ import RichTextEditor from '../common/RichTextEditor';
 import SeatLayoutConfig from '../cinema-rooms/SeatLayoutConfig';
 import { seatLayoutService } from '../../../services/seatLayoutService';
 import InteractiveSeatPreview from '../cinema-rooms/InteractiveSeatPreview';
+import { cinemaService } from '../../../services/cinemaService';
 
 const roomSchema = yup.object({
     Room_Name: yup.string()
@@ -110,6 +111,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
     const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set()); // Track các bước đã hoàn thành
     const [seatLayoutErrors, setSeatLayoutErrors] = useState<string[]>([]); // Lưu trữ lỗi validation seat layout
 
+
     // Seat layout configuration state
     const [seatLayoutConfig, setSeatLayoutConfig] = useState<SeatLayoutConfigData>({
         rowsInput: '',
@@ -144,6 +146,22 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
     ];
 
     const roomType = watch('Room_Type');
+
+    useEffect(() => {
+        if (cinemaId) {
+            const fetchCinema = async () => {
+                try {
+                    const cinemaData = await cinemaService.getCinemaById(cinemaId);
+                    setCinema(cinemaData.Cinema_Name);
+                } catch (error) {
+                    console.error('Error fetching cinema:', error);
+                    toast.error('Không thể tải thông tin rạp chiếu phim.');
+                }
+            };
+            fetchCinema();
+        }
+    }, [cinemaId]);
+
 
     // Parse rows input to calculate total seats
     const parseRowsInput = (input: string): string[] => {
@@ -1058,7 +1076,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                     <SparklesIcon className="h-6 w-6 text-[#FFD875]" />
                                 </div>
                                 <h1 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
-                                    {room ? 'Chỉnh sửa phòng chiếu' : 'Tạo phòng chiếu mới'}
+                                    {room ? 'Chỉnh sửa phòng chiếu' : 'Tạo phòng chiếu mới'} - {cinema ? `Rạp: ${cinema}` : 'Rạp mới'}
                                 </h1>
                             </div>
                             <p className="text-gray-400 text-lg">
