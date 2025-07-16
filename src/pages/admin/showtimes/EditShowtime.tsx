@@ -12,7 +12,6 @@ import {
 import showtimeService from '../../../services/showtimeService';
 import { movieService } from '../../../services/movieService';
 import { cinemaRoomService } from '../../../services/cinemaRoomService';
-import apiClient from '../../../services/apiClient';
 import { useAuth } from '../../../contexts/SimpleAuthContext';
 
 interface Movie {
@@ -21,6 +20,7 @@ interface Movie {
   poster: string;
   duration: number;
   releaseDate: string;
+  endDate?: string;
   status?: string;
 }
 
@@ -37,434 +37,64 @@ interface CinemaRoom {
   capacity: number;
 }
 
-interface Showtime {
-  id: string;
-  movieId: string;
-  movieTitle: string;
-  cinemaId: string;
-  cinemaName: string;
-  roomId: string;
-  roomName: string;
-  startTime: string;
-  endTime: string;
-  bookedSeats: number;
-  totalSeats: number;
-  status: 'scheduled' | 'completed';
-}
-
-// Mock API functions
+// Fetch movies from service, filter for 'Now Showing', and map to consistent format
 const fetchMovies = async (): Promise<Movie[]> => {
   try {
-    console.log('EditShowtime - Đang tải danh sách phim từ API');
+    let allMovies = await movieService.getAllMovies();
+    allMovies = allMovies.filter((movie: any) =>
+      movie.status === 'Now Showing' ||
+      movie.Status === 'Now Showing' ||
+      movie.movieStatus === 'Now Showing');
 
-    // Thử lấy danh sách phim sắp chiếu trước
-    try {
-      const response = await fetch('/api/movies/coming-soon');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Dữ liệu phim sắp chiếu từ API:', data);
-
-        const moviesData = data.data || data;
-        if (Array.isArray(moviesData) && moviesData.length > 0) {
-          // Chuyển đổi dữ liệu phim sang định dạng chuẩn
-          const processedMovies = moviesData.map((movie: any, index: number) => {
-            // Xác định ID phim
-            let movieId = '';
-            if (movie.Movie_ID !== undefined) movieId = String(movie.Movie_ID);
-            else if (movie.id !== undefined) movieId = String(movie.id);
-            else if (movie.movieId !== undefined) movieId = String(movie.movieId);
-
-            return {
-              id: movieId,
-              title: movie.Movie_Name || movie.title || movie.movieName || movie.name || `Phim không tên ${index + 1}`,
-              poster: movie.Poster_URL || movie.poster || 'https://placehold.co/300x450?text=No+Image',
-              duration: movie.Duration || movie.duration || 120,
-              releaseDate: movie.Release_Date || movie.releaseDate || new Date().toISOString().split('T')[0],
-              status: movie.Status || movie.status || 'Coming Soon'
-            };
-          });
-
-          console.log('Danh sách phim sắp chiếu đã xử lý:', processedMovies);
-          return processedMovies;
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy phim sắp chiếu:', error);
-    }
-
-    // Nếu không lấy được phim đang chiếu, lấy tất cả phim và lọc
-    const moviesResponse = await movieService.getAllMovies();
-    console.log('Dữ liệu tất cả phim từ API:', moviesResponse);
-
-    // Kiểm tra xem dữ liệu trả về có đúng định dạng không
-    if (!Array.isArray(moviesResponse)) {
-      console.error('Dữ liệu phim không phải là mảng:', moviesResponse);
-      throw new Error('Định dạng dữ liệu phim không hợp lệ');
-    }
-
-    // Chuyển đổi dữ liệu phim sang định dạng chuẩn
-    const processedMovies = moviesResponse.map((movie: any, index: number) => {
-      // Xác định ID phim
-      let movieId = '';
-      if (movie.Movie_ID !== undefined) movieId = String(movie.Movie_ID);
-      else if (movie.id !== undefined) movieId = String(movie.id);
-      else if (movie.movieId !== undefined) movieId = String(movie.movieId);
-
-      // Xác định trạng thái phim
-      let status = movie.Status || movie.status || '';
-      status = status.toLowerCase();
-
-      return {
-        id: movieId,
-        title: movie.Movie_Name || movie.title || movie.movieName || movie.name || `Phim không tên ${index + 1}`,
-        poster: movie.Poster_URL || movie.poster || 'https://placehold.co/300x450?text=No+Image',
-        duration: movie.Duration || movie.duration || 120,
-        releaseDate: movie.Release_Date || movie.releaseDate || new Date().toISOString().split('T')[0],
-        status: status
-      };
-    });
-
-    // Lọc chỉ lấy phim sắp chiếu
-    const comingSoonMovies = processedMovies.filter(movie => {
-      const status = (movie.status || '').toLowerCase();
-      return status === 'coming soon' || status === 'coming-soon' || status === 'comingsoon';
-    });
-
-    console.log('Danh sách phim sắp chiếu đã lọc:', comingSoonMovies);
-    return comingSoonMovies.length > 0 ? comingSoonMovies : processedMovies;
+    return allMovies.map((movie: any) => ({
+      id: movie.Movie_ID?.toString() || movie.id?.toString() || movie.movieId?.toString(),
+      title: movie.Movie_Name || movie.title || movie.movieName || movie.name || '',
+      poster: movie.Poster_URL || movie.poster || movie.posterUrl || movie.posterURL || '',
+      duration: movie.Duration || movie.duration || 120,
+      releaseDate: movie.Release_Date || movie.releaseDate || new Date().toISOString().split('T')[0],
+      premiereDate: movie.Premiere_Date || movie.premiereDate || '',
+      endDate: movie.End_Date || movie.endDate || '',
+      status: movie.Status || movie.status || 'Now Showing',
+    }));
   } catch (error) {
     console.error('Error fetching movies:', error);
     toast.error('Không thể tải danh sách phim');
-
-    // Trả về dữ liệu mẫu nếu API lỗi
-    return [
-      {
-        id: '1',
-        title: 'Avengers: Endgame',
-        poster: 'https://placehold.co/300x450?text=Avengers+Endgame',
-        duration: 181,
-        releaseDate: '2023-04-26',
-        status: 'Coming Soon'
-      },
-      {
-        id: '2',
-        title: 'Spider-Man: No Way Home',
-        poster: 'https://placehold.co/300x450?text=Spider-Man',
-        duration: 148,
-        releaseDate: '2023-12-17',
-        status: 'Coming Soon'
-      }
-    ];
+    return [];
   }
 };
 
 const fetchCinemas = async (): Promise<Cinema[]> => {
   try {
-    console.log('EditShowtime - Đang tải danh sách rạp từ API');
-
-    // Thử lấy danh sách rạp đang hoạt động từ API
-    try {
-      const response = await fetch('/api/cinemas/active');
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Dữ liệu rạp từ API:', data);
-
-        const cinemasData = data.data || data;
-        if (Array.isArray(cinemasData) && cinemasData.length > 0) {
-          // Chuyển đổi dữ liệu rạp sang định dạng chuẩn
-          const processedCinemas = cinemasData.map((cinema: any, index: number) => {
-            // Xác định ID rạp
-            let cinemaId = '';
-            if (cinema.Cinema_ID !== undefined) cinemaId = String(cinema.Cinema_ID);
-            else if (cinema.id !== undefined) cinemaId = String(cinema.id);
-            else if (cinema.cinemaId !== undefined) cinemaId = String(cinema.cinemaId);
-
-            return {
-              id: cinemaId,
-              name: cinema.Cinema_Name || cinema.name || cinema.cinemaName || `Rạp ${index + 1}`,
-              address: cinema.Address || cinema.address || '',
-            };
-          });
-
-          console.log('Danh sách rạp đã xử lý:', processedCinemas);
-          return processedCinemas;
-        }
-      }
-    } catch (error) {
-      console.error('Lỗi khi lấy rạp từ API:', error);
-    }
-
-    // Nếu không lấy được từ API, sử dụng service
+    // Use service to get cinemas
     const cinemasMap = await showtimeService.getCinemas();
-    const cinemas = Array.from(cinemasMap.values()).map((cinema: any) => ({
+    return Array.from(cinemasMap.values()).map((cinema: any) => ({
       id: cinema.id,
       name: cinema.name,
       address: cinema.address,
     }));
-
-    console.log('Danh sách rạp từ service:', cinemas);
-    return cinemas;
   } catch (error) {
     console.error('Error fetching cinemas:', error);
     toast.error('Không thể tải danh sách rạp');
-
-    // Trả về dữ liệu mẫu nếu API lỗi
-    return [
-      {
-        id: '1',
-        name: 'Galaxy Nguyễn Du',
-        address: '116 Nguyễn Du, Quận 1, TP.HCM',
-      },
-      {
-        id: '2',
-        name: 'Galaxy Tân Bình',
-        address: '246 Nguyễn Hồng Đào, Tân Bình, TP.HCM',
-      },
-      {
-        id: '3',
-        name: 'Galaxy Kinh Dương Vương',
-        address: '718bis Kinh Dương Vương, Quận 6, TP.HCM',
-      },
-    ];
+    return [];
   }
 };
 
 const fetchRooms = async (cinemaId: string): Promise<CinemaRoom[]> => {
   try {
-    // Sử dụng apiClient để gọi API lấy phòng theo rạp
-    try {
-      const response = await apiClient.get(`/cinemas/${cinemaId}/rooms`);
-      let roomsData = [];
-
-      // Xử lý các định dạng phản hồi khác nhau
-      if (response.data && response.data.data && Array.isArray(response.data.data)) {
-        roomsData = response.data.data;
-      } else if (response.data && Array.isArray(response.data)) {
-        roomsData = response.data;
-      } else if (response.data && response.data.success && response.data.data) {
-        roomsData = response.data.data;
-      }
-
-      if (roomsData.length > 0) {
-        const processedRooms = roomsData.map((room: any, index: number) => {
-          // Xác định ID phòng
-          let roomId = '';
-          if (room.Cinema_Room_ID !== undefined) roomId = String(room.Cinema_Room_ID);
-          else if (room.id !== undefined) roomId = String(room.id);
-          else if (room.roomId !== undefined) roomId = String(room.roomId);
-          else roomId = String(index + 1);
-
-          // Xác định sức chứa
-          let capacity = 48;
-          if (room.Seat_Quantity !== undefined) capacity = Number(room.Seat_Quantity);
-          else if (room.capacity !== undefined) capacity = Number(room.capacity);
-          else if (room.Capacity !== undefined) capacity = Number(room.Capacity);
-
-          return {
-            id: roomId,
-            name: room.Room_Name || room.name || room.roomName || `Phòng ${index + 1}`,
-            cinemaId: String(cinemaId),
-            capacity: isNaN(capacity) ? 48 : capacity,
-          };
-        });
-
-        return processedRooms;
-      }
-    } catch (error) {
-      console.error('Lỗi API /cinemas/{id}/rooms:', error);
+    const rooms = await cinemaRoomService.getRoomsByCinemaId(Number(cinemaId));
+    if (Array.isArray(rooms) && rooms.length > 0) {
+      return rooms.map((room: any, index: number) => ({
+        id: room.Cinema_Room_ID || String(index + 1),
+        name: room.Room_Name || `Phòng ${index + 1}`,
+        cinemaId: String(cinemaId),
+        capacity: room.Seat_Quantity || 0,
+      }));
     }
-
-    // Thử endpoint khác: /cinema-rooms/cinema/{id}
-    try {
-      const response = await apiClient.get(`/cinema-rooms/cinema/${cinemaId}`);
-      let roomsData = [];
-
-      if (response.data && Array.isArray(response.data)) {
-        roomsData = response.data;
-      } else if (response.data && response.data.data) {
-        roomsData = response.data.data;
-      }
-
-      if (roomsData.length > 0) {
-        const processedRooms = roomsData.map((room: any, index: number) => ({
-          id: room.id || room.Cinema_Room_ID || String(index + 1),
-          name: room.name || room.Room_Name || `Phòng ${index + 1}`,
-          cinemaId: String(cinemaId),
-          capacity: room.capacity || room.Seat_Quantity || 48,
-        }));
-
-        return processedRooms;
-      }
-    } catch (error) {
-      console.error('Lỗi API /cinema-rooms/cinema/{id}:', error);
-    }
-
-    // Sử dụng service nếu API không thành công
-    try {
-      const rooms = await cinemaRoomService.getRoomsByCinemaId(Number(cinemaId));
-      if (Array.isArray(rooms) && rooms.length > 0) {
-        const processedRooms = rooms.map((room: any, index: number) => ({
-          id: room.id || String(index + 1),
-          name: room.name || `Phòng ${index + 1}`,
-          cinemaId: String(cinemaId),
-          capacity: room.capacity || 48,
-        }));
-
-        return processedRooms;
-      }
-    } catch (error) {
-      console.error('Lỗi service:', error);
-    }
-
-    // Trả về dữ liệu mẫu
-    return [
-      { id: '1', name: 'Phòng chiếu 1', cinemaId, capacity: 120 },
-      { id: '2', name: 'Phòng chiếu 2', cinemaId, capacity: 80 },
-      { id: '3', name: 'Phòng chiếu 3', cinemaId, capacity: 100 },
-      { id: '4', name: 'Phòng chiếu 4', cinemaId, capacity: 150 },
-    ];
+    return [];
   } catch (error) {
     console.error(`Error fetching rooms:`, error);
     toast.error('Không thể tải danh sách phòng chiếu');
-
-    return [
-      { id: '1', name: 'Phòng chiếu 1', cinemaId, capacity: 120 },
-      { id: '2', name: 'Phòng chiếu 2', cinemaId, capacity: 80 },
-    ];
-  }
-};
-
-const fetchShowtime = async (id: string): Promise<Showtime> => {
-  try {
-    const data = await showtimeService.getShowtimeById(id);
-
-    if (!data) {
-      throw new Error('Không nhận được dữ liệu từ API');
-    }
-
-    // Xử lý các trường dữ liệu
-    const movieId = data.movieId?.toString() || '';
-    const cinemaId = data.cinemaId?.toString() || '';
-    const roomId = data.roomId?.toString() || '';
-
-    // Fetch thông tin chi tiết phim, rạp, phòng
-    let movieTitle = 'Không xác định';
-    let cinemaName = 'Không xác định';
-    let roomName = 'Không xác định';
-
-    try {
-      // Fetch thông tin phim
-      if (movieId) {
-        try {
-          const movieDetails = await showtimeService.getMovieById(movieId);
-          if (movieDetails) {
-            movieTitle = movieDetails.movieName || movieDetails.Movie_Name || movieDetails.title || movieTitle;
-          }
-        } catch (error) {
-          movieTitle = data.movie?.title || data.movieTitle || movieTitle;
-        }
-      }
-
-      // Fetch thông tin rạp
-      if (cinemaId) {
-        try {
-          const cinemaDetails = await showtimeService.getCinemaById(cinemaId);
-          if (cinemaDetails) {
-            cinemaName = cinemaDetails.name || cinemaDetails.Name || cinemaDetails.Cinema_Name || cinemaName;
-          }
-        } catch (error) {
-          cinemaName = data.cinema?.name || data.cinemaName || cinemaName;
-        }
-      }
-
-      // Fetch thông tin phòng
-      if (roomId) {
-        try {
-          const roomDetails = await cinemaRoomService.getCinemaRoomById(Number(roomId));
-          if (roomDetails) {
-            roomName = roomDetails.name || roomDetails.Name || roomDetails.Room_Name || roomName;
-          }
-        } catch (error) {
-          roomName = data.room?.name || data.roomName || roomName;
-        }
-      }
-    } catch (error) {
-      movieTitle = data.movie?.title || data.movieTitle || movieTitle;
-      cinemaName = data.cinema?.name || data.cinemaName || cinemaName;
-      roomName = data.room?.name || data.roomName || roomName;
-    }
-
-    // Xử lý startTime và endTime
-    let startTime: string;
-    let endTime: string;
-
-    try {
-      if (typeof data.startTime === 'string' && data.startTime) {
-        startTime = data.startTime;
-      } else if (data.startTime instanceof Date) {
-        startTime = data.startTime.toISOString();
-      } else {
-        startTime = new Date().toISOString();
-      }
-
-      if (typeof data.endTime === 'string' && data.endTime) {
-        endTime = data.endTime;
-      } else if (data.endTime instanceof Date) {
-        endTime = data.endTime.toISOString();
-      } else {
-        const endDate = new Date(startTime);
-        endDate.setHours(endDate.getHours() + 2);
-        endTime = endDate.toISOString();
-      }
-    } catch (error) {
-      const now = new Date();
-      startTime = now.toISOString();
-      now.setHours(now.getHours() + 2);
-      endTime = now.toISOString();
-    }
-
-    const totalSeats = typeof data.totalSeats === 'number' ? data.totalSeats : 0;
-    const availableSeats = typeof data.availableSeats === 'number' ? data.availableSeats : 0;
-    const bookedSeats = totalSeats - availableSeats;
-
-    // Xử lý status
-    let safeStatus: 'scheduled' | 'completed' = 'scheduled';
-    if (data.status === 'completed') {
-      safeStatus = 'completed';
-    } else {
-      safeStatus = 'scheduled';
-    }
-
-    return {
-      id: data.id || id,
-      movieId,
-      movieTitle,
-      cinemaId,
-      cinemaName,
-      roomId,
-      roomName,
-      startTime,
-      endTime,
-      bookedSeats,
-      totalSeats,
-      status: safeStatus,
-    };
-  } catch (error) {
-    console.error('Error fetching showtime:', error);
-    return {
-      id,
-      movieId: '1',
-      movieTitle: 'Phim mẫu',
-      cinemaId: '1',
-      cinemaName: 'Rạp mẫu',
-      roomId: '1',
-      roomName: 'Phòng mẫu',
-      startTime: new Date().toISOString(),
-      endTime: new Date().toISOString(),
-      bookedSeats: 0,
-      totalSeats: 100,
-      status: 'scheduled',
-    };
+    return [];
   }
 };
 
@@ -484,7 +114,7 @@ const EditShowtime: React.FC = () => {
   // Form states
   const [selectedMovie, setSelectedMovie] = useState<string>('');
   const [selectedCinema, setSelectedCinema] = useState<string>('');
-  const [selectedRoom, setSelectedRoom] = useState<string>('');
+  const [selectedRoom, setSelectedRoom] = useState<string>();
   const [showDate, setShowDate] = useState<string>('');
   const [showTime, setShowTime] = useState<string>('');
   const [showtimeStatus, setShowtimeStatus] = useState<'scheduled' | 'completed'>('scheduled');
@@ -530,22 +160,38 @@ const EditShowtime: React.FC = () => {
           const showtimeData = await showtimeService.getShowtimeById(id);
           if (showtimeData) {
             setSelectedMovie(showtimeData.movieId);
-            
-            // Nếu là Manager, sử dụng rạp của họ
-            if (!isAdmin && managerCinema) {
-              setSelectedCinema(managerCinema.id);
+
+            // Wait for managerCinema to be set if needed
+            let cinemaIdToUse = showtimeData.cinemaId;
+            if (!isAdmin) {
+              // If managerCinema is not yet set, wait for it
+              if (!managerCinema) {
+                // Wait for managerCinema to be set in a microtask
+                await new Promise(resolve => setTimeout(resolve, 0));
+              }
+              cinemaIdToUse = managerCinema?.id || showtimeData.cinemaId;
+              setSelectedCinema(cinemaIdToUse);
             } else {
-              setSelectedCinema(showtimeData.cinemaId);
+              setSelectedCinema(cinemaIdToUse);
             }
-            
-            // Tải danh sách phòng dựa trên rạp đã chọn
-            const roomsData = await fetchRooms(isAdmin ? showtimeData.cinemaId : managerCinema?.id || '');
+
+            // Fetch rooms for the correct cinema
+            const roomsData = await fetchRooms(cinemaIdToUse);
             setRooms(roomsData);
-            setSelectedRoom(showtimeData.roomId);
+
+            // Set selectedRoom only if it exists in the fetched rooms
+            const roomIdString = showtimeData.roomId?.toString() || '';
+            if (roomsData.some(r => r.id === roomIdString)) {
+              setSelectedRoom(roomIdString);
+            } else if (roomsData.length > 0) {
+              setSelectedRoom(roomsData[0].id);
+            } else {
+              setSelectedRoom('');
+            }
 
             // Xử lý ngày giờ
-            setShowDate(showtimeData.showDate);
-            
+            setShowDate(showtimeData.showDate || '');
+
             const timeString = showtimeData.startTime;
             if (timeString && typeof timeString === 'string') {
               if (timeString.includes('T')) {
@@ -569,14 +215,11 @@ const EditShowtime: React.FC = () => {
 
   // Load rooms when cinema changes
   useEffect(() => {
-    if (selectedCinema && !loading) {
+    if (selectedCinema) {
       const loadRooms = async () => {
         try {
           const roomsData = await fetchRooms(selectedCinema);
           setRooms(roomsData);
-
-          // Reset selected room khi thay đổi cinema (không phải lúc load ban đầu)
-          setSelectedRoom('');
         } catch (error) {
           console.error('Error loading rooms:', error);
           toast.error('Không thể tải danh sách phòng chiếu');
@@ -586,29 +229,82 @@ const EditShowtime: React.FC = () => {
       loadRooms();
     } else if (!selectedCinema) {
       setRooms([]);
-      setSelectedRoom('');
     }
-  }, [selectedCinema, loading]);
+  }, [selectedCinema]);
 
   // Update selected movie details when movie changes
   useEffect(() => {
     if (selectedMovie) {
-      const movie = movies.find(m => m.id === selectedMovie);
-      setSelectedMovieDetails(movie || null);
+      const fetchMovieDetails = async () => {
+        try {
+          // First try to find the movie in the already loaded movies list
+          const movieFromList = movies.find(m => m.id === selectedMovie);
+          if (movieFromList) {
+            setSelectedMovieDetails(movieFromList);
+          }
+
+          // Only try to fetch from API if ID is numeric
+          if (/^\d+$/.test(selectedMovie)) {
+            // Then fetch detailed information from the API
+            try {
+              const detailedMovie = await movieService.fetchMovieDetails(selectedMovie);
+              if (detailedMovie) {
+                console.log('Detailed movie from API:', detailedMovie);
+                
+                const movieData = {
+                  id: selectedMovie,
+                  title: detailedMovie.Movie_Name || detailedMovie.movieName || detailedMovie.title || movieFromList?.title || '',
+                  poster: detailedMovie.Poster_URL || detailedMovie.posterURL || detailedMovie.posterUrl || detailedMovie.poster || movieFromList?.poster || '',
+                  duration: detailedMovie.Duration || detailedMovie.duration || movieFromList?.duration || 120,
+                  releaseDate: detailedMovie.Release_Date || detailedMovie.releaseDate || movieFromList?.releaseDate || '',
+                  endDate: detailedMovie.End_Date || detailedMovie.endDate || movieFromList?.endDate || '',
+                };
+                
+                console.log('Final movieData:', movieData);
+                setSelectedMovieDetails(movieData);
+              }
+            } catch (error) {
+              console.error('Error fetching movie details from API:', error);
+              // Already set movie details from list, so we can continue
+            }
+          } else {
+            console.log('Skipping API fetch for non-numeric ID:', selectedMovie);
+          }
+        } catch (error) {
+          console.error('Error in movie details fetch process:', error);
+          // Keep the basic movie details if API call fails
+          const movie = movies.find(m => m.id === selectedMovie);
+          setSelectedMovieDetails(movie || null);
+        }
+      };
+
+      fetchMovieDetails();
     } else {
       setSelectedMovieDetails(null);
     }
   }, [selectedMovie, movies]);
 
-  // Force set selectedRoom sau khi có dữ liệu
+  // Remove force set selectedRoom from sessionStorage (redundant)
+
+  // Validate time when date changes
   useEffect(() => {
-    const savedRoomId = sessionStorage.getItem(`editShowtime_${id}_roomId`);
-    if (savedRoomId && rooms.length > 0 && !selectedRoom) {
-      console.log('Force setting selectedRoom:', savedRoomId);
-      setSelectedRoom(savedRoomId);
-      sessionStorage.removeItem(`editShowtime_${id}_roomId`);
+    if (showDate && showTime) {
+      // If date is today and current time is before minimum time, clear the time
+      if (isToday(showDate)) {
+        const minTime = getMinTimeForToday();
+        if (showTime < minTime) {
+          setShowTime('');
+          toast.error('Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại.');
+        }
+      }
+      
+      // Check if datetime is after movie end date
+      if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
+        setShowTime('');
+        toast.error(`Không thể chọn thời gian sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
+      }
     }
-  }, [rooms, id, selectedRoom]);
+  }, [showDate, showTime, selectedMovieDetails]);
 
   // Calculate end time based on movie duration + 15 phút giải lao
   const calculateEndTime = () => {
@@ -625,12 +321,37 @@ const EditShowtime: React.FC = () => {
     return endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
   };
 
-  // Format currency for display
-  const formatCurrency = (amount: string) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND',
-    }).format(Number(amount));
+  // Validation functions
+  const isDateTimeAfterNow = (date: string, time: string): boolean => {
+    const selectedDateTime = new Date(`${date}T${time}`);
+    const now = new Date();
+    return selectedDateTime > now;
+  };
+
+  const isDateTimeAfterMovieEndDate = (date: string, time: string, movieEndDate: string): boolean => {
+    if (!movieEndDate) return true; // If no end date, allow scheduling
+    
+    const selectedDateTime = new Date(`${date}T${time}`);
+    const endDate = new Date(movieEndDate);
+    
+    // Set end date to end of day for comparison
+    endDate.setHours(23, 59, 59, 999);
+    
+    return selectedDateTime <= endDate;
+  };
+
+  const getMinTimeForToday = (): string => {
+    const now = new Date();
+    
+    // Add 30 minutes buffer for preparation time
+    const minDate = new Date(now.getTime() + 30 * 60000);
+    
+    return minDate.toTimeString().slice(0, 5); // Returns HH:MM format
+  };
+
+  const isToday = (date: string): boolean => {
+    const today = new Date().toISOString().split('T')[0];
+    return date === today;
   };
 
   // Handle form submission
@@ -665,6 +386,18 @@ const EditShowtime: React.FC = () => {
 
     if (!id) {
       toast.error('ID suất chiếu không hợp lệ');
+      return;
+    }
+
+    // Validate datetime is after current time
+    if (!isDateTimeAfterNow(showDate, showTime)) {
+      toast.error('Thời gian chiếu phải sau thời điểm hiện tại');
+      return;
+    }
+
+    // Validate datetime is before movie end date (if movie has end date)
+    if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
+      toast.error(`Không thể tạo suất chiếu sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
       return;
     }
 
@@ -884,9 +617,15 @@ const EditShowtime: React.FC = () => {
                         className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
                         style={{ borderColor: showDate ? '#FFD875' : undefined }}
                         min={new Date().toISOString().split('T')[0]}
+                        max={selectedMovieDetails?.endDate || undefined}
                         required
                       />
                     </div>
+                    {selectedMovieDetails?.endDate && new Date(selectedMovieDetails.endDate) < new Date() && (
+                      <p className="text-sm text-red-400 mt-1">
+                        ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                      </p>
+                    )}
                   </div>
 
                   <div>
@@ -904,9 +643,20 @@ const EditShowtime: React.FC = () => {
                         onChange={(e) => setShowTime(e.target.value)}
                         className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
                         style={{ borderColor: showTime ? '#FFD875' : undefined }}
+                        min={isToday(showDate) ? getMinTimeForToday() : undefined}
                         required
                       />
                     </div>
+                    {isToday(showDate) && (
+                      <p className="text-sm text-yellow-400 mt-1">
+                        Thời gian tối thiểu: {getMinTimeForToday()} (sau 30 phút từ bây giờ)
+                      </p>
+                    )}
+                    {selectedMovieDetails?.endDate && (
+                      <p className="text-sm text-gray-400 mt-1">
+                        Phim kết thúc: {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                      </p>
+                    )}
                     {selectedMovieDetails && showTime && (
                       <p className="text-sm text-gray-400 mt-1">
                         Kết thúc: {calculateEndTime()}
@@ -978,8 +728,31 @@ const EditShowtime: React.FC = () => {
 
                   <div className="flex justify-between">
                     <span className="text-gray-400">Ngày khởi chiếu:</span>
-                    <span className="text-white">{new Date(selectedMovieDetails.releaseDate).toLocaleDateString('vi-VN')}</span>
+                    <span className="text-white">
+                      {(() => {
+                        try {
+                          return new Date(selectedMovieDetails.releaseDate).toLocaleDateString('vi-VN');
+                        } catch (e) {
+                          return 'Không xác định';
+                        }
+                      })()}
+                    </span>
                   </div>
+
+                  {selectedMovieDetails.endDate && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">Ngày kết thúc:</span>
+                      <span className="text-white">
+                        {(() => {
+                          try {
+                            return new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN');
+                          } catch (e) {
+                            return 'Không xác định';
+                          }
+                        })()}
+                      </span>
+                    </div>
+                  )}
 
                   {selectedCinema && cinemas.find(c => c.id === selectedCinema) && (
                     <div className="flex justify-between">

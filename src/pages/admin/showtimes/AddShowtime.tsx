@@ -176,7 +176,6 @@ const fetchRooms = async (cinemaId: string): Promise<CinemaRoom[]> => {
 const AddShowtime: React.FC = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const { user } = useAuth(); // Lấy thông tin người dùng
   const isAdmin = user?.role === 'Admin'; // Kiểm tra xem người dùng có phải là Admin không
@@ -206,7 +205,6 @@ const AddShowtime: React.FC = () => {
   useEffect(() => {
     const loadData = async () => {
       const cinemaId = searchParams.get("cinemaId");
-      setLoading(true);
       try {
         // Luôn tải danh sách phim
         const moviesData = await fetchMovies();
@@ -262,8 +260,6 @@ const AddShowtime: React.FC = () => {
       } catch (error) {
         console.error('Error loading data:', error);
         toast.error('Không thể tải dữ liệu');
-      } finally {
-        setLoading(false);
       }
     };
 
@@ -363,6 +359,26 @@ const AddShowtime: React.FC = () => {
     }
   }, [selectedMovie, movies]);
 
+  // Validate time when date changes
+  useEffect(() => {
+    if (showDate && showTime) {
+      // If date is today and current time is before minimum time, clear the time
+      if (isToday(showDate)) {
+        const minTime = getMinTimeForToday();
+        if (showTime < minTime) {
+          setShowTime('');
+          toast.error('Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại.');
+        }
+      }
+      
+      // Check if datetime is after movie end date
+      if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
+        setShowTime('');
+        toast.error(`Không thể chọn thời gian sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
+      }
+    }
+  }, [showDate, showTime, selectedMovieDetails]);
+
   // Calculate end time based on movie duration
   const calculateEndTime = () => {
     if (!selectedMovieDetails || !showTime) return '';
@@ -396,6 +412,39 @@ const AddShowtime: React.FC = () => {
     toast.error('Đã hủy tạo xuất chiếu sớm');
   };
 
+  // Validation functions
+  const isDateTimeAfterNow = (date: string, time: string): boolean => {
+    const selectedDateTime = new Date(`${date}T${time}`);
+    const now = new Date();
+    return selectedDateTime > now;
+  };
+
+  const isDateTimeAfterMovieEndDate = (date: string, time: string, movieEndDate: string): boolean => {
+    if (!movieEndDate) return true; // If no end date, allow scheduling
+    
+    const selectedDateTime = new Date(`${date}T${time}`);
+    const endDate = new Date(movieEndDate);
+    
+    // Set end date to end of day for comparison
+    endDate.setHours(23, 59, 59, 999);
+    
+    return selectedDateTime <= endDate;
+  };
+
+  const getMinTimeForToday = (): string => {
+    const now = new Date();
+    
+    // Add 30 minutes buffer for preparation time
+    const minDate = new Date(now.getTime() + 30 * 60000);
+    
+    return minDate.toTimeString().slice(0, 5); // Returns HH:MM format
+  };
+
+  const isToday = (date: string): boolean => {
+    const today = new Date().toISOString().split('T')[0];
+    return date === today;
+  };
+
   // Handle form submission
   const handleSubmit = async (e: React.FormEvent, allowEarlyShowtime: boolean = false) => {
     e.preventDefault();
@@ -423,6 +472,18 @@ const AddShowtime: React.FC = () => {
 
     if (!showTime) {
       toast.error('Vui lòng chọn giờ chiếu');
+      return;
+    }
+
+    // Validate datetime is after current time
+    if (!isDateTimeAfterNow(showDate, showTime)) {
+      toast.error('Thời gian chiếu phải sau thời điểm hiện tại');
+      return;
+    }
+
+    // Validate datetime is before movie end date (if movie has end date)
+    if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
+      toast.error(`Không thể tạo suất chiếu sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
       return;
     }
 
@@ -628,9 +689,15 @@ const AddShowtime: React.FC = () => {
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
                     style={{ borderColor: showDate ? '#FFD875' : undefined }}
                     min={new Date().toISOString().split('T')[0]}
+                    max={selectedMovieDetails?.endDate || undefined}
                     required
                   />
                 </div>
+                {selectedMovieDetails?.endDate && new Date(selectedMovieDetails.endDate) < new Date() && (
+                  <p className="text-sm text-red-400 mt-1">
+                    ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                  </p>
+                )}
               </div>
 
               <div>
@@ -648,9 +715,20 @@ const AddShowtime: React.FC = () => {
                     onChange={(e) => setShowTime(e.target.value)}
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
                     style={{ borderColor: showTime ? '#FFD875' : undefined }}
+                    min={isToday(showDate) ? getMinTimeForToday() : undefined}
                     required
                   />
                 </div>
+                {isToday(showDate) && (
+                  <p className="text-sm text-yellow-400 mt-1">
+                    Thời gian tối thiểu: {getMinTimeForToday()} (sau 30 phút từ bây giờ)
+                  </p>
+                )}
+                {selectedMovieDetails?.endDate && (
+                  <p className="text-sm text-gray-400 mt-1">
+                    Phim kết thúc: {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                  </p>
+                )}
                 {selectedMovieDetails && showTime && (
                   <p className="text-sm text-gray-400 mt-1">
                     Kết thúc: {calculateEndTime()}

@@ -43,8 +43,6 @@ const ShowtimeDetail: React.FC = () => {
   const [loading, setLoading] = useState(true);
   const [showtime, setShowtime] = useState<Showtime | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [statusUpdating, setStatusUpdating] = useState(false);
 
   useEffect(() => {
     fetchShowtimeDetails();
@@ -228,7 +226,6 @@ const ShowtimeDetail: React.FC = () => {
   const handleCancelShowtime = async () => {
     if (!id) return;
     
-    setSubmitting(true);
     try {
       const response = await showtimeService.cancelShowtime(id);
       
@@ -242,31 +239,11 @@ const ShowtimeDetail: React.FC = () => {
       console.error('Lỗi khi hủy lịch chiếu:', error);
       toast.error(error.message || 'Đã xảy ra lỗi khi hủy lịch chiếu');
     } finally {
-      setSubmitting(false);
+
       setShowCancelDialog(false);
     }
   };
 
-  const handleStatusUpdate = async (newStatus: 'scheduled' | 'hidden') => {
-    if (!showtime) return;
-
-    setStatusUpdating(true);
-    try {
-      const result = await showtimeService.updateShowtime(showtime.id, {
-        status: newStatus
-      });
-
-      if (result) {
-        toast.success(`Đã cập nhật trạng thái thành "${getStatusLabel(newStatus)}"`);
-        fetchShowtimeDetails(); // Tải lại dữ liệu
-      }
-    } catch (error) {
-      console.error('Error updating status:', error);
-      toast.error('Không thể cập nhật trạng thái');
-    } finally {
-      setStatusUpdating(false);
-    }
-  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
@@ -275,13 +252,6 @@ const ShowtimeDetail: React.FC = () => {
       month: 'long',
       day: 'numeric'
     });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('vi-VN', {
-      style: 'currency',
-      currency: 'VND'
-    }).format(amount);
   };
 
   const getStatusBadge = (status: string) => {
@@ -301,14 +271,6 @@ const ShowtimeDetail: React.FC = () => {
         {config.label}
       </span>
     );
-  };
-
-  const getStatusLabel = (status: string) => {
-    const labels: { [key: string]: string } = {
-      'scheduled': 'Đã lên lịch',
-      'hidden': 'Đã ẩn',
-    };
-    return labels[status] || status;
   };
 
   const getOccupancyPercentage = (booked: number, total: number) => {

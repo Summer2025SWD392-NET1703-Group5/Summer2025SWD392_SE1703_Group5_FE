@@ -252,7 +252,7 @@ const fetchCinemaRooms = async (): Promise<CinemaRoom[]> => {
   }
 };
 
-const fetchShowtimes = async (moviesData: Movie[] = [], cinemasData: Cinema[] = [], roomsData: CinemaRoom[] = []): Promise<Showtime[]> => {
+const fetchShowtimes = async (cinemasData: Cinema[] = [], roomsData: CinemaRoom[] = []): Promise<Showtime[]> => {
   try {
     // Gọi API /showtimes để lấy dữ liệu
     const response = await apiClient.get('/showtimes');
@@ -265,12 +265,6 @@ const fetchShowtimes = async (moviesData: Movie[] = [], cinemasData: Cinema[] = 
 
     // Map với enrichment từ movies, cinemas và rooms data
     const mappedShowtimes = data.map((showtime: any) => {
-      // Tìm movie info từ moviesData
-      const movieInfo = moviesData.find((m: any) => 
-        m.id?.toString() === showtime.Movie_ID?.toString() || 
-        m.Movie_ID?.toString() === showtime.Movie_ID?.toString()
-      );
-
       // Tìm room info từ roomsData
       const roomInfo = roomsData.find((r: any) => 
         r.Cinema_Room_ID?.toString() === showtime.Cinema_Room_ID?.toString() ||
@@ -351,35 +345,6 @@ const fetchShowtimes = async (moviesData: Movie[] = [], cinemasData: Cinema[] = 
   }
 };
 
-// Thêm hàm fetchShowtimesByManager để lấy danh sách suất chiếu theo rạp của manager
-const fetchShowtimesByManager = async (moviesData: Movie[] = [], cinemasData: Cinema[] = []): Promise<Showtime[]> => {
-  try {
-    // Gọi API /showtimes/manager/cinema để lấy dữ liệu suất chiếu theo rạp của manager
-    const response = await showtimeService.getShowtimesByManagerCinema();
-    
-    if (!response || !response.showtimes) {
-      console.error('Dữ liệu trả về không hợp lệ:', response);
-      return [];
-    }
-    
-    // Lấy danh sách suất chiếu từ response
-    const showtimesData = response.showtimes;
-    
-    if (!Array.isArray(showtimesData)) {
-      console.error('Dữ liệu suất chiếu không phải là mảng:', showtimesData);
-      return [];
-    }
-
-    
-    // Trả về dữ liệu trực tiếp từ API mà không cần chuyển đổi thêm
-    return showtimesData as Showtime[];
-  } catch (error) {
-    console.error('Lỗi khi lấy danh sách suất chiếu theo rạp của manager:', error);
-    toast.error('Không thể tải dữ liệu lịch chiếu');
-    return [];
-  }
-};
-
 // Hàm map status từ API sang format component
 const mapStatus = (apiStatus: string): 'scheduled' | 'hidden' => {
   switch (apiStatus?.toLowerCase()) {
@@ -454,9 +419,8 @@ const ShowtimesList: React.FC = () => {
   const [selectedMovie, setSelectedMovie] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [importLoading, setImportLoading] = useState(false);
-  const [timeFilter, setTimeFilter] = useState<string>('all');
-  const [roomTypeFilter, setRoomTypeFilter] = useState<string>('all');
+  const [timeFilter] = useState<string>('all');
+  const [roomTypeFilter] = useState<string>('all');
   
   // Thêm state để lưu thông tin rạp của Manager
   const [managerCinema, setManagerCinema] = useState<{id: string | number, name: string} | null>(null);
@@ -467,10 +431,6 @@ const ShowtimesList: React.FC = () => {
 
   // Cinema tab selection similar to CinemaRoomsList
   const selectedCinemaId = searchParams.get('cinemaId');
-
-  // Thêm loading states riêng cho movies và cinemas
-  const [moviesLoading, setMoviesLoading] = useState(true);
-  const [cinemasLoading, setCinemasLoading] = useState(true);
 
   // Thêm CSS cho hiệu ứng glowing
   useEffect(() => {
@@ -537,19 +497,15 @@ const ShowtimesList: React.FC = () => {
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
-      setMoviesLoading(true);
-      setCinemasLoading(true);
 
       try {
         // Fetch movies với loading state riêng
-        const moviesPromise = fetchMovies()
+        fetchMovies()
           .then(data => {
             setMovies(data);
-            setMoviesLoading(false);
             return data;
           })
-          .catch(error => {
-            setMoviesLoading(false);
+          .catch(_ => {
             return [];
           });
 
@@ -557,11 +513,10 @@ const ShowtimesList: React.FC = () => {
         const cinemasPromise = fetchCinemas()
           .then(data => {
             setCinemas(data);
-            setCinemasLoading(false);
             return data;
           })
-          .catch(error => {
-            setCinemasLoading(false);
+          .catch(_ => {
+
             return [];
           });
 
@@ -573,25 +528,17 @@ const ShowtimesList: React.FC = () => {
           });
 
         // Fetch movies, cinemas và rooms trước
-        const [moviesData, cinemasData, roomsData] = await Promise.all([
-          moviesPromise,
+        const [cinemasData, roomsData] = await Promise.all([
           cinemasPromise,
           roomsPromise,
         ]);
-
-        // Set initial cinema selection for Admin users (similar to CinemaRoomsList)
-        if (isAdmin && cinemasData.length > 0) {
-          const currentCinemaId = searchParams.get('cinemaId');
-          // Only set default if there's a specific cinema in URL params
-          // Otherwise, let it default to "All Cinemas" (no cinemaId)
-        }
 
         // Fetch showtimes dựa trên vai trò người dùng
         let showtimesData: Showtime[] = [];
         
         if (isAdmin) {
           // Admin có thể xem tất cả suất chiếu
-          showtimesData = await fetchShowtimes(moviesData, cinemasData, roomsData);
+          showtimesData = await fetchShowtimes(cinemasData, roomsData);
         } else {
           // Manager chỉ xem suất chiếu của rạp họ quản lý
           const managerResponse = await showtimeService.getShowtimesByManagerCinema();
@@ -620,7 +567,7 @@ const ShowtimesList: React.FC = () => {
             const directResponse = await apiClient.get('/showtimes');
             if (directResponse.data && Array.isArray(directResponse.data)) {
               // Map basic data, enrichment sẽ được thực hiện qua fetchShowtimes
-              showtimesData = await fetchShowtimes(moviesData, cinemasData, roomsData);
+              showtimesData = await fetchShowtimes(cinemasData, roomsData);
             }
           } catch (directError) {
             console.error('Lỗi khi lấy dữ liệu trực tiếp:', directError);
@@ -681,10 +628,7 @@ const ShowtimesList: React.FC = () => {
       toast.error('Không có dữ liệu suất chiếu để nhập');
       return;
     }
-
-    setImportLoading(true);
     const toastId = toast.loading('Đang nhập dữ liệu suất chiếu...');
-
     try {
       await new Promise(resolve => setTimeout(resolve, 1500));
 
@@ -695,8 +639,6 @@ const ShowtimesList: React.FC = () => {
       setShowtimes(updatedShowtimes);
     } catch (error) {
       toast.error('Nhập dữ liệu suất chiếu thất bại', { id: toastId });
-    } finally {
-      setImportLoading(false);
     }
   };
 
