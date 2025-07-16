@@ -107,6 +107,8 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
     const [seatLayoutLoading, setSeatLayoutLoading] = useState(false);
     const [currentStep, setCurrentStep] = useState<'basic' | 'layout' | 'preview'>('basic');
     const [createdRoomId, setCreatedRoomId] = useState<number | null>(null); // Lưu ID phòng vừa tạo
+    const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set()); // Track các bước đã hoàn thành
+    const [seatLayoutErrors, setSeatLayoutErrors] = useState<string[]>([]); // Lưu trữ lỗi validation seat layout
 
     // Seat layout configuration state
     const [seatLayoutConfig, setSeatLayoutConfig] = useState<SeatLayoutConfigData>({
@@ -170,6 +172,49 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
         return [...new Set(rows)].sort();
     };
 
+    // Validate seat layout configuration
+    const validateSeatLayout = (): { isValid: boolean; errors: string[] } => {
+        const errors: string[] = [];
+        const rows = parseRowsInput(seatLayoutConfig.rowsInput);
+
+        // Kiểm tra số hàng tối đa (A-J = 10 hàng)
+        if (rows.length > 10) {
+            errors.push('Số hàng ghế tối đa là 10 (từ A đến J)');
+        }
+
+        // Kiểm tra hàng ghế không được vượt quá J
+        const invalidRows = rows.filter(row => row.charCodeAt(0) > 74); // 74 = 'J'
+        if (invalidRows.length > 0) {
+            errors.push(`Hàng ghế chỉ được từ A đến J. Hàng không hợp lệ: ${invalidRows.join(', ')}`);
+        }
+
+        // Kiểm tra số ghế mỗi hàng tối đa 15
+        if (seatLayoutConfig.seatsPerRow > 15) {
+            errors.push('Số ghế mỗi hàng tối đa là 15');
+        }
+
+        // Kiểm tra tổng số ghế tối đa 150
+        const totalSeats = calculateTotalSeats();
+        if (totalSeats > 150) {
+            errors.push(`Tổng số ghế không được vượt quá 150 (hiện tại: ${totalSeats})`);
+        }
+
+        return {
+            isValid: errors.length === 0,
+            errors
+        };
+    };
+
+    // Helper function để validate và update errors
+    const validateAndUpdateErrors = () => {
+        if (seatLayoutConfig.rowsInput.trim() || seatLayoutConfig.seatsPerRow > 0) {
+            const validation = validateSeatLayout();
+            setSeatLayoutErrors(validation.errors);
+        } else {
+            setSeatLayoutErrors([]);
+        }
+    };
+
     // Calculate total seats from layout configuration
     const calculateTotalSeats = (): number => {
         const rows = parseRowsInput(seatLayoutConfig.rowsInput);
@@ -178,12 +223,15 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
         return totalSeats - hiddenSeatsCount;
     };
 
-    // Auto-update seat quantity when layout changes
+    // Auto-update seat quantity when layout changes and validate
     useEffect(() => {
         if (seatLayoutConfig.rowsInput && seatLayoutConfig.seatsPerRow && seatLayoutConfig.seatsPerRow > 0) {
             const calculatedSeats = calculateTotalSeats();
             setValue('Seat_Quantity', calculatedSeats, { shouldValidate: true });
         }
+
+        // Validate seat layout configuration in real-time
+        validateAndUpdateErrors();
     }, [seatLayoutConfig.rowsInput, seatLayoutConfig.seatsPerRow, seatLayoutConfig.hiddenSeats, setValue]);
 
     // Fetch seat layout from API
@@ -293,6 +341,9 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                 setCreatedRoomId(createdRoom.Cinema_Room_ID);
                 console.log('Đã tạo phòng chiếu với ID:', createdRoom.Cinema_Room_ID);
 
+                // Đánh dấu bước basic đã hoàn thành
+                setCompletedSteps(prev => new Set([...prev, 'basic']));
+
                 // Sau khi tạo thành công, chuyển sang bước cấu hình ghế
                 setCurrentStep('layout');
             } else {
@@ -344,6 +395,17 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
             return;
         }
 
+        // Validate seat layout configuration
+        const validation = validateSeatLayout();
+        if (!validation.isValid) {
+            setSeatLayoutErrors(validation.errors);
+            toast.error(validation.errors[0]); // Hiển thị lỗi đầu tiên
+            return;
+        }
+
+        // Clear errors if validation passes
+        setSeatLayoutErrors([]);
+
         try {
             const toastId = toast.loading('Đang tạo sơ đồ ghế...');
 
@@ -360,6 +422,9 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
             // Load seat layout mapping ngay sau khi tạo thành công
             console.log('🔄 Loading seat layout mapping sau khi tạo sơ đồ ghế...');
             await fetchSeatLayout(createdRoomId);
+
+            // Đánh dấu bước layout đã hoàn thành
+            setCompletedSteps(prev => new Set([...prev, 'layout']));
 
             setCurrentStep('preview');
         } catch (error: any) {
@@ -923,6 +988,9 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                     if (parsed.seatLayoutConfig) {
                         setSeatLayoutConfig(parsed.seatLayoutConfig);
                     }
+                    if (parsed.completedSteps) {
+                        setCompletedSteps(new Set(parsed.completedSteps));
+                    }
                     console.log('Đã khôi phục trạng thái form từ localStorage:', parsed);
                 } catch (error) {
                     console.error('Lỗi khi khôi phục trạng thái:', error);
@@ -938,12 +1006,13 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                 currentStep,
                 createdRoomId,
                 seatLayoutConfig,
+                completedSteps: Array.from(completedSteps),
                 timestamp: Date.now()
             };
             localStorage.setItem(storageKey, JSON.stringify(stateToSave));
             console.log('Đã lưu trạng thái form vào localStorage:', stateToSave);
         }
-    }, [currentStep, createdRoomId, seatLayoutConfig, isNewRoom, storageKey]);
+    }, [currentStep, createdRoomId, seatLayoutConfig, completedSteps, isNewRoom, storageKey]);
 
     // Xóa trạng thái khi hoàn thành hoặc hủy
     const clearSavedState = useCallback(() => {
@@ -954,12 +1023,14 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
     // Hàm xử lý hoàn thành tạo phòng chiếu
     const handleFinish = useCallback(() => {
         clearSavedState();
+        setCompletedSteps(new Set()); // Reset completed steps
         onCancel(); // Navigate về danh sách
     }, [clearSavedState, onCancel]);
 
     // Hàm xử lý hủy
     const handleCancel = useCallback(() => {
         clearSavedState();
+        setCompletedSteps(new Set()); // Reset completed steps
         onCancel();
     }, [clearSavedState, onCancel]);
 
@@ -1002,18 +1073,33 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                             <div className="flex items-center space-x-4">
                                 {steps.map((step, index) => {
                                     const isActive = step.id === currentStep;
-                                    const isCompleted = steps.findIndex(s => s.id === currentStep) > index;
+                                    const isCompleted = completedSteps.has(step.id);
                                     const StepIcon = step.icon;
 
                                     return (
                                         <div key={step.id} className="flex items-center">
-                                            <div className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 ${
-                                                isActive
-                                                    ? 'bg-gradient-to-r from-[#FFD875]/20 to-[#FFA500]/20 border border-[#FFD875]/50'
-                                                    : isCompleted
-                                                        ? 'bg-green-500/20 border border-green-500/50'
-                                                        : 'bg-slate-700/50 border border-slate-600/50'
-                                            }`}>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    // Không cho phép click vào bước đã hoàn thành
+                                                    if (!isCompleted && step.id !== currentStep) {
+                                                        // Chỉ cho phép click vào bước tiếp theo nếu bước hiện tại chưa hoàn thành
+                                                        const currentIndex = steps.findIndex(s => s.id === currentStep);
+                                                        const targetIndex = steps.findIndex(s => s.id === step.id);
+                                                        if (targetIndex === currentIndex - 1 && !completedSteps.has(currentStep)) {
+                                                            setCurrentStep(step.id as 'basic' | 'layout' | 'preview');
+                                                        }
+                                                    }
+                                                }}
+                                                disabled={isCompleted}
+                                                className={`flex items-center gap-3 px-4 py-2 rounded-xl transition-all duration-300 ${
+                                                    isActive
+                                                        ? 'bg-gradient-to-r from-[#FFD875]/20 to-[#FFA500]/20 border border-[#FFD875]/50'
+                                                        : isCompleted
+                                                            ? 'bg-green-500/20 border border-green-500/50 cursor-not-allowed'
+                                                            : 'bg-slate-700/50 border border-slate-600/50 hover:bg-slate-600/50'
+                                                } ${!isCompleted && step.id !== currentStep ? 'cursor-pointer' : ''}`}
+                                            >
                                                 <div className={`p-2 rounded-lg ${
                                                     isActive
                                                         ? 'bg-[#FFD875]/20'
@@ -1037,8 +1123,9 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                             : 'text-gray-400'
                                                 }`}>
                                                     {step.label}
+                                                    {isCompleted && <span className="ml-2 text-xs">(Hoàn thành)</span>}
                                                 </span>
-                                            </div>
+                                            </button>
                                             {index < steps.length - 1 && (
                                                 <div className={`w-8 h-0.5 mx-2 ${
                                                     isCompleted ? 'bg-green-500/50' : 'bg-slate-600/50'
@@ -1068,10 +1155,15 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                                 <div className="flex items-center gap-3">
                                     <motion.button
-                                        onClick={() => setCurrentStep('layout')}
-                                        className="p-2 lg:p-3 rounded-xl bg-slate-700/50 hover:bg-slate-600/50 transition-all duration-300 text-gray-400 hover:text-white group border border-slate-600/50"
-                                        whileHover={{ scale: 1.05, x: -2 }}
-                                        whileTap={{ scale: 0.95 }}
+                                        onClick={() => !completedSteps.has('layout') && setCurrentStep('layout')}
+                                        disabled={completedSteps.has('layout')}
+                                        className={`p-2 lg:p-3 rounded-xl transition-all duration-300 group border ${
+                                            completedSteps.has('layout')
+                                                ? 'bg-gray-600/30 text-gray-500 border-gray-600/30 cursor-not-allowed'
+                                                : 'bg-slate-700/50 hover:bg-slate-600/50 text-gray-400 hover:text-white border-slate-600/50'
+                                        }`}
+                                        whileHover={{ scale: completedSteps.has('layout') ? 1 : 1.05, x: completedSteps.has('layout') ? 0 : -2 }}
+                                        whileTap={{ scale: completedSteps.has('layout') ? 1 : 0.95 }}
                                     >
                                         <ArrowLeftIcon className="h-4 w-4 lg:h-5 lg:w-5 group-hover:scale-110 transition-transform" />
                                     </motion.button>
@@ -1580,13 +1672,37 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                 <input
                                                     type="text"
                                                     value={seatLayoutConfig.rowsInput}
-                                                    onChange={(e) => setSeatLayoutConfig(prev => ({ ...prev, rowsInput: e.target.value }))}
-                                                    className="w-full px-4 py-4 bg-slate-700/50 backdrop-blur-sm text-white rounded-xl border border-[#FFD875]/30 focus:border-[#FFD875] focus:ring-2 focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-lg hover:shadow-xl"
+                                                    onChange={(e) => {
+                                                        const value = e.target.value;
+                                                        setSeatLayoutConfig(prev => ({ ...prev, rowsInput: value }));
+
+                                                        // Validate ngay khi nhập
+                                                        setTimeout(() => validateAndUpdateErrors(), 0);
+                                                    }}
+                                                    className={`w-full px-4 py-4 bg-slate-700/50 backdrop-blur-sm text-white rounded-xl border ${
+                                                        seatLayoutErrors.some(error => error.includes('hàng ghế'))
+                                                            ? 'border-red-500'
+                                                            : 'border-[#FFD875]/30'
+                                                    } focus:border-[#FFD875] focus:ring-2 focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-lg hover:shadow-xl`}
                                                     placeholder="Ví dụ: A-E, A-J, A,B,C"
                                                 />
                                                 <p className="mt-2 text-xs text-gray-400">
-                                                    Nhập hàng ghế (A-E cho hàng A đến E, hoặc A,B,C cho từng hàng riêng lẻ)
+                                                    Nhập hàng ghế (A-E cho hàng A đến E, hoặc A,B,C cho từng hàng riêng lẻ). Tối đa 10 hàng từ A đến J.
                                                 </p>
+
+                                                {/* Hiển thị lỗi validation cho hàng ghế */}
+                                                {seatLayoutErrors.filter(error => error.includes('hàng ghế')).map((error, index) => (
+                                                    <motion.p
+                                                        key={index}
+                                                        className="mt-2 text-sm text-red-400 flex items-center gap-2"
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                    >
+                                                        <ExclamationCircleIcon className="w-4 h-4 flex-shrink-0" />
+                                                        {error}
+                                                    </motion.p>
+                                                ))}
                                                 {seatLayoutConfig.rowsInput && parseRowsInput(seatLayoutConfig.rowsInput).length > 0 && (
                                                     <motion.div
                                                         className="mt-4 space-y-3"
@@ -1611,13 +1727,79 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                                 <input
                                                     type="number"
                                                     min="1"
-                                                    max="30"
+                                                    max="15"
                                                     value={seatLayoutConfig.seatsPerRow || ''}
-                                                    onChange={(e) => setSeatLayoutConfig(prev => ({ ...prev, seatsPerRow: parseInt(e.target.value) || 0 }))}
-                                                    className="w-full px-4 py-4 bg-slate-700/50 backdrop-blur-sm text-white rounded-xl border border-[#FFD875]/30 focus:border-[#FFD875] focus:ring-2 focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-lg hover:shadow-xl"
-                                                    placeholder="Nhập số ghế mỗi hàng"
+                                                    onChange={(e) => {
+                                                        const value = parseInt(e.target.value) || 0;
+                                                        setSeatLayoutConfig(prev => ({ ...prev, seatsPerRow: value }));
+
+                                                        // Validate ngay khi nhập
+                                                        setTimeout(() => validateAndUpdateErrors(), 0);
+                                                    }}
+                                                    className={`w-full px-4 py-4 bg-slate-700/50 backdrop-blur-sm text-white rounded-xl border ${
+                                                        seatLayoutErrors.some(error => error.includes('ghế mỗi hàng') || error.includes('Tổng số ghế'))
+                                                            ? 'border-red-500'
+                                                            : 'border-[#FFD875]/30'
+                                                    } focus:border-[#FFD875] focus:ring-2 focus:ring-[#FFD875]/20 focus:outline-none transition-all duration-300 shadow-lg hover:shadow-xl`}
+                                                    placeholder="Nhập số ghế mỗi hàng (tối đa 15)"
                                                 />
+                                                <p className="mt-2 text-xs text-gray-400">
+                                                    Số ghế mỗi hàng tối đa là 15
+                                                </p>
+
+                                                {/* Hiển thị lỗi validation cho số ghế mỗi hàng */}
+                                                {seatLayoutErrors.filter(error => error.includes('ghế mỗi hàng')).map((error, index) => (
+                                                    <motion.p
+                                                        key={index}
+                                                        className="mt-2 text-sm text-red-400 flex items-center gap-2"
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                    >
+                                                        <ExclamationCircleIcon className="w-4 h-4 flex-shrink-0" />
+                                                        {error}
+                                                    </motion.p>
+                                                ))}
+
+                                                {/* Hiển thị lỗi validation cho tổng số ghế */}
+                                                {seatLayoutErrors.filter(error => error.includes('Tổng số ghế')).map((error, index) => (
+                                                    <motion.p
+                                                        key={index}
+                                                        className="mt-2 text-sm text-red-400 flex items-center gap-2"
+                                                        initial={{ opacity: 0, y: -10 }}
+                                                        animate={{ opacity: 1, y: 0 }}
+                                                        transition={{ duration: 0.3 }}
+                                                    >
+                                                        <ExclamationCircleIcon className="w-4 h-4 flex-shrink-0" />
+                                                        {error}
+                                                    </motion.p>
+                                                ))}
                                             </div>
+
+                                            {/* Validation Errors */}
+                                            {seatLayoutErrors.length > 0 && (
+                                                <motion.div
+                                                    className="mt-4 p-4 bg-red-900/30 backdrop-blur-sm border border-red-500/50 rounded-xl"
+                                                    initial={{ opacity: 0, scale: 0.95 }}
+                                                    animate={{ opacity: 1, scale: 1 }}
+                                                    transition={{ duration: 0.3 }}
+                                                >
+                                                    <div className="flex items-start">
+                                                        <ExclamationCircleIcon className="w-5 h-5 text-red-400 mr-3 mt-0.5 flex-shrink-0" />
+                                                        <div>
+                                                            <p className="text-sm font-medium text-red-300 mb-2">Cấu hình sơ đồ ghế không hợp lệ:</p>
+                                                            <ul className="text-sm text-red-300 space-y-1">
+                                                                {seatLayoutErrors.map((error, index) => (
+                                                                    <li key={index} className="flex items-start">
+                                                                        <span className="text-red-400 mr-2">•</span>
+                                                                        {error}
+                                                                    </li>
+                                                                ))}
+                                                            </ul>
+                                                        </div>
+                                                    </div>
+                                                </motion.div>
+                                            )}
 
                                             {/* Seat Type */}
                                             <div>
@@ -1677,21 +1859,26 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                         <div className="flex gap-4 pt-8">
                                             <motion.button
                                                 type="button"
-                                                onClick={() => setCurrentStep('basic')}
-                                                className="px-6 py-4 bg-slate-700/50 hover:bg-slate-600/50 text-white font-medium rounded-xl transition-all duration-300 border border-slate-600/50 flex items-center gap-2"
-                                                whileHover={{ scale: 1.02 }}
-                                                whileTap={{ scale: 0.98 }}
+                                                onClick={() => !completedSteps.has('basic') && setCurrentStep('basic')}
+                                                disabled={completedSteps.has('basic')}
+                                                className={`px-6 py-4 font-medium rounded-xl transition-all duration-300 border flex items-center gap-2 ${
+                                                    completedSteps.has('basic')
+                                                        ? 'bg-gray-600/30 text-gray-500 border-gray-600/30 cursor-not-allowed'
+                                                        : 'bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600/50'
+                                                }`}
+                                                whileHover={{ scale: completedSteps.has('basic') ? 1 : 1.02 }}
+                                                whileTap={{ scale: completedSteps.has('basic') ? 1 : 0.98 }}
                                             >
                                                 <ArrowLeftIcon className="w-4 h-4" />
-                                                Quay lại
+                                                {completedSteps.has('basic') ? 'Không thể quay lại' : 'Quay lại'}
                                             </motion.button>
                                             <motion.button
                                                 type="button"
                                                 onClick={handleCreateSeatLayout}
-                                                disabled={!seatLayoutConfig.rowsInput.trim() || !seatLayoutConfig.seatsPerRow || loading}
+                                                disabled={!seatLayoutConfig.rowsInput.trim() || !seatLayoutConfig.seatsPerRow || loading || seatLayoutErrors.length > 0}
                                                 className="flex-1 bg-gradient-to-r from-[#FFD875] to-[#FFA500] hover:from-[#e5c368] hover:to-[#e5941a] disabled:from-gray-600 disabled:to-gray-600 text-black font-bold py-4 px-6 rounded-xl transition-all duration-300 shadow-xl hover:shadow-2xl disabled:shadow-none flex items-center justify-center gap-3"
-                                                whileHover={{ scale: loading ? 1 : 1.02 }}
-                                                whileTap={{ scale: loading ? 1 : 0.98 }}
+                                                whileHover={{ scale: loading || seatLayoutErrors.length > 0 ? 1 : 1.02 }}
+                                                whileTap={{ scale: loading || seatLayoutErrors.length > 0 ? 1 : 0.98 }}
                                             >
                                                 <CogIcon className="w-5 h-5" />
                                                 {loading ? 'Đang tạo sơ đồ...' : 'Cấu hình chi tiết sơ đồ ghế'}
@@ -1777,14 +1964,19 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                             <div className="flex gap-2">
                                         <motion.button
                                             type="button"
-                                            onClick={() => setCurrentStep('layout')}
-                                                    className="px-3 py-2 bg-slate-700/50 hover:bg-slate-600/50 text-white font-medium rounded-lg transition-all duration-300 border border-slate-600/50 flex items-center gap-1 text-sm"
-                                                    whileHover={{ scale: 1.02 }}
-                                                    whileTap={{ scale: 0.98 }}
-                                                >
-                                                    <ArrowLeftIcon className="w-3 h-3" />
-                                                    Quay lại
-                                                </motion.button>
+                                            onClick={() => !completedSteps.has('layout') && setCurrentStep('layout')}
+                                            disabled={completedSteps.has('layout')}
+                                            className={`px-3 py-2 font-medium rounded-lg transition-all duration-300 border flex items-center gap-1 text-sm ${
+                                                completedSteps.has('layout')
+                                                    ? 'bg-gray-600/30 text-gray-500 border-gray-600/30 cursor-not-allowed'
+                                                    : 'bg-slate-700/50 hover:bg-slate-600/50 text-white border-slate-600/50'
+                                            }`}
+                                            whileHover={{ scale: completedSteps.has('layout') ? 1 : 1.02 }}
+                                            whileTap={{ scale: completedSteps.has('layout') ? 1 : 0.98 }}
+                                        >
+                                            <ArrowLeftIcon className="w-3 h-3" />
+                                            {completedSteps.has('layout') ? 'Không thể quay lại' : 'Quay lại'}
+                                        </motion.button>
                                                 <motion.button
                                                     type="button"
                                                     onClick={handleUpdateSeatTypes}
@@ -2062,9 +2254,17 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
                                             <span className="text-gray-400">Loại ghế:</span>
                                             <span className="text-white ml-2 font-bold">{seatLayoutConfig.seatType === 'VIP' ? '👑 VIP' : '💺 Thường'}</span>
                                         </div>
-                                        <div className="bg-[#FFD875]/10 rounded-lg p-2 border border-[#FFD875]/30">
+                                        <div className={`rounded-lg p-2 border ${
+                                            calculateTotalSeats() > 150
+                                                ? 'bg-red-900/20 border-red-500/50'
+                                                : 'bg-[#FFD875]/10 border-[#FFD875]/30'
+                                        }`}>
                                             <span className="text-gray-400">Tổng ghế:</span>
-                                            <span className="text-[#FFD875] ml-2 font-bold">{calculateTotalSeats()}</span>
+                                            <span className={`ml-2 font-bold ${
+                                                calculateTotalSeats() > 150 ? 'text-red-400' : 'text-[#FFD875]'
+                                            }`}>
+                                                {calculateTotalSeats()}/150
+                                            </span>
                                         </div>
                                     </div>
                                 </motion.div>
