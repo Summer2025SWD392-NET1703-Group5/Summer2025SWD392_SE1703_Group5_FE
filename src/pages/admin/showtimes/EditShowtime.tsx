@@ -1,18 +1,14 @@
 // src/pages/admin/showtimes/EditShowtime.tsx
-import React, { useState, useEffect } from 'react';
-import { useNavigate, Link, useParams } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
-import '../../../components/admin/cinema-rooms/SeatMap.css';
-import {
-  FilmIcon,
-  BuildingOfficeIcon,
-  ClockIcon,
-  ArrowLeftIcon,
-} from '@heroicons/react/24/outline';
-import showtimeService from '../../../services/showtimeService';
-import { movieService } from '../../../services/movieService';
-import { cinemaRoomService } from '../../../services/cinemaRoomService';
-import { useAuth } from '../../../contexts/SimpleAuthContext';
+import React, { useState, useEffect } from "react";
+import { useNavigate, Link, useParams } from "react-router-dom";
+import { toast } from "react-hot-toast";
+import "../../../components/admin/cinema-rooms/SeatMap.css";
+import { FilmIcon, BuildingOfficeIcon, ClockIcon, ArrowLeftIcon } from "@heroicons/react/24/outline";
+import showtimeService from "../../../services/showtimeService";
+import { movieService } from "../../../services/movieService";
+import { cinemaRoomService } from "../../../services/cinemaRoomService";
+import { useAuth } from "../../../contexts/SimpleAuthContext";
+import { getVNLocalDateString } from "../../../utils/timeFormatter";
 
 interface Movie {
   id: string;
@@ -41,24 +37,24 @@ interface CinemaRoom {
 const fetchMovies = async (): Promise<Movie[]> => {
   try {
     let allMovies = await movieService.getAllMovies();
-    allMovies = allMovies.filter((movie: any) =>
-      movie.status === 'Now Showing' ||
-      movie.Status === 'Now Showing' ||
-      movie.movieStatus === 'Now Showing');
+    allMovies = allMovies.filter(
+      (movie: any) =>
+        movie.status === "Now Showing" || movie.Status === "Now Showing" || movie.movieStatus === "Now Showing"
+    );
 
     return allMovies.map((movie: any) => ({
       id: movie.Movie_ID?.toString() || movie.id?.toString() || movie.movieId?.toString(),
-      title: movie.Movie_Name || movie.title || movie.movieName || movie.name || '',
-      poster: movie.Poster_URL || movie.poster || movie.posterUrl || movie.posterURL || '',
+      title: movie.Movie_Name || movie.title || movie.movieName || movie.name || "",
+      poster: movie.Poster_URL || movie.poster || movie.posterUrl || movie.posterURL || "",
       duration: movie.Duration || movie.duration || 120,
-      releaseDate: movie.Release_Date || movie.releaseDate || new Date().toISOString().split('T')[0],
-      premiereDate: movie.Premiere_Date || movie.premiereDate || '',
-      endDate: movie.End_Date || movie.endDate || '',
-      status: movie.Status || movie.status || 'Now Showing',
+      releaseDate: movie.Release_Date || movie.releaseDate || new Date().toISOString().split("T")[0],
+      premiereDate: movie.Premiere_Date || movie.premiereDate || "",
+      endDate: movie.End_Date || movie.endDate || "",
+      status: movie.Status || movie.status || "Now Showing",
     }));
   } catch (error) {
-    console.error('Error fetching movies:', error);
-    toast.error('Không thể tải danh sách phim');
+    console.error("Error fetching movies:", error);
+    toast.error("Không thể tải danh sách phim");
     return [];
   }
 };
@@ -73,8 +69,8 @@ const fetchCinemas = async (): Promise<Cinema[]> => {
       address: cinema.address,
     }));
   } catch (error) {
-    console.error('Error fetching cinemas:', error);
-    toast.error('Không thể tải danh sách rạp');
+    console.error("Error fetching cinemas:", error);
+    toast.error("Không thể tải danh sách rạp");
     return [];
   }
 };
@@ -93,7 +89,7 @@ const fetchRooms = async (cinemaId: string): Promise<CinemaRoom[]> => {
     return [];
   } catch (error) {
     console.error(`Error fetching rooms:`, error);
-    toast.error('Không thể tải danh sách phòng chiếu');
+    toast.error("Không thể tải danh sách phòng chiếu");
     return [];
   }
 };
@@ -102,8 +98,8 @@ const EditShowtime: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth(); // Lấy thông tin người dùng
-  const isAdmin = user?.role === 'Admin'; // Kiểm tra xem người dùng có phải là Admin không
-  
+  const isAdmin = user?.role === "Admin"; // Kiểm tra xem người dùng có phải là Admin không
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [movies, setMovies] = useState<Movie[]>([]);
@@ -112,12 +108,12 @@ const EditShowtime: React.FC = () => {
   const [managerCinema, setManagerCinema] = useState<Cinema | null>(null);
 
   // Form states
-  const [selectedMovie, setSelectedMovie] = useState<string>('');
-  const [selectedCinema, setSelectedCinema] = useState<string>('');
+  const [selectedMovie, setSelectedMovie] = useState<string>("");
+  const [selectedCinema, setSelectedCinema] = useState<string>("");
   const [selectedRoom, setSelectedRoom] = useState<string>();
-  const [showDate, setShowDate] = useState<string>('');
-  const [showTime, setShowTime] = useState<string>('');
-  const [showtimeStatus, setShowtimeStatus] = useState<'scheduled' | 'completed'>('scheduled');
+  const [showDate, setShowDate] = useState<string>("");
+  const [showTime, setShowTime] = useState<string>("");
+  const [showtimeStatus, setShowtimeStatus] = useState<"Scheduled" | "Hidden">("Scheduled");
 
   // Selected movie details
   const [selectedMovieDetails, setSelectedMovieDetails] = useState<Movie | null>(null);
@@ -138,7 +134,7 @@ const EditShowtime: React.FC = () => {
               const managerCinemaData = {
                 id: managerResponse.cinema.Cinema_ID.toString(),
                 name: managerResponse.cinema.Cinema_Name,
-                address: managerResponse.cinema.Address || ''
+                address: managerResponse.cinema.Address || "",
               };
               setManagerCinema(managerCinemaData);
               setCinemas([managerCinemaData]);
@@ -146,8 +142,8 @@ const EditShowtime: React.FC = () => {
               console.log(`Đã lấy thông tin rạp của manager: ${managerCinemaData.name}`);
             }
           } catch (error) {
-            console.error('Lỗi khi lấy thông tin rạp của manager:', error);
-            toast.error('Không thể lấy thông tin rạp của bạn');
+            console.error("Lỗi khi lấy thông tin rạp của manager:", error);
+            toast.error("Không thể lấy thông tin rạp của bạn");
           }
         } else {
           // Nếu là Admin, lấy tất cả rạp
@@ -156,7 +152,7 @@ const EditShowtime: React.FC = () => {
         }
 
         // Tải thông tin suất chiếu nếu không phải là trang thêm mới
-        if (id && id !== 'add') {
+        if (id && id !== "add") {
           const showtimeData = await showtimeService.getShowtimeById(id);
           if (showtimeData) {
             setSelectedMovie(showtimeData.movieId);
@@ -167,7 +163,7 @@ const EditShowtime: React.FC = () => {
               // If managerCinema is not yet set, wait for it
               if (!managerCinema) {
                 // Wait for managerCinema to be set in a microtask
-                await new Promise(resolve => setTimeout(resolve, 0));
+                await new Promise((resolve) => setTimeout(resolve, 0));
               }
               cinemaIdToUse = managerCinema?.id || showtimeData.cinemaId;
               setSelectedCinema(cinemaIdToUse);
@@ -178,24 +174,16 @@ const EditShowtime: React.FC = () => {
             // Fetch rooms for the correct cinema
             const roomsData = await fetchRooms(cinemaIdToUse);
             setRooms(roomsData);
-
             // Set selectedRoom only if it exists in the fetched rooms
-            const roomIdString = showtimeData.roomId?.toString() || '';
-            if (roomsData.some(r => r.id === roomIdString)) {
-              setSelectedRoom(roomIdString);
-            } else if (roomsData.length > 0) {
-              setSelectedRoom(roomsData[0].id);
-            } else {
-              setSelectedRoom('');
-            }
-
+            const roomIdString = showtimeData.roomId?.toString() || "";
+            setSelectedRoom(roomIdString);
             // Xử lý ngày giờ
-            setShowDate(showtimeData.showDate || '');
+            setShowDate(showtimeData.showDate || "");
 
             const timeString = showtimeData.startTime;
-            if (timeString && typeof timeString === 'string') {
-              if (timeString.includes('T')) {
-                setShowTime(timeString.split('T')[1].substring(0, 5));
+            if (timeString && typeof timeString === "string") {
+              if (timeString.includes("T")) {
+                setShowTime(timeString.split("T")[1].substring(0, 5));
               } else {
                 setShowTime(timeString.substring(0, 5));
               }
@@ -203,8 +191,8 @@ const EditShowtime: React.FC = () => {
           }
         }
       } catch (error) {
-        console.error('Error loading data:', error);
-        toast.error('Không thể tải dữ liệu');
+        console.error("Error loading data:", error);
+        toast.error("Không thể tải dữ liệu");
       } finally {
         setLoading(false);
       }
@@ -221,8 +209,8 @@ const EditShowtime: React.FC = () => {
           const roomsData = await fetchRooms(selectedCinema);
           setRooms(roomsData);
         } catch (error) {
-          console.error('Error loading rooms:', error);
-          toast.error('Không thể tải danh sách phòng chiếu');
+          console.error("Error loading rooms:", error);
+          toast.error("Không thể tải danh sách phòng chiếu");
         }
       };
 
@@ -238,7 +226,7 @@ const EditShowtime: React.FC = () => {
       const fetchMovieDetails = async () => {
         try {
           // First try to find the movie in the already loaded movies list
-          const movieFromList = movies.find(m => m.id === selectedMovie);
+          const movieFromList = movies.find((m) => m.id === selectedMovie);
           if (movieFromList) {
             setSelectedMovieDetails(movieFromList);
           }
@@ -249,31 +237,43 @@ const EditShowtime: React.FC = () => {
             try {
               const detailedMovie = await movieService.fetchMovieDetails(selectedMovie);
               if (detailedMovie) {
-                console.log('Detailed movie from API:', detailedMovie);
-                
+                console.log("Detailed movie from API:", detailedMovie);
+
                 const movieData = {
                   id: selectedMovie,
-                  title: detailedMovie.Movie_Name || detailedMovie.movieName || detailedMovie.title || movieFromList?.title || '',
-                  poster: detailedMovie.Poster_URL || detailedMovie.posterURL || detailedMovie.posterUrl || detailedMovie.poster || movieFromList?.poster || '',
+                  title:
+                    detailedMovie.Movie_Name ||
+                    detailedMovie.movieName ||
+                    detailedMovie.title ||
+                    movieFromList?.title ||
+                    "",
+                  poster:
+                    detailedMovie.Poster_URL ||
+                    detailedMovie.posterURL ||
+                    detailedMovie.posterUrl ||
+                    detailedMovie.poster ||
+                    movieFromList?.poster ||
+                    "",
                   duration: detailedMovie.Duration || detailedMovie.duration || movieFromList?.duration || 120,
-                  releaseDate: detailedMovie.Release_Date || detailedMovie.releaseDate || movieFromList?.releaseDate || '',
-                  endDate: detailedMovie.End_Date || detailedMovie.endDate || movieFromList?.endDate || '',
+                  releaseDate:
+                    detailedMovie.Release_Date || detailedMovie.releaseDate || movieFromList?.releaseDate || "",
+                  endDate: detailedMovie.End_Date || detailedMovie.endDate || movieFromList?.endDate || "",
                 };
-                
-                console.log('Final movieData:', movieData);
+
+                console.log("Final movieData:", movieData);
                 setSelectedMovieDetails(movieData);
               }
             } catch (error) {
-              console.error('Error fetching movie details from API:', error);
+              console.error("Error fetching movie details from API:", error);
               // Already set movie details from list, so we can continue
             }
           } else {
-            console.log('Skipping API fetch for non-numeric ID:', selectedMovie);
+            console.log("Skipping API fetch for non-numeric ID:", selectedMovie);
           }
         } catch (error) {
-          console.error('Error in movie details fetch process:', error);
+          console.error("Error in movie details fetch process:", error);
           // Keep the basic movie details if API call fails
-          const movie = movies.find(m => m.id === selectedMovie);
+          const movie = movies.find((m) => m.id === selectedMovie);
           setSelectedMovieDetails(movie || null);
         }
       };
@@ -293,24 +293,31 @@ const EditShowtime: React.FC = () => {
       if (isToday(showDate)) {
         const minTime = getMinTimeForToday();
         if (showTime < minTime) {
-          setShowTime('');
-          toast.error('Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại.');
+          setShowTime("");
+          toast.error("Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại (+30 phút).");
         }
       }
-      
+
       // Check if datetime is after movie end date
-      if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
-        setShowTime('');
-        toast.error(`Không thể chọn thời gian sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
+      if (
+        selectedMovieDetails?.endDate &&
+        !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)
+      ) {
+        setShowTime("");
+        toast.error(
+          `Không thể chọn thời gian sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString(
+            "vi-VN"
+          )})`
+        );
       }
     }
   }, [showDate, showTime, selectedMovieDetails]);
 
   // Calculate end time based on movie duration + 15 phút giải lao
   const calculateEndTime = () => {
-    if (!selectedMovieDetails || !showTime) return '';
+    if (!selectedMovieDetails || !showTime) return "";
 
-    const [hours, minutes] = showTime.split(':').map(Number);
+    const [hours, minutes] = showTime.split(":").map(Number);
     const startDate = new Date();
     startDate.setHours(hours, minutes, 0, 0);
 
@@ -318,39 +325,40 @@ const EditShowtime: React.FC = () => {
     // Thêm thời lượng phim + 15 phút giải lao
     endDate.setMinutes(endDate.getMinutes() + selectedMovieDetails.duration + 15);
 
-    return endDate.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    return endDate.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" });
   };
 
   // Validation functions
   const isDateTimeAfterNow = (date: string, time: string): boolean => {
     const selectedDateTime = new Date(`${date}T${time}`);
     const now = new Date();
-    return selectedDateTime > now;
+    const minTime = new Date(now.getTime() + 30 * 60000); // Thêm 30 phút để chuẩn bị
+    return selectedDateTime > minTime;
   };
 
   const isDateTimeAfterMovieEndDate = (date: string, time: string, movieEndDate: string): boolean => {
     if (!movieEndDate) return true; // If no end date, allow scheduling
-    
+
     const selectedDateTime = new Date(`${date}T${time}`);
     const endDate = new Date(movieEndDate);
-    
+
     // Set end date to end of day for comparison
     endDate.setHours(23, 59, 59, 999);
-    
+
     return selectedDateTime <= endDate;
   };
 
   const getMinTimeForToday = (): string => {
     const now = new Date();
-    
+
     // Add 30 minutes buffer for preparation time
     const minDate = new Date(now.getTime() + 30 * 60000);
-    
+
     return minDate.toTimeString().slice(0, 5); // Returns HH:MM format
   };
 
   const isToday = (date: string): boolean => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getVNLocalDateString();
     return date === today;
   };
 
@@ -360,94 +368,79 @@ const EditShowtime: React.FC = () => {
 
     // Validate form
     if (!selectedMovie) {
-      toast.error('Vui lòng chọn phim');
+      toast.error("Vui lòng chọn phim");
       return;
     }
 
     if (!selectedCinema) {
-      toast.error('Vui lòng chọn rạp');
+      toast.error("Vui lòng chọn rạp");
       return;
     }
 
     if (!selectedRoom) {
-      toast.error('Vui lòng chọn phòng chiếu');
+      toast.error("Vui lòng chọn phòng chiếu");
       return;
     }
 
     if (!showDate) {
-      toast.error('Vui lòng chọn ngày chiếu');
+      toast.error("Vui lòng chọn ngày chiếu");
       return;
     }
 
     if (!showTime) {
-      toast.error('Vui lòng chọn giờ chiếu');
+      toast.error("Vui lòng chọn giờ chiếu");
       return;
     }
 
     if (!id) {
-      toast.error('ID suất chiếu không hợp lệ');
+      toast.error("ID suất chiếu không hợp lệ");
       return;
     }
 
     // Validate datetime is after current time
     if (!isDateTimeAfterNow(showDate, showTime)) {
-      toast.error('Thời gian chiếu phải sau thời điểm hiện tại');
+      toast.error("Thời gian chiếu phải sau thời điểm hiện tại (+30 phút)");
       return;
     }
 
     // Validate datetime is before movie end date (if movie has end date)
-    if (selectedMovieDetails?.endDate && !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)) {
-      toast.error(`Không thể tạo suất chiếu sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')})`);
+    if (
+      selectedMovieDetails?.endDate &&
+      !isDateTimeAfterMovieEndDate(showDate, showTime, selectedMovieDetails.endDate)
+    ) {
+      toast.error(
+        `Không thể tạo suất chiếu sau ngày kết thúc phim (${new Date(selectedMovieDetails.endDate).toLocaleDateString(
+          "vi-VN"
+        )})`
+      );
       return;
     }
 
     setSubmitting(true);
 
     try {
-      // Tạo đối tượng thời gian hợp lệ
-      let startTimeObj: Date;
-      let startTimeISO: string;
-
-      try {
-        // Kết hợp ngày và giờ thành chuỗi ISO
-        const dateTimeString = `${showDate}T${showTime}:00`;
-        startTimeObj = new Date(dateTimeString);
-
-        // Kiểm tra xem đối tượng Date có hợp lệ không
-        if (isNaN(startTimeObj.getTime())) {
-          throw new Error('Thời gian không hợp lệ');
-        }
-
-        startTimeISO = startTimeObj.toISOString();
-        console.log('startTime được tạo:', startTimeISO);
-      } catch (error) {
-        console.error('Lỗi khi tạo đối tượng thời gian:', error);
-        // Fallback nếu có lỗi
-        startTimeISO = new Date().toISOString();
-        toast.error('Có lỗi khi xử lý thời gian, sử dụng thời gian hiện tại');
-      }
-
       // Tạo đối tượng dữ liệu để gửi lên API
       const showtimeData = {
         movieId: selectedMovie,
         cinemaId: selectedCinema,
         roomId: selectedRoom,
-        startTime: startTimeISO,
+        showDate: showDate,
+        startTime: showTime,
         status: showtimeStatus,
       };
 
-      console.log('Dữ liệu gửi lên API:', showtimeData);
+      console.log("Dữ liệu gửi lên API:", showtimeData);
 
       // Gọi API để cập nhật suất chiếu
       const result = await showtimeService.updateShowtime(id, showtimeData);
 
       if (result) {
-        toast.success('Cập nhật suất chiếu thành công');
-        navigate('/admin/showtimes');
+        toast.success("Cập nhật suất chiếu thành công");
+        navigate("/admin/showtimes");
       }
     } catch (error: any) {
-      console.error('Error updating showtime:', error);
-      toast.error(error.message || 'Không thể cập nhật suất chiếu');
+      console.error("Error updating showtime:", error);
+      toast.error(error.message || "Không thể cập nhật suất chiếu");
     } finally {
       setSubmitting(false);
     }
@@ -457,10 +450,7 @@ const EditShowtime: React.FC = () => {
     <div className="p-6">
       {/* Back button and header */}
       <div className="mb-6">
-        <Link
-          to="/admin/showtimes"
-          className="flex items-center text-gray-400 hover:text-FFD875 mb-4"
-        >
+        <Link to="/admin/showtimes" className="flex items-center text-gray-400 hover:text-FFD875 mb-4">
           <ArrowLeftIcon className="w-4 h-4 mr-1" />
           <span>Quay lại danh sách</span>
         </Link>
@@ -472,7 +462,9 @@ const EditShowtime: React.FC = () => {
         {/* Form section */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-slate-800 rounded-lg p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">Thông tin lịch chiếu</h2>
+            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">
+              Thông tin lịch chiếu
+            </h2>
 
             {loading ? (
               <div className="flex justify-center items-center py-12">
@@ -544,7 +536,7 @@ const EditShowtime: React.FC = () => {
                       <input
                         id="cinema-display"
                         type="text"
-                        value={managerCinema?.name || ''}
+                        value={managerCinema?.name || ""}
                         className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none cursor-not-allowed"
                         disabled
                       />
@@ -563,18 +555,18 @@ const EditShowtime: React.FC = () => {
                     value={selectedRoom}
                     onChange={(e) => setSelectedRoom(e.target.value)}
                     className="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                    style={{ borderColor: selectedRoom ? '#FFD875' : undefined }}
+                    style={{ borderColor: selectedRoom ? "#FFD875" : undefined }}
                     disabled={!selectedCinema}
                     required
                   >
                     <option value="">-- Chọn phòng --</option>
-                    {rooms.map(room => (
-                      <option key={room.id} value={room.id}>{room.name} ({room.capacity} ghế)</option>
+                    {rooms.map((room) => (
+                      <option key={room.id} value={room.id}>
+                        {room.name} ({room.capacity} ghế)
+                      </option>
                     ))}
                   </select>
-                  {!selectedCinema && (
-                    <p className="text-sm text-gray-400 mt-1">Vui lòng chọn rạp trước</p>
-                  )}
+                  {!selectedCinema && <p className="text-sm text-gray-400 mt-1">Vui lòng chọn rạp trước</p>}
                 </div>
 
                 {/* Status selection */}
@@ -585,17 +577,17 @@ const EditShowtime: React.FC = () => {
                   <select
                     id="status"
                     value={showtimeStatus}
-                    onChange={(e) => setShowtimeStatus(e.target.value as 'scheduled' | 'completed')}
+                    onChange={(e) => setShowtimeStatus(e.target.value as "Scheduled" | "Hidden")}
                     className="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                    style={{ borderColor: showtimeStatus ? '#FFD875' : undefined }}
+                    style={{ borderColor: showtimeStatus ? "#FFD875" : undefined }}
                     required
                   >
-                    <option value="scheduled">Đã lên lịch</option>
-                    <option value="completed">Đã hoàn thành</option>
+                    <option value="Scheduled">Đã lên lịch</option>
+                    <option value="Hidden">Đã ẩn</option>
                   </select>
                   <p className="text-sm text-gray-400 mt-1">
-                    {showtimeStatus === 'scheduled' && 'Suất chiếu đã được lên lịch và chờ bắt đầu'}
-                    {showtimeStatus === 'completed' && 'Suất chiếu đã hoàn thành'}
+                    {showtimeStatus === "Scheduled" && "Suất chiếu đã được lên lịch và chờ bắt đầu"}
+                    {showtimeStatus === "Hidden" && "Suất chiếu đã ẩn"}
                   </p>
                 </div>
 
@@ -615,15 +607,15 @@ const EditShowtime: React.FC = () => {
                         value={showDate}
                         onChange={(e) => setShowDate(e.target.value)}
                         className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                        style={{ borderColor: showDate ? '#FFD875' : undefined }}
-                        min={new Date().toISOString().split('T')[0]}
+                        style={{ borderColor: showDate ? "#FFD875" : undefined }}
+                        min={getVNLocalDateString()}
                         max={selectedMovieDetails?.endDate || undefined}
                         required
                       />
                     </div>
                     {selectedMovieDetails?.endDate && new Date(selectedMovieDetails.endDate) < new Date() && (
                       <p className="text-sm text-red-400 mt-1">
-                        ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                        ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString("vi-VN")}
                       </p>
                     )}
                   </div>
@@ -642,24 +634,19 @@ const EditShowtime: React.FC = () => {
                         value={showTime}
                         onChange={(e) => setShowTime(e.target.value)}
                         className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                        style={{ borderColor: showTime ? '#FFD875' : undefined }}
+                        style={{ borderColor: showTime ? "#FFD875" : undefined }}
                         min={isToday(showDate) ? getMinTimeForToday() : undefined}
                         required
                       />
                     </div>
                     {isToday(showDate) && (
                       <p className="text-sm text-yellow-400 mt-1">
-                        Thời gian tối thiểu: {getMinTimeForToday()} (sau 30 phút từ bây giờ)
+                        Thời gian tối thiểu: {getVNLocalDateString()} | {getMinTimeForToday()} (sau 30 phút từ bây giờ)
                       </p>
                     )}
                     {selectedMovieDetails?.endDate && (
                       <p className="text-sm text-gray-400 mt-1">
-                        Phim kết thúc: {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
-                      </p>
-                    )}
-                    {selectedMovieDetails && showTime && (
-                      <p className="text-sm text-gray-400 mt-1">
-                        Kết thúc: {calculateEndTime()}
+                        Phim kết thúc chiếu: {new Date(selectedMovieDetails.endDate).toLocaleDateString("vi-VN")}
                       </p>
                     )}
                   </div>
@@ -669,7 +656,7 @@ const EditShowtime: React.FC = () => {
                 <div className="flex justify-end space-x-4 mt-8">
                   <button
                     type="button"
-                    onClick={() => navigate('/admin/showtimes')}
+                    onClick={() => navigate("/admin/showtimes")}
                     className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
                     disabled={submitting}
                   >
@@ -678,19 +665,35 @@ const EditShowtime: React.FC = () => {
                   <button
                     type="submit"
                     className="px-4 py-2 bg-FFD875 text-black rounded-lg hover:bg-opacity-90 transition-colors btn-glow btn-yellow"
-                    style={{ backgroundColor: '#FFD875' }}
+                    style={{ backgroundColor: "#FFD875" }}
                     disabled={submitting}
                   >
                     {submitting ? (
                       <span className="flex items-center">
-                        <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Đang lưu...
                       </span>
                     ) : (
-                      'Lưu thay đổi'
+                      "Lưu thay đổi"
                     )}
                   </button>
                 </div>
@@ -731,9 +734,9 @@ const EditShowtime: React.FC = () => {
                     <span className="text-white">
                       {(() => {
                         try {
-                          return new Date(selectedMovieDetails.releaseDate).toLocaleDateString('vi-VN');
+                          return new Date(selectedMovieDetails.releaseDate).toLocaleDateString("vi-VN");
                         } catch (e) {
-                          return 'Không xác định';
+                          return "Không xác định";
                         }
                       })()}
                     </span>
@@ -745,30 +748,29 @@ const EditShowtime: React.FC = () => {
                       <span className="text-white">
                         {(() => {
                           try {
-                            return new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN');
+                            return new Date(selectedMovieDetails.endDate).toLocaleDateString("vi-VN");
                           } catch (e) {
-                            return 'Không xác định';
+                            return "Không xác định";
                           }
                         })()}
                       </span>
                     </div>
                   )}
 
-                  {selectedCinema && cinemas.find(c => c.id === selectedCinema) && (
+                  {selectedCinema && cinemas.find((c) => c.id === selectedCinema) && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">Rạp:</span>
-                      <span className="text-white">{cinemas.find(c => c.id === selectedCinema)?.name}</span>
+                      <span className="text-white">{cinemas.find((c) => c.id === selectedCinema)?.name}</span>
                     </div>
                   )}
 
-                  {selectedRoom && rooms.find(r => r.id === selectedRoom) && (
+                  {selectedRoom && rooms.find((r) => r.id === selectedRoom) && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">Phòng:</span>
                       <span className="text-white">
-                        {rooms.find(r => r.id === selectedRoom)?.name}
-                        {rooms.find(r => r.id === selectedRoom)?.capacity &&
-                          ` (${rooms.find(r => r.id === selectedRoom)?.capacity} ghế)`
-                        }
+                        {rooms.find((r) => r.id === selectedRoom)?.name}
+                        {rooms.find((r) => r.id === selectedRoom)?.capacity &&
+                          ` (${rooms.find((r) => r.id === selectedRoom)?.capacity} ghế)`}
                       </span>
                     </div>
                   )}
@@ -776,7 +778,7 @@ const EditShowtime: React.FC = () => {
                   {showDate && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">Ngày chiếu:</span>
-                      <span className="text-white">{new Date(showDate).toLocaleDateString('vi-VN')}</span>
+                      <span className="text-white">{new Date(showDate).toLocaleDateString("vi-VN")}</span>
                     </div>
                   )}
 
@@ -796,11 +798,15 @@ const EditShowtime: React.FC = () => {
 
                   <div className="flex justify-between">
                     <span className="text-gray-400">Trạng thái:</span>
-                    <span className={`text-sm font-medium px-2 py-1 rounded-full ${showtimeStatus === 'scheduled' ? 'bg-blue-500/20 text-blue-400' :
-                      'bg-green-500/20 text-green-400'
-                      }`}>
-                      {showtimeStatus === 'scheduled' && 'Đã lên lịch'}
-                      {showtimeStatus === 'completed' && 'Đã hoàn thành'}
+                    <span
+                      className={`text-sm font-medium px-2 py-1 rounded-full ${
+                        showtimeStatus === "Scheduled"
+                          ? "bg-blue-500/20 text-blue-400"
+                          : "bg-green-500/20 text-green-400"
+                      }`}
+                    >
+                      {showtimeStatus === "Scheduled" && "Đã lên lịch"}
+                      {showtimeStatus === "Hidden" && "Đã ẩn"}
                     </span>
                   </div>
 

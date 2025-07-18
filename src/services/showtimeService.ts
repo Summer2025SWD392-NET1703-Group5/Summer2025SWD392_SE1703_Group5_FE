@@ -1,5 +1,6 @@
 import apiClient from './apiClient';
 import type { Showtime, ShowtimeFormData } from '../types/showtime';
+import toast from 'react-hot-toast';
 
 
 export interface ApiResponse<T> {
@@ -182,63 +183,11 @@ export const getCinemaById = async (cinemaId: string) => {
             console.log(`Không thể lấy thông tin chi tiết rạp:`, detailError);
         }
 
-
-        // Nếu tất cả các cách đều thất bại, sử dụng dữ liệu từ cinemaNames
-        if (cinemaNames[cinemaId]) {
-            console.log(`Sử dụng dữ liệu từ cinemaNames cho ID ${cinemaId}`);
-            return {
-                id: cinemaId,
-                name: cinemaNames[cinemaId],
-                address: 'Hà Nội',
-                city: 'Hà Nội',
-                description: '',
-                phoneNumber: '',
-                email: '',
-                status: 'active'
-            };
-        }
-
-
         // Nếu không có trong cinemaNames, trả về tên mặc định
-        return {
-            id: cinemaId,
-            name: `Galaxy Cinema ${cinemaId}`,
-            address: 'Hà Nội',
-            city: 'Hà Nội',
-            description: '',
-            phoneNumber: '',
-            email: '',
-            status: 'active'
-        };
+        return {};
     } catch (error) {
         console.error(`Error fetching cinema with ID ${cinemaId}:`, error);
-
-
-        // Nếu có lỗi, trả về dữ liệu từ cinemaNames hoặc tên mặc định
-        if (cinemaNames[cinemaId]) {
-            return {
-                id: cinemaId,
-                name: cinemaNames[cinemaId],
-                address: 'Hà Nội',
-                city: 'Hà Nội',
-                description: '',
-                phoneNumber: '',
-                email: '',
-                status: 'active'
-            };
-        }
-
-
-        return {
-            id: cinemaId,
-            name: `Galaxy Cinema ${cinemaId}`,
-            address: 'Hà Nội',
-            city: 'Hà Nội',
-            description: '',
-            phoneNumber: '',
-            email: '',
-            status: 'active'
-        };
+        return {};
     }
 };
 
@@ -730,10 +679,11 @@ export const updateShowtime = async (id: string, data: Partial<ShowtimeFormData>
 
 
         if (data.movieId) backendData.Movie_ID = parseInt(data.movieId);
+        if (data.cinemaId) backendData.Cinema_ID = parseInt(data.cinemaId);
         if (data.roomId) backendData.Cinema_Room_ID = parseInt(data.roomId);
-        if (data.date) backendData.Show_Date = data.date;
-        if (data.time) backendData.Start_Time = data.time;
-        if (data.price) backendData.Base_Price = data.price;
+        if (data.showDate) backendData.Show_Date = data.showDate;
+        if (data.startTime) backendData.Start_Time = data.startTime;
+        if (data.status) backendData.Status = data.status;
 
 
         const response = await apiClient.put(`/showtimes/${id}`, backendData);

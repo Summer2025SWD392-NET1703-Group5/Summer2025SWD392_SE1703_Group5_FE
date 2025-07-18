@@ -66,4 +66,12 @@ export const formatTime = (timeInput: string | Date | null | undefined): string 
   }
 };
 
+export function getVNLocalDateString() {
+  const now = new Date();
+  // Get UTC time in milliseconds, add 7 hours (7 * 60 * 60 * 1000 ms)
+  const vnTime = new Date(now.getTime() + 7 * 60 * 60 * 1000);
+  // Format as YYYY-MM-DD
+  return vnTime.toISOString().split("T")[0];
+}
+
 export default formatTime; 

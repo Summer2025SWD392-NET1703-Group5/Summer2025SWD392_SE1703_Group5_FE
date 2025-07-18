@@ -16,6 +16,8 @@ import {
   ClockIcon,
 } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../contexts/SimpleAuthContext';
+import { getVNLocalDateString } from '../../../utils/timeFormatter';
+import { get } from 'react-hook-form';
 
 interface Cinema {
   id: string;
@@ -367,7 +369,7 @@ const AddShowtime: React.FC = () => {
         const minTime = getMinTimeForToday();
         if (showTime < minTime) {
           setShowTime('');
-          toast.error('Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại.');
+          toast.error('Thời gian đã chọn không hợp lệ. Vui lòng chọn thời gian sau hiện tại (+30 phút).');
         }
       }
       
@@ -398,7 +400,6 @@ const AddShowtime: React.FC = () => {
     setShowEarlyPremiereModal(false);
     
     if (pendingSubmitEvent) {
-      console.log('User confirmed early premiere showtime creation');
       await handleSubmit(pendingSubmitEvent, true); // Gọi lại với allowEarlyShowtime = true
       setPendingSubmitEvent(null);
     }
@@ -408,7 +409,6 @@ const AddShowtime: React.FC = () => {
   const handleEarlyPremiereCancel = () => {
     setShowEarlyPremiereModal(false);
     setPendingSubmitEvent(null);
-    console.log('User cancelled early premiere showtime creation');
     toast.error('Đã hủy tạo xuất chiếu sớm');
   };
 
@@ -441,7 +441,7 @@ const AddShowtime: React.FC = () => {
   };
 
   const isToday = (date: string): boolean => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = getVNLocalDateString();
     return date === today;
   };
 
@@ -477,7 +477,7 @@ const AddShowtime: React.FC = () => {
 
     // Validate datetime is after current time
     if (!isDateTimeAfterNow(showDate, showTime)) {
-      toast.error('Thời gian chiếu phải sau thời điểm hiện tại');
+      toast.error('Thời gian chiếu phải sau thời điểm hiện tại (+30 phút)');
       return;
     }
 
@@ -556,7 +556,7 @@ const AddShowtime: React.FC = () => {
         <Link
           to={(() => {
             const cinemaId = searchParams.get("cinemaId");
-            return cinemaId && isAdmin ? `/admin/showtimes?cinemaId=${cinemaId}` : '/admin/showtimes';
+            return cinemaId && isAdmin ? `/admin/showtimes?cinemaId=${cinemaId}` : "/admin/showtimes";
           })()}
           className="flex items-center text-gray-400 hover:text-FFD875 mb-4"
         >
@@ -571,7 +571,9 @@ const AddShowtime: React.FC = () => {
         {/* Form section */}
         <div className="lg:col-span-2">
           <form onSubmit={handleSubmit} className="bg-slate-800 rounded-lg p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">Thông tin lịch chiếu</h2>
+            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">
+              Thông tin lịch chiếu
+            </h2>
 
             {/* Movie selection */}
             <div className="mb-6">
@@ -587,12 +589,16 @@ const AddShowtime: React.FC = () => {
                   value={selectedMovie}
                   onChange={(e) => setSelectedMovie(e.target.value)}
                   className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                  style={{ borderColor: selectedMovie ? '#FFD875' : undefined }}
+                  style={{ borderColor: selectedMovie ? "#FFD875" : undefined }}
                   required
                 >
-                  <option key="default-movie" value="">-- Chọn phim --</option>
+                  <option key="default-movie" value="">
+                    -- Chọn phim --
+                  </option>
                   {movies.map((movie, index) => (
-                    <option key={`movie-${movie.id || index}`} value={movie.id}>{movie.title}</option>
+                    <option key={`movie-${movie.id || index}`} value={movie.id}>
+                      {movie.title}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -612,16 +618,20 @@ const AddShowtime: React.FC = () => {
                     id="cinema"
                     value={selectedCinema}
                     onChange={(e) => {
-                      console.log('Selected cinema ID:', e.target.value);
+                      console.log("Selected cinema ID:", e.target.value);
                       setSelectedCinema(e.target.value);
                     }}
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                    style={{ borderColor: selectedCinema ? '#FFD875' : undefined }}
+                    style={{ borderColor: selectedCinema ? "#FFD875" : undefined }}
                     required
                   >
-                    <option key="default-cinema" value="">-- Chọn rạp --</option>
-                    {cinemas.map(cinema => (
-                      <option key={`cinema-${cinema.id}`} value={cinema.id}>{cinema.name}</option>
+                    <option key="default-cinema" value="">
+                      -- Chọn rạp --
+                    </option>
+                    {cinemas.map((cinema) => (
+                      <option key={`cinema-${cinema.id}`} value={cinema.id}>
+                        {cinema.name}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -638,7 +648,7 @@ const AddShowtime: React.FC = () => {
                   <input
                     id="cinema-display"
                     type="text"
-                    value={managerCinema?.name || ''}
+                    value={managerCinema?.name || ""}
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none cursor-not-allowed"
                     disabled
                   />
@@ -657,18 +667,20 @@ const AddShowtime: React.FC = () => {
                 value={selectedRoom}
                 onChange={(e) => setSelectedRoom(e.target.value)}
                 className="bg-slate-700 text-white px-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                style={{ borderColor: selectedRoom ? '#FFD875' : undefined }}
+                style={{ borderColor: selectedRoom ? "#FFD875" : undefined }}
                 disabled={!selectedCinema}
                 required
               >
-                <option key="default-room" value="">-- Chọn phòng --</option>
-                {rooms.map(room => (
-                  <option key={`room-${room.id}`} value={room.id}>{room.name} ({room.capacity} ghế)</option>
+                <option key="default-room" value="">
+                  -- Chọn phòng --
+                </option>
+                {rooms.map((room) => (
+                  <option key={`room-${room.id}`} value={room.id}>
+                    {room.name} ({room.capacity} ghế)
+                  </option>
                 ))}
               </select>
-              {!selectedCinema && (
-                <p className="text-sm text-gray-400 mt-1">Vui lòng chọn rạp trước</p>
-              )}
+              {!selectedCinema && <p className="text-sm text-gray-400 mt-1">Vui lòng chọn rạp trước</p>}
             </div>
 
             {/* Date and time */}
@@ -687,15 +699,15 @@ const AddShowtime: React.FC = () => {
                     value={showDate}
                     onChange={(e) => setShowDate(e.target.value)}
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                    style={{ borderColor: showDate ? '#FFD875' : undefined }}
-                    min={new Date().toISOString().split('T')[0]}
+                    style={{ borderColor: showDate ? "#FFD875" : undefined }}
+                    min={getVNLocalDateString()}
                     max={selectedMovieDetails?.endDate || undefined}
                     required
                   />
                 </div>
                 {selectedMovieDetails?.endDate && new Date(selectedMovieDetails.endDate) < new Date() && (
                   <p className="text-sm text-red-400 mt-1">
-                    ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
+                    ⚠️ Phim đã kết thúc từ {new Date(selectedMovieDetails.endDate).toLocaleDateString("vi-VN")}
                   </p>
                 )}
               </div>
@@ -714,24 +726,19 @@ const AddShowtime: React.FC = () => {
                     value={showTime}
                     onChange={(e) => setShowTime(e.target.value)}
                     className="bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border border-slate-600 w-full focus:outline-none focus:border-FFD875 focus:ring-1 focus:ring-FFD875"
-                    style={{ borderColor: showTime ? '#FFD875' : undefined }}
+                    style={{ borderColor: showTime ? "#FFD875" : undefined }}
                     min={isToday(showDate) ? getMinTimeForToday() : undefined}
                     required
                   />
                 </div>
                 {isToday(showDate) && (
                   <p className="text-sm text-yellow-400 mt-1">
-                    Thời gian tối thiểu: {getMinTimeForToday()} (sau 30 phút từ bây giờ)
+                    Thời gian tối thiểu: {getVNLocalDateString()} | {getMinTimeForToday()} (sau 30 phút từ bây giờ)
                   </p>
                 )}
                 {selectedMovieDetails?.endDate && (
                   <p className="text-sm text-gray-400 mt-1">
-                    Phim kết thúc: {new Date(selectedMovieDetails.endDate).toLocaleDateString('vi-VN')}
-                  </p>
-                )}
-                {selectedMovieDetails && showTime && (
-                  <p className="text-sm text-gray-400 mt-1">
-                    Kết thúc: {calculateEndTime()}
+                    Phim kết thúc chiếu: {new Date(selectedMovieDetails.endDate).toLocaleDateString("vi-VN")}
                   </p>
                 )}
               </div>
@@ -746,7 +753,7 @@ const AddShowtime: React.FC = () => {
                   if (cinemaId && isAdmin) {
                     navigate(`/admin/showtimes?cinemaId=${cinemaId}`);
                   } else {
-                    navigate('/admin/showtimes');
+                    navigate("/admin/showtimes");
                   }
                 }}
                 className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
@@ -757,19 +764,35 @@ const AddShowtime: React.FC = () => {
               <button
                 type="submit"
                 className="px-4 py-2 bg-FFD875 text-black rounded-lg hover:bg-opacity-90 transition-colors btn-glow btn-yellow"
-                style={{ backgroundColor: '#FFD875' }}
+                style={{ backgroundColor: "#FFD875" }}
                 disabled={submitting}
               >
                 {submitting ? (
                   <span className="flex items-center">
-                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    <svg
+                      className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
                     </svg>
                     Đang lưu...
                   </span>
                 ) : (
-                  'Thêm lịch chiếu'
+                  "Thêm lịch chiếu"
                 )}
               </button>
             </div>
@@ -790,12 +813,12 @@ const AddShowtime: React.FC = () => {
               <div>
                 <div className="flex justify-center mb-4">
                   <img
-                    src={selectedMovieDetails.poster || 'https://placehold.co/240x360/darkgray/white?text=No+Image'}
+                    src={selectedMovieDetails.poster || "https://placehold.co/240x360/darkgray/white?text=No+Image"}
                     alt={selectedMovieDetails.title}
                     className="w-32 h-48 object-cover rounded-lg shadow-lg"
                     onError={(e) => {
                       // Fallback image if poster URL is invalid
-                      e.currentTarget.src = 'https://placehold.co/240x360/darkgray/white?text=No+Image';
+                      e.currentTarget.src = "https://placehold.co/240x360/darkgray/white?text=No+Image";
                     }}
                   />
                 </div>
@@ -813,25 +836,28 @@ const AddShowtime: React.FC = () => {
                     <span className="text-white">
                       {(() => {
                         try {
-                          return new Date(selectedMovieDetails.releaseDate).toLocaleDateString('vi-VN');
+                          return new Date(selectedMovieDetails.releaseDate).toLocaleDateString("vi-VN");
                         } catch (e) {
-                          return 'Không xác định';
+                          return "Không xác định";
                         }
                       })()}
                     </span>
                   </div>
 
-                  {selectedCinema && cinemas.find(c => c.id === selectedCinema) && (
+                  {selectedCinema && cinemas.find((c) => c.id === selectedCinema) && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">Rạp:</span>
-                      <span className="text-white">{cinemas.find(c => c.id === selectedCinema)?.name}</span>
+                      <span className="text-white">{cinemas.find((c) => c.id === selectedCinema)?.name}</span>
                     </div>
                   )}
 
-                  {selectedRoom && rooms.find(r => r.id === selectedRoom) && (
+                  {selectedRoom && rooms.find((r) => r.id === selectedRoom) && (
                     <div className="flex justify-between">
                       <span className="text-gray-400">Phòng:</span>
-                      <span className="text-white">{rooms.find(r => r.id === selectedRoom)?.name} ({rooms.find(r => r.id === selectedRoom)?.capacity} ghế)</span>
+                      <span className="text-white">
+                        {rooms.find((r) => r.id === selectedRoom)?.name} (
+                        {rooms.find((r) => r.id === selectedRoom)?.capacity} ghế)
+                      </span>
                     </div>
                   )}
 
@@ -841,7 +867,7 @@ const AddShowtime: React.FC = () => {
                       <span className="text-white">
                         {(() => {
                           try {
-                            return new Date(showDate).toLocaleDateString('vi-VN');
+                            return new Date(showDate).toLocaleDateString("vi-VN");
                           } catch (e) {
                             return showDate;
                           }
@@ -880,9 +906,9 @@ const AddShowtime: React.FC = () => {
         isOpen={showEarlyPremiereModal}
         onClose={handleEarlyPremiereCancel}
         onConfirm={handleEarlyPremiereConfirm}
-        movieTitle={selectedMovieDetails?.title || 'Phim đã chọn'}
-        releaseDate={selectedMovieDetails?.releaseDate || ''}
-        premiereDate={selectedMovieDetails?.premiereDate || ''}
+        movieTitle={selectedMovieDetails?.title || "Phim đã chọn"}
+        releaseDate={selectedMovieDetails?.releaseDate || ""}
+        premiereDate={selectedMovieDetails?.premiereDate || ""}
         selectedDate={showDate}
       />
     </div>
