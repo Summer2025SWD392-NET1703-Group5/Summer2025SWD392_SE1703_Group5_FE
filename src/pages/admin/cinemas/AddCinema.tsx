@@ -30,7 +30,7 @@ const AddCinema: React.FC = () => {
         }
         setCitiesLoading(false);
       })
-      .catch((err) => {
+      .catch((_) => {
         setCitiesError('Không thể tải danh sách thành phố');
         setCities([]);
         setCitiesLoading(false);
