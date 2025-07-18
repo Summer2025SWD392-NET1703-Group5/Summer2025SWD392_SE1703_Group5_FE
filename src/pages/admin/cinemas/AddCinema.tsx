@@ -1,5 +1,5 @@
 // src/pages/admin/cinemas/AddCinema.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { ArrowLeftIcon, BuildingOfficeIcon, MapPinIcon } from '@heroicons/react/24/outline';
@@ -13,6 +13,29 @@ const AddCinema: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [serverErrors, setServerErrors] = useState<Record<string, string>>({});
   const { register, handleSubmit, formState: { errors }, setError } = useForm<CinemaFormData>();
+  const [cities, setCities] = useState<Array<{ code: string; name: string; name_with_type: string }>>([]);
+  const [citiesLoading, setCitiesLoading] = useState(false);
+  const [citiesError, setCitiesError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCitiesLoading(true);
+    fetch('https://vn-public-apis.fpo.vn/provinces/getAll?limit=-1')
+      .then((res) => res.json())
+      .then((data) => {
+        // API trả về data.data.data
+        if (data && data.data && Array.isArray(data.data.data)) {
+          setCities(data.data.data);
+        } else {
+          setCities([]);
+        }
+        setCitiesLoading(false);
+      })
+      .catch((err) => {
+        setCitiesError('Không thể tải danh sách thành phố');
+        setCities([]);
+        setCitiesLoading(false);
+      });
+  }, []);
 
   const onSubmit = async (data: CinemaFormData) => {
     setLoading(true);
@@ -158,18 +181,25 @@ const AddCinema: React.FC = () => {
             </label>
             <div className="relative">
               <MapPinIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
-              <input
+              <select
                 id="City"
-                type="text"
-                placeholder="Nhập thành phố"
-                className={`bg-slate-700 text-white rounded-lg pl-10 pr-4 py-3 w-full border ${(errors.City || serverErrors.City) ? 'border-red-500' : 'border-slate-600'
-                  } focus:border-[#FFD875] focus:outline-none focus:shadow-[0_0_10px_0_rgba(255,216,117,0.3)]`}
+                className={`bg-slate-700 text-white rounded-lg pl-10 pr-4 py-3 w-full border ${(errors.City || serverErrors.City) ? 'border-red-500' : 'border-slate-600'} focus:border-[#FFD875] focus:outline-none focus:shadow-[0_0_10px_0_rgba(255,216,117,0.3)]`}
                 {...register('City', { required: 'Thành phố là bắt buộc' })}
-              />
+                disabled={citiesLoading || !Array.isArray(cities) || cities.length === 0}
+                defaultValue=""
+              >
+                <option value="" disabled>{citiesLoading ? 'Đang tải...' : 'Chọn thành phố'}</option>
+                {Array.isArray(cities) && cities.map((city) => (
+                  <option key={city.code} value={city.name}>
+                    {city.name_with_type}
+                  </option>
+                ))}
+              </select>
             </div>
             {(serverErrors.City || errors.City) && (
               <p className="text-red-500 text-sm mt-1">{serverErrors.City || errors.City?.message}</p>
             )}
+            {citiesError && <p className="text-red-500 text-sm mt-1">{citiesError}</p>}
           </div>
         </div>
 
