@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
 import {
-  UserIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  PencilIcon,
-  UserPlusIcon,
   TrashIcon,
   MagnifyingGlassIcon,
   ArrowPathIcon,
@@ -91,11 +85,24 @@ const CustomersList: React.FC = () => {
         const response = await api.get('/user');
         userData = response.data;
       } else if (user?.role === 'Manager') {
-        const myCinema = await cinemaService.getMyCinema();
+        const myCinema = await cinemaService.getManagerCinema();
         if (myCinema && myCinema.Cinema_ID) {
           const staff = await cinemaService.getCinemaStaff(myCinema.Cinema_ID);
           // Ánh xạ dữ liệu nhân viên sang định dạng User chung
-          userData = staff.map(s => ({ ...s, Role: 'Staff', Account_Status: 'Active', Address: null, Date_Of_Birth: '', Sex: '', Last_Login: null, Is_Deleted: false }));
+          userData = staff.map(s => ({
+            User_ID: s.User_ID,
+            Full_Name: s.Name || '',
+            Email: s.Email,
+            Phone_Number: '',
+            Address: null,
+            Date_Of_Birth: '',
+            Sex: '',
+            Role: 'Staff',
+            Account_Status: 'Active',
+            Last_Login: null,
+            Is_Deleted: false,
+            total_points: 0
+          }));
         }
       }
 
@@ -432,7 +439,7 @@ const CustomersList: React.FC = () => {
                             <>
                               <ActionButtons
                                 onView={() => handleViewCustomer(customer)}
-                                editLink={`/admin/customers/${customer.id}/edit`}
+                                editLink={`/admin/customers/${customer.id}`}
                                 onDelete={() => handleDeleteCustomer(customer.id)}
                                 hideDelete={customer.isDeleted}
                               />

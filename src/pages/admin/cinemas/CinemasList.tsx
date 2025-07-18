@@ -1,5 +1,5 @@
 // src/pages/admin/cinemas/CinemasList.tsx
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import {
   PlusIcon,
@@ -21,15 +21,9 @@ import type { Cinema } from "../../../types/cinema";
 import StaffAssignmentModal from "../../../components/admin/forms/StaffAssignmentModal";
 import CinemaRoomsModal from "../../../components/admin/cinema/CinemaRoomsModal";
 import ShowtimesModal from "../../../components/admin/cinema/ShowtimesModal";
-import ExcelImportExport from "../../../components/admin/common/ExcelImportExport";
 import { AddButton } from "../../../components/admin/common/ActionButtons";
 import { useAuth } from "../../../contexts/SimpleAuthContext";
-import {
-  XMarkIcon,
-  EnvelopeIcon,
-  PhoneIcon,
-  ExclamationTriangleIcon
-} from "@heroicons/react/24/outline";
+import { XMarkIcon, EnvelopeIcon, PhoneIcon, ExclamationTriangleIcon } from "@heroicons/react/24/outline";
 import "../../../components/admin/styles/AdminPage.css";
 
 interface CinemaUser {
@@ -60,7 +54,6 @@ const CinemasList: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [cityFilter, setCityFilter] = useState("all");
-  const [importLoading, setImportLoading] = useState(false);
 
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
@@ -72,7 +65,7 @@ const CinemasList: React.FC = () => {
   const [assignmentType, setAssignmentType] = useState<"manager" | "staff">("manager");
   const [showDescriptionModal, setShowDescriptionModal] = useState(false);
   const [selectedDescription, setSelectedDescription] = useState<{ name: string; description: string } | null>(null);
-  
+
   // New modal states for rooms and showtimes
   const [showRoomsModal, setShowRoomsModal] = useState(false);
   const [showShowtimesModal, setShowShowtimesModal] = useState(false);
@@ -84,6 +77,10 @@ const CinemasList: React.FC = () => {
   const [selectedUserType, setSelectedUserType] = useState<"manager" | "staff">("manager");
   const [selectedCinemaName, setSelectedCinemaName] = useState("");
 
+  // Staff list modal states
+  const [showStaffListModal, setShowStaffListModal] = useState(false);
+  const [selectedCinemaForStaff, setSelectedCinemaForStaff] = useState<CinemaWithStats | null>(null);
+
   useEffect(() => {
     fetchCinemas();
   }, []);
@@ -91,7 +88,7 @@ const CinemasList: React.FC = () => {
   // Cleanup body scroll on component unmount
   useEffect(() => {
     return () => {
-      document.body.style.overflow = 'unset';
+      document.body.style.overflow = "unset";
     };
   }, []);
 
@@ -117,9 +114,9 @@ const CinemasList: React.FC = () => {
               if (managerResponse) {
                 manager = {
                   User_ID: managerResponse.User_ID,
-                  Full_Name: (managerResponse as any).Full_Name || (managerResponse as any).Name || 'Unknown',
+                  Full_Name: (managerResponse as any).Full_Name || (managerResponse as any).Name || "Unknown",
                   Email: managerResponse.Email,
-                  Phone_Number: (managerResponse as any).Phone_Number || '',
+                  Phone_Number: (managerResponse as any).Phone_Number || "",
                   Cinema_ID: (managerResponse as any).Cinema_ID || null,
                   Cinema_Name: (managerResponse as any).Cinema_Name || null,
                 } as CinemaUser;
@@ -166,9 +163,9 @@ const CinemasList: React.FC = () => {
               if (managerResponse) {
                 manager = {
                   User_ID: managerResponse.User_ID,
-                  Full_Name: (managerResponse as any).Full_Name || (managerResponse as any).Name || 'Unknown',
+                  Full_Name: (managerResponse as any).Full_Name || (managerResponse as any).Name || "Unknown",
                   Email: managerResponse.Email,
-                  Phone_Number: (managerResponse as any).Phone_Number || '',
+                  Phone_Number: (managerResponse as any).Phone_Number || "",
                   Cinema_ID: (managerResponse as any).Cinema_ID || null,
                   Cinema_Name: (managerResponse as any).Cinema_Name || null,
                 } as CinemaUser;
@@ -234,15 +231,15 @@ const CinemasList: React.FC = () => {
     setShowAssignmentModal(true);
 
     // Prevent body scroll when modal is open
-    document.body.classList.add('modal-open');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
 
     // Force scroll to top and center
     setTimeout(() => {
       window.scrollTo({
         top: 0,
         left: 0,
-        behavior: 'instant'
+        behavior: "instant",
       });
     }, 0);
   };
@@ -252,15 +249,15 @@ const CinemasList: React.FC = () => {
     setShowDescriptionModal(true);
 
     // Prevent body scroll when modal is open
-    document.body.classList.add('modal-open');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
 
     // Force scroll to top and center
     setTimeout(() => {
       window.scrollTo({
         top: 0,
         left: 0,
-        behavior: 'instant'
+        behavior: "instant",
       });
     }, 0);
   };
@@ -272,39 +269,56 @@ const CinemasList: React.FC = () => {
     setShowUserInfoModal(true);
 
     // Prevent body scroll when modal is open
-    document.body.classList.add('modal-open');
-    document.body.style.overflow = 'hidden';
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
 
     // Force scroll to top and center
     setTimeout(() => {
       window.scrollTo({
         top: 0,
         left: 0,
-        behavior: 'instant'
+        behavior: "instant",
       });
     }, 0);
+  };
+
+  const handleOpenStaffListModal = (cinema: CinemaWithStats) => {
+    setSelectedCinemaForStaff(cinema);
+    setShowStaffListModal(true);
+    document.body.classList.add("modal-open");
+    document.body.style.overflow = "hidden";
+    setTimeout(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+    }, 0);
+  };
+
+  const handleCloseStaffListModal = () => {
+    setShowStaffListModal(false);
+    setSelectedCinemaForStaff(null);
+    document.body.classList.remove("modal-open");
+    document.body.style.overflow = "unset";
   };
 
   const closeUserModal = () => {
     setShowUserInfoModal(false);
     setShowConfirmDialog(false);
     // Restore body scroll
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = 'unset';
+    document.body.classList.remove("modal-open");
+    document.body.style.overflow = "unset";
   };
 
   const closeStaffAssignmentModal = () => {
     setShowAssignmentModal(false);
     // Restore body scroll
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = 'unset';
+    document.body.classList.remove("modal-open");
+    document.body.style.overflow = "unset";
   };
 
   const closeDescriptionModal = () => {
     setShowDescriptionModal(false);
     // Restore body scroll
-    document.body.classList.remove('modal-open');
-    document.body.style.overflow = 'unset';
+    document.body.classList.remove("modal-open");
+    document.body.style.overflow = "unset";
   };
 
   const handleUserRemoved = () => {
@@ -319,11 +333,11 @@ const CinemasList: React.FC = () => {
     if (!selectedUser) return;
 
     setIsRemoving(true);
-    const toastId = toast.loading(`Đang xóa phân công ${selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'}...`);
+    const toastId = toast.loading(`Đang xóa phân công ${selectedUserType === "manager" ? "quản lý" : "nhân viên"}...`);
 
     try {
       let result;
-      if (selectedUserType === 'manager') {
+      if (selectedUserType === "manager") {
         result = await cinemaService.removeManagerFromCinema(selectedUser.User_ID);
       } else {
         result = await cinemaService.removeStaffFromCinema(selectedUser.User_ID);
@@ -333,15 +347,16 @@ const CinemasList: React.FC = () => {
         toast.success(result.message, { id: toastId });
         handleUserRemoved(); // Refresh data
         closeUserModal(); // Close modal
+        handleCloseStaffListModal(); // Close assignment modal if it was open
       } else {
         throw new Error(result.message);
       }
     } catch (error: any) {
-      console.error('Error removing user:', error);
+      console.error("Error removing user:", error);
       toast.error(
         error.response?.data?.message ||
-        error.message ||
-        `Không thể xóa phân công ${selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'}`,
+          error.message ||
+          `Không thể xóa phân công ${selectedUserType === "manager" ? "quản lý" : "nhân viên"}`,
         { id: toastId }
       );
     } finally {
@@ -418,60 +433,6 @@ const CinemasList: React.FC = () => {
     }
 
     return Array.from({ length: endPage - startPage + 1 }, (_, i) => startPage + i);
-  };
-
-  // Cấu hình header cho file Excel
-  const excelHeaders = {
-    Cinema_Name: "Tên rạp",
-    Address: "Địa chỉ",
-    City: "Thành phố",
-    Status: "Trạng thái",
-    Description: "Mô tả",
-    Seats_Capacity: "Tổng số ghế",
-  };
-
-  // Xử lý dữ liệu rạp chiếu để xuất Excel
-  const cinemasForExport = useMemo(() => {
-    return cinemas.map((cinema) => ({
-      Cinema_ID: cinema.Cinema_ID,
-      Cinema_Name: cinema.Cinema_Name,
-      Address: cinema.Address || "",
-      City: cinema.City || "",
-      Status: cinema.Status || "Active",
-      Description: cinema.Description || "",
-      Seats_Capacity: cinema.stats?.totalSeats || 0,
-      Total_Rooms: cinema.stats?.totalRooms || 0,
-    }));
-  }, [cinemas]);
-
-  // Xử lý khi nhập dữ liệu từ Excel
-  const handleImportCinemas = async (importedData: any[]) => {
-    if (!importedData || importedData.length === 0) {
-      toast.error("Không có dữ liệu rạp để nhập");
-      return;
-    }
-
-    setImportLoading(true);
-    const toastId = toast.loading("Đang nhập dữ liệu rạp...");
-
-    try {
-      // Đây là nơi bạn sẽ gọi API để thêm nhiều rạp cùng lúc
-      // Giả lập việc thêm rạp bằng timeout
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-
-      toast.success(`Đã nhập ${importedData.length} rạp thành công!`, { id: toastId });
-
-      // Nếu có API thực để thêm nhiều rạp, bạn sẽ gọi ở đây
-      // const result = await cinemaService.bulkAddCinemas(importedData);
-
-      // Sau khi nhập xong, làm mới danh sách rạp
-      fetchCinemas();
-    } catch (error) {
-      console.error("Import cinemas error:", error);
-      toast.error("Nhập dữ liệu rạp thất bại", { id: toastId });
-    } finally {
-      setImportLoading(false);
-    }
   };
 
   const getStatusBadge = (status: Cinema["Status"]) => {
@@ -592,14 +553,6 @@ const CinemasList: React.FC = () => {
           </div>
 
           <div className="flex gap-3">
-            <ExcelImportExport
-              data={cinemasForExport}
-              onImport={handleImportCinemas}
-              fileName="cinemas-list"
-              sheetName="Rạp chiếu phim"
-              headers={excelHeaders}
-              disabled={loading || importLoading}
-            />
             <button
               onClick={fetchCinemas}
               className="px-6 py-3 bg-slate-800/70 backdrop-blur-md text-white rounded-xl hover:bg-slate-700/70 transition-all duration-300 flex items-center gap-2 border border-slate-700 hover:border-[#FFD875]/50 shadow-lg hover:shadow-xl"
@@ -740,7 +693,7 @@ const CinemasList: React.FC = () => {
               {paginatedCinemas.map((cinema, index) => (
                 <motion.div
                   key={cinema.Cinema_ID}
-                  className="relative bg-gradient-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl group transition-all duration-700 h-[820px] flex flex-col"
+                  className="relative bg-gradient-to-br from-slate-800/60 via-slate-800/40 to-slate-900/60 backdrop-blur-xl rounded-3xl overflow-hidden border border-slate-700/50 shadow-2xl group transition-all duration-700 h-[950px] flex flex-col"
                   style={{
                     boxShadow: "0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 216, 117, 0.1)",
                   }}
@@ -759,7 +712,8 @@ const CinemasList: React.FC = () => {
                   {/* Animated background pattern */}
                   <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-[#FFD875]/10 to-transparent rounded-full blur-2xl -translate-y-16 translate-x-16 group-hover:scale-150 transition-transform duration-700" />
 
-                  <div className="relative p-8 flex flex-col h-full">{/* Cinema header with enhanced styling */}
+                  <div className="relative p-8 flex flex-col h-full">
+                    {/* Cinema header with enhanced styling */}
                     <div className="flex justify-between items-start mb-6">
                       <div className="flex-1 pr-4">
                         <h3 className="text-2xl font-bold text-white mb-3 group-hover:text-[#FFD875] transition-colors duration-300">
@@ -785,7 +739,9 @@ const CinemasList: React.FC = () => {
                               <UserIcon className="w-5 h-5 text-purple-400" />
                             </div>
                             <div className="flex-1">
-                              <div className="text-gray-300 font-medium group-hover/item:text-purple-300 transition-colors">{cinema.manager.Full_Name}</div>
+                              <div className="text-gray-300 font-medium group-hover/item:text-purple-300 transition-colors">
+                                {cinema.manager.Full_Name}
+                              </div>
                               <div className="text-sm text-purple-400 mt-1">Quản lý • ID: {cinema.manager.User_ID}</div>
                             </div>
                           </div>
@@ -833,10 +789,9 @@ const CinemasList: React.FC = () => {
                           </div>
                         </div>
 
-                        {/* Staff list */}
                         {cinema.staff.length > 0 && (
                           <div className="ml-16 space-y-1">
-                            {cinema.staff.slice(0, 3).map((staffMember) => (
+                            {cinema.staff.slice(0, 2).map((staffMember) => (
                               <div
                                 key={staffMember.User_ID}
                                 className="flex items-center justify-between p-2 bg-slate-700/30 rounded-lg cursor-pointer hover:bg-blue-500/10 transition-colors group/staff"
@@ -854,15 +809,20 @@ const CinemasList: React.FC = () => {
                                 <span className="text-xs text-gray-500">ID: {staffMember.User_ID}</span>
                               </div>
                             ))}
-                            {cinema.staff.length > 3 && (
-                              <div className="text-xs text-gray-500 text-center py-1">
-                                +{cinema.staff.length - 3} nhân viên khác
+                            {cinema.staff.length >= 2 && (
+                              <div className="mt-2">
+                                <button
+                                  onClick={() => handleOpenStaffListModal(cinema)}
+                                  className="text-xs text-blue-500 hover:text-blue-400 underline transition-colors"
+                                >
+                                  Xem tất cả {cinema.staff.length} nhân viên
+                                </button>
                               </div>
                             )}
                           </div>
                         )}
                       </div>
-                      
+
                       <div className="space-y-4 mb-6">
                         <div className="flex items-start group/item">
                           <div className="p-3 bg-[#FFD875]/10 rounded-lg border border-[#FFD875]/20 mr-4 group-hover/item:bg-[#FFD875]/20 transition-colors">
@@ -880,8 +840,18 @@ const CinemasList: React.FC = () => {
                         {(cinema.Phone_Number || cinema.Email) && (
                           <div className="flex items-start group/item">
                             <div className="p-3 bg-blue-500/10 rounded-lg border border-blue-500/20 mr-4 group-hover/item:bg-blue-500/20 transition-colors">
-                              <svg className="w-5 h-5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L8.16 10.71a11.02 11.02 0 005.13 5.13l1.322-2.064a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z" />
+                              <svg
+                                className="w-5 h-5 text-blue-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M3 5a2 2 0 012-2h3.28a1 1 0 01.948.684l1.498 4.493a1 1 0 01-.502 1.21L8.16 10.71a11.02 11.02 0 005.13 5.13l1.322-2.064a1 1 0 011.21-.502l4.493 1.498a1 1 0 01.684.949V19a2 2 0 01-2 2h-1C9.716 21 3 14.284 3 6V5z"
+                                />
                               </svg>
                             </div>
                             <div className="flex-1">
@@ -889,9 +859,7 @@ const CinemasList: React.FC = () => {
                               {cinema.Phone_Number && (
                                 <div className="text-sm text-blue-400 mt-1">📞 {cinema.Phone_Number}</div>
                               )}
-                              {cinema.Email && (
-                                <div className="text-sm text-blue-400 mt-1">📧 {cinema.Email}</div>
-                              )}
+                              {cinema.Email && <div className="text-sm text-blue-400 mt-1">📧 {cinema.Email}</div>}
                             </div>
                           </div>
                         )}
@@ -900,20 +868,35 @@ const CinemasList: React.FC = () => {
                         {cinema.Description && (
                           <div className="flex items-start group/item">
                             <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20 mr-4 group-hover/item:bg-green-500/20 transition-colors">
-                              <svg className="w-5 h-5 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                              <svg
+                                className="w-5 h-5 text-green-400"
+                                fill="none"
+                                stroke="currentColor"
+                                viewBox="0 0 24 24"
+                              >
+                                <path
+                                  strokeLinecap="round"
+                                  strokeLinejoin="round"
+                                  strokeWidth={2}
+                                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                                />
                               </svg>
                             </div>
                             <div className="flex-1">
                               <div className="text-gray-300 font-medium">Mô tả</div>
                               <div className="text-sm text-green-400 mt-1 leading-relaxed">
-                                <p className="line-clamp-3 cursor-pointer hover:text-green-300 transition-colors" 
-                                   onClick={() => cinema.Description && handleOpenDescriptionModal(cinema.Cinema_Name, cinema.Description)}
-                                   title="Nhấp để xem mô tả đầy đủ">
+                                <p
+                                  className="line-clamp-3 cursor-pointer hover:text-green-300 transition-colors"
+                                  onClick={() =>
+                                    cinema.Description &&
+                                    handleOpenDescriptionModal(cinema.Cinema_Name, cinema.Description)
+                                  }
+                                  title="Nhấp để xem mô tả đầy đủ"
+                                >
                                   {cinema.Description}
                                 </p>
                                 {cinema.Description && cinema.Description.length > 100 && (
-                                  <button 
+                                  <button
                                     onClick={() => handleOpenDescriptionModal(cinema.Cinema_Name, cinema.Description!)}
                                     className="text-xs text-green-500 hover:text-green-300 mt-1 underline transition-colors"
                                   >
@@ -963,7 +946,12 @@ const CinemasList: React.FC = () => {
                       >
                         <div className="p-2 bg-blue-500/10 rounded-lg group-hover/btn:bg-blue-500/20 transition-colors">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                            />
                           </svg>
                         </div>
                         <span className="text-sm font-medium">Phòng chiếu</span>
@@ -976,7 +964,12 @@ const CinemasList: React.FC = () => {
                       >
                         <div className="p-2 bg-orange-500/10 rounded-lg group-hover/btn:bg-orange-500/20 transition-colors">
                           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
+                            />
                           </svg>
                         </div>
                         <span className="text-sm font-medium">Lịch chiếu</span>
@@ -1088,21 +1081,21 @@ const CinemasList: React.FC = () => {
         <div
           className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           style={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 9999
+            width: "100vw",
+            height: "100vh",
+            zIndex: 9999,
           }}
           onClick={closeDescriptionModal}
         >
           <motion.div
             className="relative bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-slate-700/50 shadow-2xl"
             style={{
-              position: 'relative',
+              position: "relative",
               zIndex: 10000,
-              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 216, 117, 0.2)"
+              boxShadow: "0 20px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 216, 117, 0.2)",
             }}
             onClick={(e) => e.stopPropagation()}
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -1112,14 +1105,19 @@ const CinemasList: React.FC = () => {
           >
             {/* Decorative gradient overlay */}
             <div className="absolute inset-0 bg-gradient-to-br from-[#FFD875]/5 via-transparent to-[#FFA500]/5" />
-            
+
             {/* Header */}
             <div className="relative p-6 border-b border-slate-700/50">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="p-3 bg-green-500/10 rounded-lg border border-green-500/20">
                     <svg className="w-6 h-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+                      />
                     </svg>
                   </div>
                   <div>
@@ -1127,7 +1125,7 @@ const CinemasList: React.FC = () => {
                     <p className="text-sm text-[#FFD875] mt-1">{selectedDescription.name}</p>
                   </div>
                 </div>
-                
+
                 <button
                   onClick={() => setShowDescriptionModal(false)}
                   className="p-2 bg-slate-700/50 hover:bg-slate-600/50 text-gray-400 hover:text-white rounded-lg transition-all duration-300"
@@ -1138,16 +1136,14 @@ const CinemasList: React.FC = () => {
                 </button>
               </div>
             </div>
-            
+
             {/* Content */}
             <div className="relative p-6 max-h-96 overflow-y-auto">
               <div className="prose prose-invert prose-green max-w-none">
-                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">
-                  {selectedDescription.description}
-                </p>
+                <p className="text-gray-300 leading-relaxed whitespace-pre-wrap">{selectedDescription.description}</p>
               </div>
             </div>
-            
+
             {/* Footer */}
             <div className="relative p-6 border-t border-slate-700/50">
               <div className="flex justify-end">
@@ -1163,17 +1159,75 @@ const CinemasList: React.FC = () => {
         </div>
       )}
 
+      {showStaffListModal && selectedCinemaForStaff && (
+        <div
+          className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          onClick={handleCloseStaffListModal}
+        >
+          <motion.div
+            className="relative bg-gradient-to-br from-slate-800/95 via-slate-800/90 to-slate-900/95 backdrop-blur-xl rounded-3xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-slate-700/50 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <div className="p-6 border-b border-slate-700/50 flex justify-between items-center">
+              <h3 className="text-xl font-bold text-white">
+                Danh sách nhân viên - {selectedCinemaForStaff.Cinema_Name}
+              </h3>
+              <button
+                onClick={handleCloseStaffListModal}
+                className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
+              >
+                <XMarkIcon className="w-5 h-5 text-gray-400" />
+              </button>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <div className="space-y-4">
+                {selectedCinemaForStaff.staff.map((staffMember) => (
+                  <div
+                    key={staffMember.User_ID}
+                    className="flex items-center justify-between p-3 bg-slate-700/30 rounded-lg cursor-pointer hover:bg-blue-500/10 transition-colors"
+                    onClick={() => handleUserClick(staffMember, "staff", selectedCinemaForStaff.Cinema_Name)}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-blue-500/20 rounded-full flex items-center justify-center">
+                        <UserIcon className="w-4 h-4 text-blue-400" />
+                      </div>
+                      <div>
+                        <p className="text-white font-medium">{staffMember.Full_Name}</p>
+                        <p className="text-xs text-gray-400">ID: {staffMember.User_ID}</p>
+                      </div>
+                    </div>
+                    <span className="text-blue-400">→</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="p-6 border-t border-slate-700/50">
+              <button
+                onClick={handleCloseStaffListModal}
+                className="w-full px-4 py-2 bg-slate-600 hover:bg-slate-500 text-white rounded-lg transition-colors"
+              >
+                Đóng
+              </button>
+            </div>
+          </motion.div>
+        </div>
+      )}
+
       {/* User Info Modal */}
       {showUserInfoModal && selectedUser && (
         <div
           className="fixed top-0 left-0 w-screen h-screen bg-black/70 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
           style={{
-            position: 'fixed',
+            position: "fixed",
             top: 0,
             left: 0,
-            width: '100vw',
-            height: '100vh',
-            zIndex: 9999
+            width: "100vw",
+            height: "100vh",
+            zIndex: 9999,
           }}
           onClick={closeUserModal}
         >
@@ -1184,34 +1238,33 @@ const CinemasList: React.FC = () => {
             exit={{ opacity: 0, scale: 0.9 }}
             onClick={(e) => e.stopPropagation()}
             style={{
-              position: 'relative',
-              zIndex: 10000
+              position: "relative",
+              zIndex: 10000,
             }}
           >
             {/* Header */}
             <div className="bg-gradient-to-r from-slate-700 to-slate-800 p-6 border-b border-slate-600">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`p-3 rounded-lg ${
-                    selectedUserType === 'manager'
-                      ? 'bg-purple-500/20 border border-purple-500/30'
-                      : 'bg-blue-500/20 border border-blue-500/30'
-                  }`}>
-                    <UserIcon className={`w-6 h-6 ${
-                      selectedUserType === 'manager' ? 'text-purple-400' : 'text-blue-400'
-                    }`} />
+                  <div
+                    className={`p-3 rounded-lg ${
+                      selectedUserType === "manager"
+                        ? "bg-purple-500/20 border border-purple-500/30"
+                        : "bg-blue-500/20 border border-blue-500/30"
+                    }`}
+                  >
+                    <UserIcon
+                      className={`w-6 h-6 ${selectedUserType === "manager" ? "text-purple-400" : "text-blue-400"}`}
+                    />
                   </div>
                   <div>
                     <h3 className="text-xl font-bold text-white">
-                      {selectedUserType === 'manager' ? 'Thông tin Quản lý' : 'Thông tin Nhân viên'}
+                      {selectedUserType === "manager" ? "Thông tin Quản lý" : "Thông tin Nhân viên"}
                     </h3>
                     <p className="text-sm text-gray-400">{selectedCinemaName}</p>
                   </div>
                 </div>
-                <button
-                  onClick={closeUserModal}
-                  className="p-2 hover:bg-slate-600 rounded-lg transition-colors"
-                >
+                <button onClick={closeUserModal} className="p-2 hover:bg-slate-600 rounded-lg transition-colors">
                   <XMarkIcon className="w-5 h-5 text-gray-400" />
                 </button>
               </div>
@@ -1266,12 +1319,14 @@ const CinemasList: React.FC = () => {
                 </div>
                 <div>
                   <p className="text-sm text-gray-400">Vai trò</p>
-                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                    selectedUserType === 'manager'
-                      ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                      : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                  }`}>
-                    {selectedUserType === 'manager' ? 'Quản lý' : 'Nhân viên'}
+                  <span
+                    className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      selectedUserType === "manager"
+                        ? "bg-purple-500/20 text-purple-400 border border-purple-500/30"
+                        : "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+                    }`}
+                  >
+                    {selectedUserType === "manager" ? "Quản lý" : "Nhân viên"}
                   </span>
                 </div>
               </div>
@@ -1316,7 +1371,8 @@ const CinemasList: React.FC = () => {
                     <h4 className="text-lg font-semibold text-white">Xác nhận</h4>
                   </div>
                   <p className="text-gray-300 mb-6">
-                    Bạn có chắc chắn muốn bỏ phân công {selectedUserType === 'manager' ? 'quản lý' : 'nhân viên'} <strong>{selectedUser.Full_Name}</strong> khỏi rạp <strong>{selectedCinemaName}</strong>?
+                    Bạn có chắc chắn muốn bỏ phân công {selectedUserType === "manager" ? "quản lý" : "nhân viên"}{" "}
+                    <strong>{selectedUser.Full_Name}</strong> khỏi rạp <strong>{selectedCinemaName}</strong>?
                   </p>
                   <div className="flex gap-3">
                     <button
@@ -1330,7 +1386,7 @@ const CinemasList: React.FC = () => {
                       disabled={isRemoving}
                       className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white rounded-lg transition-colors"
                     >
-                      {isRemoving ? 'Đang xử lý...' : 'Xác nhận'}
+                      {isRemoving ? "Đang xử lý..." : "Xác nhận"}
                     </button>
                   </div>
                 </motion.div>

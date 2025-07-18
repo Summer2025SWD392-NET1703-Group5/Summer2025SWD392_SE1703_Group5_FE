@@ -1,15 +1,15 @@
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { toast } from 'react-hot-toast';
+import React, { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { toast } from "react-hot-toast";
 import {
   ArrowLeftIcon,
   UserIcon,
   EnvelopeIcon,
   PhoneIcon,
   CalendarDaysIcon,
-  MapPinIcon
-} from '@heroicons/react/24/outline';
-import api from '../../../config/api';
+  MapPinIcon,
+} from "@heroicons/react/24/outline";
+import api from "../../../config/api";
 
 interface CustomerFormData {
   Full_Name: string;
@@ -26,13 +26,13 @@ const AddCustomer: React.FC = () => {
   const [submitting, setSubmitting] = useState(false);
 
   const [formData, setFormData] = useState<CustomerFormData>({
-    Full_Name: '',
-    Email: '',
-    Phone_Number: '',
-    Date_Of_Birth: '',
-    Sex: 'Male',
-    Address: '',
-    Role: 'Customer'
+    Full_Name: "",
+    Email: "",
+    Phone_Number: "",
+    Date_Of_Birth: "",
+    Sex: "Male",
+    Address: "",
+    Role: "Customer",
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -42,14 +42,14 @@ const AddCustomer: React.FC = () => {
 
     // Clear error when user corrects input
     if (errors[name]) {
-      setErrors(prev => {
+      setErrors((prev) => {
         const newErrors = { ...prev };
         delete newErrors[name];
         return newErrors;
       });
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       [name]: value,
     }));
@@ -59,31 +59,31 @@ const AddCustomer: React.FC = () => {
     const newErrors: Record<string, string> = {};
 
     if (!formData.Full_Name.trim()) {
-      newErrors.Full_Name = 'Vui lòng nhập tên khách hàng';
+      newErrors.Full_Name = "Vui lòng nhập tên khách hàng";
     }
 
     if (!formData.Email.trim()) {
-      newErrors.Email = 'Vui lòng nhập email';
+      newErrors.Email = "Vui lòng nhập email";
     } else if (!/^\S+@\S+\.\S+$/.test(formData.Email)) {
-      newErrors.Email = 'Email không hợp lệ';
+      newErrors.Email = "Email không hợp lệ";
     }
 
     if (!formData.Phone_Number.trim()) {
-      newErrors.Phone_Number = 'Vui lòng nhập số điện thoại';
+      newErrors.Phone_Number = "Vui lòng nhập số điện thoại";
     } else if (!/^[0-9]{10,11}$/.test(formData.Phone_Number)) {
-      newErrors.Phone_Number = 'Số điện thoại không hợp lệ';
+      newErrors.Phone_Number = "Số điện thoại không hợp lệ";
     }
 
     if (!formData.Date_Of_Birth.trim()) {
-      newErrors.Date_Of_Birth = 'Vui lòng nhập ngày sinh';
+      newErrors.Date_Of_Birth = "Vui lòng nhập ngày sinh";
     }
 
     if (!formData.Sex.trim()) {
-      newErrors.Sex = 'Vui lòng chọn giới tính';
+      newErrors.Sex = "Vui lòng chọn giới tính";
     }
 
     if (!formData.Address.trim()) {
-      newErrors.Address = 'Vui lòng nhập địa chỉ';
+      newErrors.Address = "Vui lòng nhập địa chỉ";
     }
 
     setErrors(newErrors);
@@ -94,7 +94,7 @@ const AddCustomer: React.FC = () => {
     e.preventDefault();
 
     if (!validateForm()) {
-      toast.error('Vui lòng kiểm tra lại thông tin');
+      toast.error("Vui lòng kiểm tra lại thông tin");
       return;
     }
 
@@ -108,16 +108,21 @@ const AddCustomer: React.FC = () => {
       const userData = {
         ...formData,
         Password: randomPassword,
-        Account_Status: 'active'
+        Account_Status: "active",
       };
 
-      const response = await api.post('/user/register-user', userData);
+      await api.post("/user/register-user", userData).catch((error) => {
+        if (error.response) {
+          throw new Error(error.response.data.message || "Không thể thêm khách hàng");
+        }
+        throw new Error("Không thể kết nối đến máy chủ");
+      });
 
-      toast.success('Thêm khách hàng thành công');
-      navigate('/admin/customers');
+      toast.success("Thêm khách hàng thành công");
+      navigate("/admin/customers");
     } catch (error: any) {
-      console.error('Error adding customer:', error);
-      toast.error(error.response?.data?.message || 'Không thể thêm khách hàng');
+      console.error("Error adding customer:", error);
+      toast.error(error.response?.data?.message || "Không thể thêm khách hàng");
     } finally {
       setSubmitting(false);
     }
@@ -160,8 +165,11 @@ const AddCustomer: React.FC = () => {
                     name="Full_Name"
                     value={formData.Full_Name}
                     onChange={handleInputChange}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${errors.Full_Name ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                      } w-full`}
+                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${
+                      errors.Full_Name
+                        ? "border-red-500 input-error"
+                        : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                    } w-full`}
                     placeholder="Nhập họ tên khách hàng"
                   />
                 </div>
@@ -183,8 +191,11 @@ const AddCustomer: React.FC = () => {
                     name="Email"
                     value={formData.Email}
                     onChange={handleInputChange}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${errors.Email ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                      } w-full`}
+                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${
+                      errors.Email
+                        ? "border-red-500 input-error"
+                        : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                    } w-full`}
                     placeholder="Nhập email"
                   />
                 </div>
@@ -206,8 +217,11 @@ const AddCustomer: React.FC = () => {
                     name="Phone_Number"
                     value={formData.Phone_Number}
                     onChange={handleInputChange}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${errors.Phone_Number ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                      } w-full`}
+                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${
+                      errors.Phone_Number
+                        ? "border-red-500 input-error"
+                        : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                    } w-full`}
                     placeholder="Nhập số điện thoại"
                   />
                 </div>
@@ -229,8 +243,11 @@ const AddCustomer: React.FC = () => {
                     name="Date_Of_Birth"
                     value={formData.Date_Of_Birth}
                     onChange={handleInputChange}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${errors.Date_Of_Birth ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                      } w-full`}
+                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${
+                      errors.Date_Of_Birth
+                        ? "border-red-500 input-error"
+                        : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                    } w-full`}
                   />
                 </div>
                 {errors.Date_Of_Birth && <p className="error-message">{errors.Date_Of_Birth}</p>}
@@ -240,9 +257,7 @@ const AddCustomer: React.FC = () => {
 
           {/* Thông tin tài khoản */}
           <div className="bg-slate-800 rounded-lg p-6 shadow-lg">
-            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">
-              Thông tin bổ sung
-            </h2>
+            <h2 className="text-lg font-semibold text-white border-b border-slate-700 pb-2 mb-6">Thông tin bổ sung</h2>
 
             <div className="space-y-6">
               {/* Giới tính */}
@@ -255,8 +270,11 @@ const AddCustomer: React.FC = () => {
                   name="Sex"
                   value={formData.Sex}
                   onChange={handleInputChange}
-                  className={`bg-slate-700 text-white px-4 py-2 rounded-lg border ${errors.Sex ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                    } w-full`}
+                  className={`bg-slate-700 text-white px-4 py-2 rounded-lg border ${
+                    errors.Sex
+                      ? "border-red-500 input-error"
+                      : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                  } w-full`}
                 >
                   <option value="Male">Nam</option>
                   <option value="Female">Nữ</option>
@@ -280,8 +298,11 @@ const AddCustomer: React.FC = () => {
                     value={formData.Address}
                     onChange={handleInputChange}
                     rows={3}
-                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${errors.Address ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                      } w-full`}
+                    className={`bg-slate-700 text-white pl-10 pr-4 py-2 rounded-lg border ${
+                      errors.Address
+                        ? "border-red-500 input-error"
+                        : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                    } w-full`}
                     placeholder="Nhập địa chỉ khách hàng"
                   ></textarea>
                 </div>
@@ -298,8 +319,11 @@ const AddCustomer: React.FC = () => {
                   name="Role"
                   value={formData.Role}
                   onChange={handleInputChange}
-                  className={`bg-slate-700 text-white px-4 py-2 rounded-lg border ${errors.Role ? 'border-red-500 input-error' : 'border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875'
-                    } w-full`}
+                  className={`bg-slate-700 text-white px-4 py-2 rounded-lg border ${
+                    errors.Role
+                      ? "border-red-500 input-error"
+                      : "border-slate-600 focus:border-FFD875 focus:outline-none focus:ring-1 focus:ring-FFD875"
+                  } w-full`}
                 >
                   <option value="Customer">Khách hàng</option>
                   <option value="Staff">Nhân viên</option>
@@ -311,8 +335,8 @@ const AddCustomer: React.FC = () => {
               <div className="bg-slate-700 p-4 rounded-lg mt-6">
                 <h3 className="text-sm font-medium text-gray-300 mb-3">Lưu ý</h3>
                 <p className="text-sm text-gray-400">
-                  Mật khẩu mặc định sẽ được tạo tự động và gửi đến email của người dùng.
-                  Tài khoản sẽ được tạo với trạng thái "Hoạt động" mặc định.
+                  Mật khẩu mặc định sẽ được tạo tự động và gửi đến email của người dùng. Tài khoản sẽ được tạo với trạng
+                  thái "Hoạt động" mặc định.
                 </p>
               </div>
             </div>
@@ -330,18 +354,29 @@ const AddCustomer: React.FC = () => {
           <button
             type="submit"
             className="px-6 py-2 bg-FFD875 text-black rounded-lg hover:bg-opacity-90 transition-colors btn-glow"
-            style={{ backgroundColor: '#FFD875' }}
+            style={{ backgroundColor: "#FFD875" }}
             disabled={submitting}
           >
             {submitting ? (
               <span className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-black" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <svg
+                  className="animate-spin -ml-1 mr-2 h-4 w-4 text-black"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                >
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  ></path>
                 </svg>
                 Đang lưu...
               </span>
-            ) : 'Thêm khách hàng'}
+            ) : (
+              "Thêm khách hàng"
+            )}
           </button>
         </div>
       </form>
@@ -349,4 +384,4 @@ const AddCustomer: React.FC = () => {
   );
 };
 
-export default AddCustomer; 
+export default AddCustomer;

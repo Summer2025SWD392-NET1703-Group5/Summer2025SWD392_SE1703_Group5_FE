@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
 import {
   ArrowLeftIcon,
   CalendarIcon,
@@ -9,13 +9,14 @@ import {
   UserGroupIcon,
   PencilIcon,
   TrashIcon,
-} from '@heroicons/react/24/outline';
-import FullScreenLoader from '../../../components/FullScreenLoader';
-import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
-import '../../../components/admin/cinema-rooms/SeatMap.css';
-import showtimeService from '../../../services/showtimeService';
-import { cinemaRoomService } from '../../../services/cinemaRoomService';
-import { toast } from 'react-hot-toast';
+} from "@heroicons/react/24/outline";
+import FullScreenLoader from "../../../components/FullScreenLoader";
+import ConfirmDialog from "../../../components/admin/common/ConfirmDialog";
+import "../../../components/admin/cinema-rooms/SeatMap.css";
+import showtimeService from "../../../services/showtimeService";
+import { cinemaRoomService } from "../../../services/cinemaRoomService";
+import { toast } from "react-hot-toast";
+import { is } from "date-fns/locale";
 
 interface Showtime {
   id: string;
@@ -30,7 +31,7 @@ interface Showtime {
   totalSeats: number;
   bookedSeats: number;
   availableSeats: number;
-  status: 'scheduled' | 'hidden';
+  status: "scheduled" | "hidden";
   revenue: number;
   createdAt: Date;
   updatedAt: Date;
@@ -56,10 +57,10 @@ const ShowtimeDetail: React.FC = () => {
       const data = await showtimeService.getShowtimeById(id);
 
       if (!data) {
-        throw new Error('Không thể tải thông tin suất chiếu');
+        throw new Error("Không thể tải thông tin suất chiếu");
       }
 
-      console.log('Dữ liệu showtime từ API:', data);
+      console.log("Dữ liệu showtime từ API:", data);
 
       // Gọi API song song để lấy thông tin chi tiết
       const promises = [];
@@ -67,92 +68,100 @@ const ShowtimeDetail: React.FC = () => {
       // Lấy thông tin chi tiết phim từ API movie/{id}
       if (data.movieId) {
         promises.push(
-          showtimeService.getMovieById(data.movieId)
-            .then(movie => ({ type: 'movie', data: movie }))
-            .catch(error => {
-              console.error('Lỗi khi lấy thông tin phim:', error);
-              return { type: 'movie', data: null };
+          showtimeService
+            .getMovieById(data.movieId)
+            .then((movie) => ({ type: "movie", data: movie }))
+            .catch((error) => {
+              console.error("Lỗi khi lấy thông tin phim:", error);
+              return { type: "movie", data: null };
             })
         );
       } else {
-        promises.push(Promise.resolve({ type: 'movie', data: null }));
+        promises.push(Promise.resolve({ type: "movie", data: null }));
       }
 
       // Lấy thông tin chi tiết rạp từ API /cinemas/{id}
       if (data.cinemaId) {
         promises.push(
-          showtimeService.getCinemaById(data.cinemaId)
-            .then(cinema => ({ type: 'cinema', data: cinema }))
-            .catch(error => {
-              console.error('Lỗi khi lấy thông tin rạp:', error);
-              return { type: 'cinema', data: null };
+          showtimeService
+            .getCinemaById(data.cinemaId)
+            .then((cinema) => ({ type: "cinema", data: cinema }))
+            .catch((error) => {
+              console.error("Lỗi khi lấy thông tin rạp:", error);
+              return { type: "cinema", data: null };
             })
         );
       } else {
-        promises.push(Promise.resolve({ type: 'cinema', data: null }));
+        promises.push(Promise.resolve({ type: "cinema", data: null }));
       }
 
       // Lấy thông tin phòng chiếu
       if (data.roomId) {
         promises.push(
-          cinemaRoomService.getCinemaRoomById(parseInt(data.roomId))
-            .then(room => ({ type: 'room', data: room }))
-            .catch(error => {
-              console.error('Lỗi khi lấy thông tin phòng:', error);
-              return { type: 'room', data: null };
+          cinemaRoomService
+            .getCinemaRoomById(parseInt(data.roomId))
+            .then((room) => ({ type: "room", data: room }))
+            .catch((error) => {
+              console.error("Lỗi khi lấy thông tin phòng:", error);
+              return { type: "room", data: null };
             })
         );
       } else {
-        promises.push(Promise.resolve({ type: 'room', data: null }));
+        promises.push(Promise.resolve({ type: "room", data: null }));
       }
 
       // Đợi tất cả API calls hoàn thành
       const results = await Promise.all(promises);
 
       // Xử lý kết quả
-      const movieDetails = results.find(r => r.type === 'movie')?.data;
-      const cinemaDetails = results.find(r => r.type === 'cinema')?.data;
-      const roomDetails = results.find(r => r.type === 'room')?.data;
+      const movieDetails = results.find((r) => r.type === "movie")?.data;
+      const cinemaDetails = results.find((r) => r.type === "cinema")?.data;
+      const roomDetails = results.find((r) => r.type === "room")?.data;
 
       // Lấy thông tin phim từ API hoặc từ dữ liệu showtime
-      const movieTitle = movieDetails?.movieName || movieDetails?.Movie_Name || movieDetails?.title ||
-        data.movieTitle || data.movie?.title || 'Chưa xác định';
+      const movieTitle =
+        movieDetails?.movieName ||
+        movieDetails?.Movie_Name ||
+        movieDetails?.title ||
+        data.movieTitle ||
+        data.movie?.title ||
+        "Chưa xác định";
 
       // Xử lý URL poster
-      let posterUrl = movieDetails?.posterURL || movieDetails?.Poster_URL || movieDetails?.poster ||
-        data.movie?.poster || '';
-      if (!posterUrl || posterUrl === '/placeholder.jpg') {
-        posterUrl = 'https://placehold.co/300x450/darkgray/white?text=No+Image';
-      } else if (!posterUrl.startsWith('http')) {
+      let posterUrl =
+        movieDetails?.posterURL || movieDetails?.Poster_URL || movieDetails?.poster || data.movie?.poster || "";
+      if (!posterUrl || posterUrl === "/placeholder.jpg") {
+        posterUrl = "https://placehold.co/300x450/darkgray/white?text=No+Image";
+      } else if (!posterUrl.startsWith("http")) {
         posterUrl = `${window.location.origin}${posterUrl}`;
       }
 
       // Lấy tên rạp từ API hoặc fallback
-      const cinemaName = cinemaDetails?.name || cinemaDetails?.Name ||
-        data.cinemaName || data.cinema?.name || 'Galaxy Cinema';
+      const cinemaName =
+        cinemaDetails?.name || cinemaDetails?.Name || data.cinemaName || data.cinema?.name || "Galaxy Cinema";
 
       // Xử lý dữ liệu ngày giờ an toàn
-      let formattedDate = '';
-      let formattedTime = '';
+      let formattedDate = "";
+      let formattedTime = "";
 
       try {
-        if (data.startTime && typeof data.startTime === 'string') {
-          if (data.startTime.includes('T')) {
-            const [datePart, timePart] = data.startTime.split('T');
+        if (data.startTime && typeof data.startTime === "string") {
+          if (data.startTime.includes("T")) {
+            const [datePart, timePart] = data.startTime.split("T");
             formattedDate = datePart;
             formattedTime = timePart.substring(0, 5);
-          } else if (data.startTime.includes(':')) {
+          } else if (data.startTime.includes(":")) {
             formattedTime = data.startTime.substring(0, 5);
-            formattedDate = data.showDate || new Date().toISOString().split('T')[0];
+            formattedDate = data.showDate || new Date().toISOString().split("T")[0];
           }
         } else {
-          formattedDate = data.showDate || new Date().toISOString().split('T')[0];
-          formattedTime = '00:00';
+          formattedDate = data.showDate || new Date().toISOString().split("T")[0];
+          formattedTime = "00:00";
         }
       } catch (error) {
-        console.error('Lỗi khi xử lý thời gian:', error);
-        formattedDate = new Date().toISOString().split('T')[0];
-        formattedTime = '00:00';
+        console.error("Lỗi khi xử lý thời gian:", error);
+        formattedDate = new Date().toISOString().split("T")[0];
+        formattedTime = "00:00";
       }
 
       // Xử lý createdAt và updatedAt an toàn
@@ -173,7 +182,7 @@ const ShowtimeDetail: React.FC = () => {
 
       // Tính số ghế đã đặt và doanh thu
       const totalSeats = roomDetails?.capacity || roomDetails?.Capacity || data.totalSeats || 0;
-      const bookedSeats = typeof data.bookedSeats === 'number' ? data.bookedSeats : 0;
+      const bookedSeats = typeof data.bookedSeats === "number" ? data.bookedSeats : 0;
       const availableSeats = totalSeats - bookedSeats;
 
       // Tính doanh thu từ giá vé
@@ -181,15 +190,15 @@ const ShowtimeDetail: React.FC = () => {
       const revenue = ticketPrice * bookedSeats;
 
       // Xử lý status an toàn
-      let safeStatus: 'scheduled' | 'hidden' = 'scheduled';
-      
+      let safeStatus: "scheduled" | "hidden" = "scheduled";
+
       // Map các status từ API sang status của frontend
       const statusValue = data.status as string;
-      if (statusValue === 'hidden' || statusValue === 'cancelled' || statusValue === 'completed') {
-        safeStatus = 'hidden';
+      if (statusValue === "hidden" || statusValue === "cancelled" || statusValue === "completed") {
+        safeStatus = "hidden";
       } else {
         // Mặc định là scheduled cho tất cả các trường hợp khác
-        safeStatus = 'scheduled';
+        safeStatus = "scheduled";
       }
 
       // Chuyển đổi dữ liệu từ API sang định dạng frontend sử dụng
@@ -198,7 +207,7 @@ const ShowtimeDetail: React.FC = () => {
         movieTitle: movieTitle,
         moviePoster: posterUrl,
         cinemaName: cinemaName,
-        roomName: roomDetails?.name || roomDetails?.Name || data.roomName || data.room?.name || 'Không xác định',
+        roomName: roomDetails?.name || roomDetails?.Name || data.roomName || data.room?.name || "Không xác định",
         date: formattedDate,
         time: formattedTime,
         duration: movieDetails?.duration || movieDetails?.Duration || data.movie?.duration || 120,
@@ -210,14 +219,13 @@ const ShowtimeDetail: React.FC = () => {
         revenue: revenue,
         createdAt: createdAt,
         updatedAt: updatedAt,
-        createdBy: data.createdBy || 'Admin'
+        createdBy: data.createdBy || "Admin",
       };
 
       setShowtime(formattedShowtime);
     } catch (error) {
-      console.error('Error fetching showtime details:', error);
-      toast.error('Không thể tải thông tin suất chiếu');
-
+      console.error("Error fetching showtime details:", error);
+      toast.error("Không thể tải thông tin suất chiếu");
     } finally {
       setLoading(false);
     }
@@ -225,51 +233,53 @@ const ShowtimeDetail: React.FC = () => {
 
   const handleCancelShowtime = async () => {
     if (!id) return;
-    
+
     try {
       const response = await showtimeService.cancelShowtime(id);
-      
+
       if (response.success) {
-        toast.success('Hủy lịch chiếu thành công');
-        navigate('/admin/showtimes');
+        toast.success("Hủy lịch chiếu thành công");
+        navigate("/admin/showtimes");
       } else {
-        toast.error(response.message || 'Không thể hủy lịch chiếu');
+        toast.error(response.message || "Không thể hủy lịch chiếu");
       }
     } catch (error: any) {
-      console.error('Lỗi khi hủy lịch chiếu:', error);
-      toast.error(error.message || 'Đã xảy ra lỗi khi hủy lịch chiếu');
+      console.error("Lỗi khi hủy lịch chiếu:", error);
+      toast.error(error.message || "Đã xảy ra lỗi khi hủy lịch chiếu");
     } finally {
-
       setShowCancelDialog(false);
     }
   };
 
-
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
-      weekday: 'long',
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
+    return new Date(dateString).toLocaleDateString("vi-VN", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
     });
+  };
+
+  const isHappenedShowtime = (showtime: Showtime) => {
+    const now = new Date();
+    const startTime = new Date(`${showtime.date}T${showtime.time}`);
+    return now >= startTime;
   };
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      'scheduled': { bg: 'bg-blue-100', text: 'text-blue-800', label: 'Đã lên lịch' },
-      'hidden': { bg: 'bg-gray-100', text: 'text-gray-800', label: 'Đã ẩn' },
+      scheduled: { bg: "bg-blue-100", text: "text-blue-800", label: "Đã lên lịch" },
+      hidden: { bg: "bg-gray-100", text: "text-gray-800", label: "Đã ẩn" },
     };
 
     const config = statusConfig[status as keyof typeof statusConfig] || {
-      bg: 'bg-gray-100',
-      text: 'text-gray-800',
-      label: 'Không xác định'
+      bg: "bg-gray-100",
+      text: "text-gray-800",
+      label: "Không xác định",
     };
 
     return (
-      <span className={`px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.text}`}>
-        {config.label}
-      </span>
+      <span className={`px-3 py-1 text-sm font-medium rounded-full ${config.bg} ${config.text}`}>{config.label}</span>
     );
   };
 
@@ -320,7 +330,7 @@ const ShowtimeDetail: React.FC = () => {
                 className="w-40 h-60 object-cover rounded-lg"
                 onError={(e) => {
                   // Fallback image nếu URL hình ảnh không tải được
-                  e.currentTarget.src = 'https://placehold.co/300x450/darkgray/white?text=No+Image';
+                  e.currentTarget.src = "https://placehold.co/300x450/darkgray/white?text=No+Image";
                 }}
               />
               <div className="flex-1 space-y-4">
@@ -339,7 +349,9 @@ const ShowtimeDetail: React.FC = () => {
                     <ClockIcon className="w-5 h-5 text-gray-400" />
                     <div>
                       <div className="text-sm text-gray-400">Giờ chiếu</div>
-                      <div className="text-white">{showtime.time} ({showtime.duration} phút)</div>
+                      <div className="text-white">
+                        {showtime.time} ({showtime.duration} phút)
+                      </div>
                     </div>
                   </div>
 
@@ -373,18 +385,28 @@ const ShowtimeDetail: React.FC = () => {
                   <span className="font-medium">{showtime.bookedSeats}</span>
                   <span className="text-gray-400"> / {showtime.totalSeats} ghế đã đặt</span>
                 </div>
-                <div className={`text-sm font-medium ${occupancyPercentage >= 80 ? 'text-green-400' :
-                  occupancyPercentage >= 50 ? 'text-yellow-400' : 'text-red-400'
-                  }`}>
+                <div
+                  className={`text-sm font-medium ${
+                    occupancyPercentage >= 80
+                      ? "text-green-400"
+                      : occupancyPercentage >= 50
+                      ? "text-yellow-400"
+                      : "text-red-400"
+                  }`}
+                >
                   {occupancyPercentage}%
                 </div>
               </div>
 
               <div className="w-full bg-slate-700 rounded-full h-2.5">
                 <div
-                  className={`h-2.5 rounded-full ${occupancyPercentage >= 80 ? 'bg-green-400' :
-                    occupancyPercentage >= 50 ? 'bg-yellow-400' : 'bg-red-400'
-                    }`}
+                  className={`h-2.5 rounded-full ${
+                    occupancyPercentage >= 80
+                      ? "bg-green-400"
+                      : occupancyPercentage >= 50
+                      ? "bg-yellow-400"
+                      : "bg-red-400"
+                  }`}
                   style={{ width: `${occupancyPercentage}%` }}
                 ></div>
               </div>
@@ -409,33 +431,36 @@ const ShowtimeDetail: React.FC = () => {
             </div>
           </div>
         </div>
+        {!isHappenedShowtime(showtime) && (
+          <>
+            {/* Right column - Actions */}
+            <div className="space-y-6">
+              <div className="bg-slate-800 rounded-lg p-6">
+                <h3 className="text-lg font-medium text-white mb-4">Thao tác</h3>
 
-        {/* Right column - Actions */}
-        <div className="space-y-6">
-          <div className="bg-slate-800 rounded-lg p-6">
-            <h3 className="text-lg font-medium text-white mb-4">Thao tác</h3>
+                <div className="space-y-3">
+                  <Link
+                    to={`/admin/showtimes/edit/${showtime.id}`}
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-FFD875 text-black rounded-lg hover:bg-opacity-90 transition-colors btn-glow btn-yellow"
+                    style={{ backgroundColor: "#FFD875" }}
+                  >
+                    <PencilIcon className="w-5 h-5" />
+                    Chỉnh sửa lịch chiếu
+                  </Link>
 
-            <div className="space-y-3">
-              <Link
-                to={`/admin/showtimes/edit/${showtime.id}`}
-                className="flex items-center gap-2 w-full px-4 py-2 bg-FFD875 text-black rounded-lg hover:bg-opacity-90 transition-colors btn-glow btn-yellow"
-                style={{ backgroundColor: '#FFD875' }}
-              >
-                <PencilIcon className="w-5 h-5" />
-                Chỉnh sửa lịch chiếu
-              </Link>
-
-              <button
-                onClick={() => setShowCancelDialog(true)}
-                className="flex items-center gap-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-                disabled={showtime.status === 'hidden'}
-              >
-                <TrashIcon className="w-5 h-5" />
-                Hủy lịch chiếu
-              </button>
+                  <button
+                    onClick={() => setShowCancelDialog(true)}
+                    className="flex items-center gap-2 w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+                    disabled={showtime.status === "hidden"}
+                  >
+                    <TrashIcon className="w-5 h-5" />
+                    Hủy lịch chiếu
+                  </button>
+                </div>
+              </div>
             </div>
-          </div>
-        </div>
+          </>
+        )}
       </div>
 
       {/* Cancel Confirmation Dialog */}
@@ -453,4 +478,4 @@ const ShowtimeDetail: React.FC = () => {
   );
 };
 
-export default ShowtimeDetail; 
+export default ShowtimeDetail;

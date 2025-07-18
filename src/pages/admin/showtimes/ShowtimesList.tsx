@@ -27,6 +27,8 @@ import showtimeService from "../../../services/showtimeService";
 import apiClient from "../../../services/apiClient";
 import type { Movie } from "../../../types/movie";
 import { useAuth } from "../../../contexts/SimpleAuthContext";
+import movieService from "../../../services/movieService";
+import cinemaService from "../../../services/cinemaService";
 
 interface Cinema {
   id: string;
@@ -37,21 +39,6 @@ interface Cinema {
   Cinema_Name?: string;
   Address?: string;
   Phone_Number?: string;
-}
-
-interface CinemaRoom {
-  id: string;
-  name: string;
-  cinemaId: string;
-  capacity: number;
-  Cinema_Room_ID?: number;
-  Room_Name?: string;
-  Cinema_ID?: number;
-  Cinema?: {
-    Cinema_ID: number;
-    Cinema_Name: string;
-    Address?: string;
-  };
 }
 
 interface Showtime {
@@ -84,19 +71,6 @@ interface Showtime {
     Genre?: string;
     Rating?: string;
   };
-
-  CinemaRoom?: {
-    Cinema_Room_ID: number;
-    Room_Name: string;
-    Room_Type: string;
-    Cinema?: {
-      Cinema_ID: number;
-      Cinema_Name: string;
-      City?: string;
-      Address?: string;
-    };
-  };
-
   // Thêm Cinema object trực tiếp từ API response
   Cinema?: {
     Cinema_ID: number;
@@ -138,17 +112,10 @@ interface Showtime {
 // Hàm tải danh sách phim từ API
 const fetchMovies = async (): Promise<Movie[]> => {
   try {
-    const response = await apiClient.get("/movies");
-
-    let movies = [];
-    if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      movies = response.data.data;
-    } else if (response.data && Array.isArray(response.data)) {
-      movies = response.data;
-    }
+    const response = await movieService.getAllMovies();
 
     // Map dữ liệu phim để chuẩn hóa
-    const mappedMovies = movies.map((movie: any) => ({
+    const mappedMovies = response.map((movie: any) => ({
       ...movie,
       id: movie.Movie_ID || movie.id,
       title: movie.Movie_Name || movie.title || "Không xác định",
@@ -171,17 +138,10 @@ const fetchMovies = async (): Promise<Movie[]> => {
 // Hàm tải danh sách rạp từ API
 const fetchCinemas = async (): Promise<Cinema[]> => {
   try {
-    const response = await apiClient.get("/cinemas");
-
-    let cinemas = [];
-    if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      cinemas = response.data.data;
-    } else if (response.data && Array.isArray(response.data)) {
-      cinemas = response.data;
-    }
+    const response = await cinemaService.getActiveCinemas();
 
     // Map dữ liệu rạp để chuẩn hóa
-    const mappedCinemas = cinemas.map((cinema: any) => ({
+    const mappedCinemas = response.map((cinema: any) => ({
       ...cinema,
       id: (cinema.Cinema_ID || cinema.id)?.toString() || "",
       name: cinema.Cinema_Name || cinema.name || "Không xác định",
@@ -197,62 +157,7 @@ const fetchCinemas = async (): Promise<Cinema[]> => {
   }
 };
 
-// Hàm tải danh sách phòng chiếu từ API
-const fetchCinemaRooms = async (): Promise<CinemaRoom[]> => {
-  try {
-    const response = await apiClient.get("/cinema-rooms");
-
-    let rooms = [];
-    if (response.data && response.data.data && Array.isArray(response.data.data)) {
-      rooms = response.data.data;
-    } else if (response.data && Array.isArray(response.data)) {
-      rooms = response.data;
-    }
-
-    return rooms;
-  } catch (error) {
-    console.error("Lỗi khi tải danh sách phòng chiếu:", error);
-    // Thử API khác nếu cinema-rooms không có
-    try {
-      const cinemasResponse = await apiClient.get("/cinemas");
-      let cinemas = [];
-
-      if (cinemasResponse.data && cinemasResponse.data.data && Array.isArray(cinemasResponse.data.data)) {
-        cinemas = cinemasResponse.data.data;
-      } else if (cinemasResponse.data && Array.isArray(cinemasResponse.data)) {
-        cinemas = cinemasResponse.data;
-      }
-
-      // Flatten all rooms from all cinemas
-      const allRooms: CinemaRoom[] = [];
-      cinemas.forEach((cinema: any) => {
-        if (cinema.CinemaRooms && Array.isArray(cinema.CinemaRooms)) {
-          cinema.CinemaRooms.forEach((room: any) => {
-            allRooms.push({
-              ...room,
-              id: room.Cinema_Room_ID?.toString() || "",
-              name: room.Room_Name || "",
-              cinemaId: cinema.Cinema_ID?.toString() || "",
-              capacity: room.Seat_Quantity || 0,
-              Cinema: {
-                Cinema_ID: cinema.Cinema_ID,
-                Cinema_Name: cinema.Cinema_Name,
-                Address: cinema.Address,
-              },
-            });
-          });
-        }
-      });
-
-      return allRooms;
-    } catch (fallbackError) {
-      console.error("Lỗi khi tải phòng chiếu từ fallback API:", fallbackError);
-      return [];
-    }
-  }
-};
-
-const fetchShowtimes = async (cinemasData: Cinema[] = [], roomsData: CinemaRoom[] = []): Promise<Showtime[]> => {
+const fetchShowtimes = async (): Promise<Showtime[]> => {
   try {
     // Gọi API /showtimes để lấy dữ liệu
     const response = await apiClient.get("/showtimes");
@@ -265,28 +170,6 @@ const fetchShowtimes = async (cinemasData: Cinema[] = [], roomsData: CinemaRoom[
 
     // Map với enrichment từ movies, cinemas và rooms data
     const mappedShowtimes = data.map((showtime: any) => {
-      // Tìm room info từ roomsData
-      const roomInfo = roomsData.find(
-        (r: any) =>
-          r.Cinema_Room_ID?.toString() === showtime.Cinema_Room_ID?.toString() ||
-          r.id?.toString() === showtime.Cinema_Room_ID?.toString()
-      );
-
-      // Lấy cinema info từ room hoặc tìm trực tiếp từ cinemasData
-      let cinemaInfo = null;
-      if (roomInfo && roomInfo.Cinema) {
-        cinemaInfo = {
-          name: roomInfo.Cinema.Cinema_Name,
-          address: roomInfo.Cinema.Address,
-        };
-      } else if (roomInfo && roomInfo.cinemaId) {
-        cinemaInfo = cinemasData.find((c) => c.id === roomInfo.cinemaId);
-      }
-
-      // Fallback nếu không tìm thấy cinema info
-      if (!cinemaInfo) {
-        cinemaInfo = { name: "Không xác định", address: null };
-      }
 
       return {
         ...showtime,
@@ -295,7 +178,7 @@ const fetchShowtimes = async (cinemasData: Cinema[] = [], roomsData: CinemaRoom[
 
         // Map dữ liệu để tương thích với component
         movieId: showtime.Movie_ID?.toString() || "",
-        cinemaId: roomInfo?.cinemaId || showtime.Cinema_Room_ID?.toString(),
+        cinemaId: showtime.Cinema_Room_ID?.toString(),
         roomId: showtime.Cinema_Room_ID?.toString() || "",
         startTime: showtime.Start_Time || "",
         endTime: showtime.End_Time || "",
@@ -347,14 +230,14 @@ const fetchShowtimes = async (cinemasData: Cinema[] = [], roomsData: CinemaRoom[
 };
 
 // Hàm map status từ API sang format component
-const mapStatus = (apiStatus: string): "scheduled" | "hidden" => {
+const mapStatus = (apiStatus: string): "Đã lên lịch" | "Đã ẩn" => {
   switch (apiStatus?.toLowerCase()) {
     case "scheduled":
-      return "scheduled";
+      return "Đã lên lịch";
     case "hidden":
-      return "hidden";
+      return "Đã ẩn";
     default:
-      return "scheduled";
+      return "Đã lên lịch"; // Mặc định là "Đã lên lịch" nếu không xác định
   }
 };
 
@@ -501,40 +384,25 @@ const ShowtimesList: React.FC = () => {
 
       try {
         // Fetch movies với loading state riêng
-        fetchMovies()
-          .then((data) => {
-            setMovies(data);
-            return data;
-          })
-          .catch((_) => {
-            return [];
-          });
-
-        // Fetch cinemas với loading state riêng
-        const cinemasPromise = fetchCinemas()
-          .then((data) => {
-            setCinemas(data);
-            return data;
-          })
-          .catch((_) => {
-            return [];
-          });
-
-        // Fetch cinema rooms
-        const roomsPromise = fetchCinemaRooms().catch((error) => {
-          console.error("Lỗi khi fetch cinema rooms:", error);
+        const moviesData = await fetchMovies().catch((error) => {
+          console.error("Lỗi khi fetch movies:", error);
           return [];
         });
+        setMovies(moviesData);
 
-        // Fetch movies, cinemas và rooms trước
-        const [cinemasData, roomsData] = await Promise.all([cinemasPromise, roomsPromise]);
+        // Fetch cinemas với loading state riêng
+        const cinemasData = await fetchCinemas().catch((error) => {
+          console.error("Lỗi khi fetch cinemas:", error);
+          return [];
+        });
+        setCinemas(cinemasData);
 
-        // Fetch showtimes dựa trên vai trò người dùng
+        // // Fetch showtimes dựa trên vai trò người dùng
         let showtimesData: Showtime[] = [];
 
         if (isAdmin) {
           // Admin có thể xem tất cả suất chiếu
-          showtimesData = await fetchShowtimes(cinemasData, roomsData);
+          showtimesData = await fetchShowtimes();
         } else {
           // Manager chỉ xem suất chiếu của rạp họ quản lý
           const managerResponse = await showtimeService.getShowtimesByManagerCinema();
@@ -557,18 +425,6 @@ const ShowtimesList: React.FC = () => {
           }
         }
 
-        // Nếu không có dữ liệu từ các phương thức trên, thử lấy trực tiếp từ API
-        if (!showtimesData || showtimesData.length === 0) {
-          try {
-            const directResponse = await apiClient.get("/showtimes");
-            if (directResponse.data && Array.isArray(directResponse.data)) {
-              // Map basic data, enrichment sẽ được thực hiện qua fetchShowtimes
-              showtimesData = await fetchShowtimes(cinemasData, roomsData);
-            }
-          } catch (directError) {
-            console.error("Lỗi khi lấy dữ liệu trực tiếp:", directError);
-          }
-        }
         setShowtimes(showtimesData);
 
         // Kiểm tra tham số URL cho bộ lọc
@@ -589,7 +445,7 @@ const ShowtimesList: React.FC = () => {
     };
 
     fetchData();
-  }, [location.search, isAdmin]); // Thêm isAdmin vào dependencies để fetch lại khi vai trò thay đổi
+  }, [location.search, isAdmin]); 
 
   // Excel headers
   const excelHeaders = {
@@ -679,10 +535,7 @@ const ShowtimesList: React.FC = () => {
       if (selectedCinemaId && isAdmin) {
         const cinemaIdToCheck = Number(selectedCinemaId);
         // Check multiple possible cinema ID fields in the showtime object
-        const showtimeCinemaId =
-          showtime.Cinema?.Cinema_ID ||
-          showtime.CinemaRoom?.Cinema?.Cinema_ID ||
-          (showtime.cinemaId ? Number(showtime.cinemaId) : null);
+        const showtimeCinemaId = showtime.Cinema?.Cinema_ID || (showtime.cinemaId ? Number(showtime.cinemaId) : null);
 
         if (showtimeCinemaId !== cinemaIdToCheck) return false;
       }
@@ -736,34 +589,24 @@ const ShowtimesList: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      scheduled: {
+      "Đã lên lịch": {
         bg: "bg-blue-500/20",
         text: "text-blue-400",
         border: "border-blue-500/30",
       },
-      ongoing: {
-        bg: "bg-green-500/20",
-        text: "text-green-400",
-        border: "border-green-500/30",
-      },
-      completed: {
-        bg: "bg-gray-500/20",
-        text: "text-gray-400",
-        border: "border-gray-500/30",
-      },
-      cancelled: {
-        bg: "bg-red-500/20",
-        text: "text-red-400",
-        border: "border-red-500/30",
-      },
-      hidden: {
+      "Đã ẩn": {
         bg: "bg-purple-500/20",
         text: "text-purple-400",
         border: "border-purple-500/30",
       },
     };
 
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.completed;
+    const config = statusConfig[status as keyof typeof statusConfig] || {
+      bg: "bg-gray-500/20",
+      text: "text-gray-400",
+      border: "border-gray-500/30",
+    };
+
     return (
       <span
         className={`px-3 py-1 text-xs font-medium rounded-full border ${config.bg} ${config.text} ${config.border}`}
@@ -1047,8 +890,8 @@ const ShowtimesList: React.FC = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <div className="overflow-x-auto">
-            <table className="w-full">
+          <div className="overflow-x-hidden h-[105vh]">
+            <table className="w-full h-full">
               <thead className="bg-[#FFD875]/10 backdrop-blur-sm">
                 <tr>
                   <th className="py-4 px-6 text-left text-xs font-medium text-[#FFD875] uppercase tracking-wider">
@@ -1169,9 +1012,6 @@ const ShowtimesList: React.FC = () => {
                                   {showtime.Movie?.Duration} phút
                                 </span>
                               )}
-                              {showtime.Movie?.Genre && (
-                                <span className="px-2 py-0.5 bg-slate-700 rounded-full">{showtime.Movie?.Genre}</span>
-                              )}
                             </div>
                           </div>
                         </div>
@@ -1245,32 +1085,35 @@ const ShowtimesList: React.FC = () => {
                             <EyeIcon className="w-5 h-5" />
                           </Link>
                           {!isHappenedShowtime(showtime) && (
-                            <Link
-                              to={`/admin/showtimes/${showtime.Showtime_ID}`}
-                              className="p-2 text-gray-400 hover:text-[#FFD875] transition-all duration-300 rounded-lg hover:bg-[#FFD875]/10 hover:shadow-[0_0_15px_rgba(255,216,117,0.3)]"
-                              title="Chỉnh sửa"
-                            >
-                              <PencilIcon className="w-5 h-5" />
-                            </Link>
+                            <>
+                              <Link
+                                to={`/admin/showtimes/${showtime.Showtime_ID}`}
+                                className="p-2 text-gray-400 hover:text-[#FFD875] transition-all duration-300 rounded-lg hover:bg-[#FFD875]/10 hover:shadow-[0_0_15px_rgba(255,216,117,0.3)]"
+                                title="Chỉnh sửa"
+                              >
+                                <PencilIcon className="w-5 h-5" />
+                              </Link>
+
+                              <button
+                                onClick={async () => {
+                                  if (window.confirm(`Bạn có chắc chắn muốn xóa suất chiếu này?`)) {
+                                    try {
+                                      await showtimeService.deleteShowtime(showtime.Showtime_ID.toString());
+                                      toast.success("Đã xóa suất chiếu thành công");
+                                      const updatedShowtimes = await fetchShowtimes();
+                                      setShowtimes(updatedShowtimes);
+                                    } catch (error) {
+                                      toast.error("Không thể xóa suất chiếu");
+                                    }
+                                  }
+                                }}
+                                className="p-2 text-gray-400 hover:text-red-500 transition-all duration-300 rounded-lg hover:bg-red-500/10 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
+                                title="Xóa"
+                              >
+                                <TrashIcon className="w-5 h-5" />
+                              </button>
+                            </>
                           )}
-                          <button
-                            onClick={async () => {
-                              if (window.confirm(`Bạn có chắc chắn muốn xóa suất chiếu này?`)) {
-                                try {
-                                  await showtimeService.deleteShowtime(showtime.Showtime_ID.toString());
-                                  toast.success("Đã xóa suất chiếu thành công");
-                                  const updatedShowtimes = await fetchShowtimes();
-                                  setShowtimes(updatedShowtimes);
-                                } catch (error) {
-                                  toast.error("Không thể xóa suất chiếu");
-                                }
-                              }
-                            }}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-all duration-300 rounded-lg hover:bg-red-500/10 hover:shadow-[0_0_15px_rgba(239,68,68,0.3)]"
-                            title="Xóa"
-                          >
-                            <TrashIcon className="w-5 h-5" />
-                          </button>
                         </div>
                       </td>
                     </motion.tr>

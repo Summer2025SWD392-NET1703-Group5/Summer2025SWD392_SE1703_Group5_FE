@@ -120,7 +120,9 @@ const EditPromotion: React.FC = () => {
         return '';
       case 'Start_Date':
         if (!value) return 'Ngày bắt đầu không được để trống';
-        if (value <= getTodayDate()) return 'Ngày bắt đầu phải ở trong tương lai';
+
+        // if (value <= getTodayDate()) return 'Ngày bắt đầu phải ở trong tương lai';
+
         if (formData.End_Date && value === formData.End_Date) {
           return 'Ngày bắt đầu không được trùng với ngày kết thúc';
         }
@@ -391,12 +393,11 @@ const EditPromotion: React.FC = () => {
                         onBlur={handleBlur}
                         required
                         placeholder="Nhập tên khuyến mãi"
-                        className={`w-full bg-slate-800 border rounded-lg py-2 px-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${errors.Title ? 'border-red-500' : 'border-slate-700'
-                          }`}
+                        className={`w-full bg-slate-800 border rounded-lg py-2 px-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${
+                          errors.Title ? "border-red-500" : "border-slate-700"
+                        }`}
                       />
-                      {errors.Title && (
-                        <p className="text-red-400 text-sm mt-1">{errors.Title}</p>
-                      )}
+                      {errors.Title && <p className="text-red-400 text-sm mt-1">{errors.Title}</p>}
                     </div>
 
                     {/* Promotion Code */}
@@ -414,8 +415,9 @@ const EditPromotion: React.FC = () => {
                           onBlur={handleBlur}
                           required
                           placeholder="Ví dụ: SUMMER2024"
-                          className={`flex-grow bg-slate-800 border rounded-l-lg py-2 px-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${errors.Promotion_Code ? 'border-red-500' : 'border-slate-700'
-                            }`}
+                          className={`flex-grow bg-slate-800 border rounded-l-lg py-2 px-3 text-white placeholder-gray-500 focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${
+                            errors.Promotion_Code ? "border-red-500" : "border-slate-700"
+                          }`}
                         />
                         <button
                           type="button"
@@ -425,9 +427,7 @@ const EditPromotion: React.FC = () => {
                           Tạo mã
                         </button>
                       </div>
-                      {errors.Promotion_Code && (
-                        <p className="text-red-400 text-sm mt-1">{errors.Promotion_Code}</p>
-                      )}
+                      {errors.Promotion_Code && <p className="text-red-400 text-sm mt-1">{errors.Promotion_Code}</p>}
                     </div>
 
                     {/* Description */}
@@ -438,7 +438,7 @@ const EditPromotion: React.FC = () => {
                       <textarea
                         id="Promotion_Detail"
                         name="Promotion_Detail"
-                        value={formData.Promotion_Detail || ''}
+                        value={formData.Promotion_Detail || ""}
                         onChange={handleChange}
                         rows={4}
                         placeholder="Mô tả chi tiết về khuyến mãi"
@@ -467,13 +467,12 @@ const EditPromotion: React.FC = () => {
                         value={formData.Start_Date}
                         onChange={handleChange}
                         required
-                        min={getTodayDate()}
-                        className={`w-full bg-slate-800 border rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${errors.Start_Date ? 'border-red-500' : 'border-slate-700'
-                          }`}
+                        disabled
+                        className={`w-full bg-gray-600 cursor-not-allowed opacity-70 bg-slate-800 border rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${
+                          errors.Start_Date ? "border-red-500" : "border-slate-700"
+                        }`}
                       />
-                      {errors.Start_Date && (
-                        <p className="text-red-400 text-sm mt-1">{errors.Start_Date}</p>
-                      )}
+                      {errors.Start_Date && <p className="text-red-400 text-sm mt-1">{errors.Start_Date}</p>}
                     </div>
 
                     {/* End Date */}
@@ -489,12 +488,11 @@ const EditPromotion: React.FC = () => {
                         onChange={handleChange}
                         required
                         min={getTodayDate()}
-                        className={`w-full bg-slate-800 border rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${errors.End_Date ? 'border-red-500' : 'border-slate-700'
-                          }`}
+                        className={`w-full bg-slate-800 border rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all ${
+                          errors.End_Date ? "border-red-500" : "border-slate-700"
+                        }`}
                       />
-                      {errors.End_Date && (
-                        <p className="text-red-400 text-sm mt-1">{errors.End_Date}</p>
-                      )}
+                      {errors.End_Date && <p className="text-red-400 text-sm mt-1">{errors.End_Date}</p>}
                     </div>
                   </div>
                 </div>
@@ -530,7 +528,7 @@ const EditPromotion: React.FC = () => {
                     {/* Discount Value */}
                     <div className="mb-6">
                       <label htmlFor="Discount_Value" className="block text-sm font-medium text-gray-300 mb-2">
-                        {formData.Discount_Type === 'Percentage' ? 'Phần trăm giảm giá (%)' : 'Giá trị giảm (VND)'}
+                        {formData.Discount_Type === "Percentage" ? "Phần trăm giảm giá (%)" : "Giá trị giảm (VND)"}
                         <span className="text-red-500">*</span>
                       </label>
                       <input
@@ -541,18 +539,21 @@ const EditPromotion: React.FC = () => {
                         onChange={handleNumberChange}
                         onBlur={handleBlur}
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all"
-                        placeholder={formData.Discount_Type === 'Percentage' ? 'Ví dụ: 10' : 'Ví dụ: 50000'}
+                        placeholder={formData.Discount_Type === "Percentage" ? "Ví dụ: 10" : "Ví dụ: 50000"}
                         required
                       />
                       {errors.Discount_Value && <p className="mt-1 text-sm text-red-500">{errors.Discount_Value}</p>}
-                      {formData.Discount_Value !== '' && !errors.Discount_Value && (
+                      {formData.Discount_Value !== "" && !errors.Discount_Value && (
                         <p className="mt-1 text-sm text-gray-400">
-                          Giá trị: {formatDisplayNumber(formData.Discount_Value)} {formData.Discount_Type === 'Percentage' ? '%' : 'đ'}
+                          Giá trị: {formatDisplayNumber(formData.Discount_Value)}{" "}
+                          {formData.Discount_Type === "Percentage" ? "%" : "đ"}
                         </p>
                       )}
-                      {formData.Discount_Type === 'Percentage' && formData.Discount_Value !== '' && Number(formData.Discount_Value) > 100 && (
-                        <p className="mt-1 text-sm text-red-500">Phần trăm giảm giá không được vượt quá 100%</p>
-                      )}
+                      {formData.Discount_Type === "Percentage" &&
+                        formData.Discount_Value !== "" &&
+                        Number(formData.Discount_Value) > 100 && (
+                          <p className="mt-1 text-sm text-red-500">Phần trăm giảm giá không được vượt quá 100%</p>
+                        )}
                     </div>
 
                     {/* Min Order Value */}
@@ -570,8 +571,10 @@ const EditPromotion: React.FC = () => {
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all"
                         placeholder="Ví dụ: 100000"
                       />
-                      {errors.Minimum_Purchase && <p className="mt-1 text-sm text-red-500">{errors.Minimum_Purchase}</p>}
-                      {formData.Minimum_Purchase !== '' && !errors.Minimum_Purchase && (
+                      {errors.Minimum_Purchase && (
+                        <p className="mt-1 text-sm text-red-500">{errors.Minimum_Purchase}</p>
+                      )}
+                      {formData.Minimum_Purchase !== "" && !errors.Minimum_Purchase && (
                         <p className="mt-1 text-sm text-gray-400">
                           Tối thiểu: {formatDisplayNumber(formData.Minimum_Purchase)}đ
                         </p>
@@ -579,7 +582,7 @@ const EditPromotion: React.FC = () => {
                     </div>
 
                     {/* Max Discount */}
-                    {formData.Discount_Type === 'Percentage' && (
+                    {formData.Discount_Type === "Percentage" && (
                       <div className="mb-6">
                         <label htmlFor="Maximum_Discount" className="block text-sm font-medium text-gray-300 mb-2">
                           Giảm giá tối đa (VND)
@@ -594,8 +597,10 @@ const EditPromotion: React.FC = () => {
                           className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all"
                           placeholder="Ví dụ: 100000"
                         />
-                        {errors.Maximum_Discount && <p className="mt-1 text-sm text-red-500">{errors.Maximum_Discount}</p>}
-                        {formData.Maximum_Discount !== '' && !errors.Maximum_Discount && (
+                        {errors.Maximum_Discount && (
+                          <p className="mt-1 text-sm text-red-500">{errors.Maximum_Discount}</p>
+                        )}
+                        {formData.Maximum_Discount !== "" && !errors.Maximum_Discount && (
                           <p className="mt-1 text-sm text-gray-400">
                             Tối đa: {formatDisplayNumber(formData.Maximum_Discount)}đ
                           </p>
@@ -635,7 +640,7 @@ const EditPromotion: React.FC = () => {
                         className="w-full bg-slate-800 border border-slate-700 rounded-lg py-2 px-3 text-white focus:ring-2 focus:ring-[#FFD875] focus:border-transparent transition-all"
                         placeholder="Ví dụ: 100"
                       />
-                      {formData.Usage_Limit !== '' && (
+                      {formData.Usage_Limit !== "" && (
                         <p className="mt-1 text-sm text-gray-400">
                           Giới hạn: {formatDisplayNumber(formData.Usage_Limit)} lần sử dụng
                         </p>
@@ -681,9 +686,11 @@ const EditPromotion: React.FC = () => {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className={`px-6 py-2 bg-[#FFD875] text-black rounded-lg font-medium hover:bg-[#FFD875]/80 transition-colors ${isSubmitting ? 'opacity-70 cursor-not-allowed' : ''}`}
+                className={`px-6 py-2 bg-[#FFD875] text-black rounded-lg font-medium hover:bg-[#FFD875]/80 transition-colors ${
+                  isSubmitting ? "opacity-70 cursor-not-allowed" : ""
+                }`}
               >
-                {isSubmitting ? 'Đang xử lý...' : 'Lưu thay đổi'}
+                {isSubmitting ? "Đang xử lý..." : "Lưu thay đổi"}
               </button>
             </div>
           </div>

@@ -110,7 +110,7 @@ const CinemaRoomForm: React.FC<CinemaRoomFormProps> = ({ room, onSubmit, onCance
     const [createdRoomId, setCreatedRoomId] = useState<number | null>(null); // Lưu ID phòng vừa tạo
     const [completedSteps, setCompletedSteps] = useState<Set<string>>(new Set()); // Track các bước đã hoàn thành
     const [seatLayoutErrors, setSeatLayoutErrors] = useState<string[]>([]); // Lưu trữ lỗi validation seat layout
-
+    const [cinema, setCinema] = useState<string | null>(null); // Lưu tên rạp chiếu phim
 
     // Seat layout configuration state
     const [seatLayoutConfig, setSeatLayoutConfig] = useState<SeatLayoutConfigData>({

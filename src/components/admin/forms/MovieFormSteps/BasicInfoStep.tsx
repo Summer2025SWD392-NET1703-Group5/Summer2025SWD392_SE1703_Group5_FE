@@ -4,7 +4,6 @@ import { FilmIcon, ClockIcon, StarIcon } from '@heroicons/react/24/outline';
 import { motion } from 'framer-motion';
 import CreatableCombobox from '../../common/CreatableCombobox';
 import type { MovieReferences, MovieFormData } from '../../../../types/movie';
-import * as yup from 'yup';
 
 interface BasicInfoStepProps {
     references: MovieReferences;
@@ -13,7 +12,6 @@ interface BasicInfoStepProps {
 
 const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ references, additionalData }) => {
     const { register, control, watch, setValue, formState: { errors }, clearErrors, setError } = useFormContext<MovieFormData>();
-    const watchStatus = watch('Status');
 
     useEffect(() => {
         // Đảm bảo Status và Language được đặt đúng giá trị ban đầu nếu có sẵn
@@ -29,8 +27,6 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ references, additionalDat
         'Coming Soon': 'Sắp chiếu',
         'Now Showing': 'Đang chiếu',
         'Ended': 'Đã kết thúc',
-        'Cancelled': 'Đã hủy',
-        'Inactive': 'Không hoạt động',
     };
 
     // Animation variants for form elements
@@ -169,7 +165,7 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ references, additionalDat
                                     message: 'Thời lượng phim phải từ 60 phút trở lên'
                                 },
                                 validate: value =>
-                                    parseInt(value as string) >= 60 || 'Thời lượng phim phải từ 60 phút trở lên'
+                                    Number(value) >= 60 || 'Thời lượng phim phải từ 60 phút trở lên'
                             })}
                             onChange={handleDurationChange}
                             min="60"
@@ -246,8 +242,6 @@ const BasicInfoStep: React.FC<BasicInfoStepProps> = ({ references, additionalDat
                                     <option value="Coming Soon">Sắp chiếu</option>
                                     <option value="Now Showing">Đang chiếu</option>
                                     <option value="Ended">Đã kết thúc</option>
-                                    <option value="Cancelled">Đã hủy</option>
-                                    <option value="Inactive">Không hoạt động</option>
                                 </>
                             )}
                         </select>

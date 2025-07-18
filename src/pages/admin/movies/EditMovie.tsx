@@ -124,7 +124,7 @@ const EditMovie: React.FC = () => {
 
   // Config giới hạn trạng thái cho form edit
   const limitedStatuses = {
-    statuses: ['Now Showing', 'Ended', 'Cancelled', 'Inactive']
+    statuses: ['Now Showing', 'Coming Soon', 'Ended'],
   };
 
   return (

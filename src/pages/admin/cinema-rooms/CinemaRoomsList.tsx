@@ -50,7 +50,7 @@ const CinemaRoomsList: React.FC = () => {
         
         if (isAdmin) {
           // Admin có thể xem tất cả các rạp
-        const fetchedCinemas = await cinemaService.getAllCinemas();
+        const fetchedCinemas = await cinemaService.getActiveCinemas();
         setCinemas(fetchedCinemas);
 
         if (fetchedCinemas.length > 0) {
@@ -69,6 +69,7 @@ const CinemaRoomsList: React.FC = () => {
             
             // Lấy ID của rạp manager quản lý
             const cinemaId = fetchedCinema.Cinema_ID;
+            setSearchParams({ cinemaId: cinemaId.toString() });
             
             // Lấy danh sách phòng của rạp đó
             await fetchRoomsForCinema(cinemaId);

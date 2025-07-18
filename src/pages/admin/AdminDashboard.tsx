@@ -11,15 +11,7 @@ import {
   SparklesIcon,
   BuildingOfficeIcon,
 } from "@heroicons/react/24/outline";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  ResponsiveContainer
-} from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { getAllBookings } from "../../services/admin/bookingManagementServices";
 import movieService from "../../services/movieService";
 import cinemaService from "../../services/cinemaService";
@@ -36,7 +28,7 @@ interface RecentActivity {
   id: string;
   description: string;
   timestamp: Date;
-  type: 'booking' | 'payment' | 'cancellation' | 'update';
+  type: "booking" | "payment" | "cancellation" | "update";
 }
 
 interface ChartData {
@@ -68,25 +60,20 @@ const AdminDashboard: React.FC = () => {
   const fetchDashboardData = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Use only real API services - no mock fetch calls
-      await Promise.all([
-        calculateStatsFromServices(),
-        getRecentActivitiesFromServices(),
-        generateChartData()
-      ]);
-      
+      await Promise.all([calculateStatsFromServices(), getRecentActivitiesFromServices(), generateChartDataLocal()]);
     } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      setError('Không thể tải dữ liệu dashboard');
+      console.error("Error fetching dashboard data:", error);
+      setError("Không thể tải dữ liệu dashboard");
       // Set fallback values
       setDashboardStats({
         totalRevenue: 0,
         totalTickets: 0,
         totalMovies: 0,
         totalCustomers: 0,
-        totalCinemas: 0
+        totalCinemas: 0,
       });
       setRecentActivities([]);
     } finally {
@@ -94,46 +81,66 @@ const AdminDashboard: React.FC = () => {
     }
   };
 
-  const generateChartData = async () => {
+  // Alternative approach - if you want to work entirely in local time:
+  const generateChartDataLocal = async () => {
     try {
-      const bookingsResponse = await getAllBookings(1, 1000);
-      
+      const bookingsResponse = await getAllBookings(1, 2000);
+
       if (bookingsResponse?.data) {
-        const bookings = bookingsResponse.data;
-        
-        // Get last 7 days
+        const bookings = bookingsResponse.data.filter((booking: any) => {
+          return booking.Status === "Confirmed" || booking.Status === "Đã xác nhận";
+        });
+
+        // Get last 7 days in local time
+        const today = new Date();
         const last7Days = [];
+
         for (let i = 6; i >= 0; i--) {
-          const date = new Date();
-          date.setDate(date.getDate() - i);
+          const date = new Date(today);
+          date.setDate(today.getDate() - i);
+          date.setHours(0, 0, 0, 0); // Reset to midnight local time
           last7Days.push(date);
         }
-        
-        // Calculate revenue and tickets for each day
-        const chartData: ChartData[] = last7Days.map(date => {
-          const dateStr = date.toISOString().split('T')[0]; // YYYY-MM-DD format
-          const dayBookings = bookings.filter((booking: any) => {
-            const bookingDate = new Date(booking.created_at || booking.Booking_Date);
-            return bookingDate.toISOString().split('T')[0] === dateStr;
-          });
-          
-          const revenue = dayBookings.reduce((sum: number, booking: any) => 
-            sum + (booking.Total_Amount || 0), 0
+
+        const formatDateLocal = (date: Date): string => {
+          return (
+            date.getFullYear() +
+            "-" +
+            String(date.getMonth() + 1).padStart(2, "0") +
+            "-" +
+            String(date.getDate()).padStart(2, "0")
           );
-          
+        };
+
+        // Helper: parse ISO date string as if it’s in local time
+        const parseLocalISOString = (isoString: string): Date => {
+          const parts = isoString.split(/[-T:.Z]/).map(Number);
+          return new Date(parts[0], parts[1] - 1, parts[2], parts[3] || 0, parts[4] || 0, parts[5] || 0, parts[6] || 0);
+        };
+
+        const chartData: ChartData[] = last7Days.map((date) => {
+          const dateStr = formatDateLocal(date);
+          const dayBookings = bookings.filter((booking: any) => {
+            const bookingDate = parseLocalISOString(booking.Booking_Date || booking.created_at);
+            const localBookingDate = new Date(bookingDate.getFullYear(), bookingDate.getMonth(), bookingDate.getDate());
+            const bookingDateStr = formatDateLocal(localBookingDate);
+            return bookingDateStr === dateStr;
+          });
+          const revenue = dayBookings.reduce((sum: number, booking: any) => sum + (booking.Total_Amount || 0), 0);
+
           return {
-            date: date.toLocaleDateString('vi-VN', { month: 'short', day: 'numeric' }),
+            date: date.toLocaleDateString("vi-VN", { month: "short", day: "numeric" }),
             revenue: revenue,
-            tickets: dayBookings.length
+            tickets: dayBookings.length,
           };
         });
-        
+
         setChartData(chartData);
       } else {
         setChartData([]);
       }
     } catch (error) {
-      console.error('Error generating chart data:', error);
+      console.error("Error generating chart data:", error);
       setChartData([]);
     }
   };
@@ -144,7 +151,7 @@ const AdminDashboard: React.FC = () => {
       const [moviesResult, bookingsResult, cinemasResult] = await Promise.allSettled([
         movieService.getMovies(),
         getAllBookings(1, 1000), // Get first 1000 bookings for stats
-        cinemaService.getAllCinemas() // Get all cinemas for count
+        cinemaService.getAllCinemas(), // Get all cinemas for count
       ]);
 
       let totalMovies = 0;
@@ -153,68 +160,58 @@ const AdminDashboard: React.FC = () => {
       let totalCustomers = 0;
       let totalCinemas = 0;
 
-      if (moviesResult.status === 'fulfilled') {
+      if (moviesResult.status === "fulfilled") {
         const allMovies = moviesResult.value || [];
         // Filter for only "now showing" movies (status: "Now Showing" or similar)
         const nowShowingMovies = allMovies.filter((movie: any) => {
-          const status = movie.status || movie.Status || '';
-          return status.toLowerCase().includes('now showing') || 
-                 status.toLowerCase().includes('đang chiếu') ||
-                 status === 'active' ||
-                 status === 'showing';
+          const status = movie.status || movie.Status || "";
+          return (
+            status.toLowerCase().includes("now showing") ||
+            status.toLowerCase().includes("đang chiếu") ||
+            status === "active" ||
+            status === "showing"
+          );
         });
         totalMovies = nowShowingMovies.length;
       }
 
-      if (bookingsResult.status === 'fulfilled' && bookingsResult.value?.data) {
+      if (bookingsResult.status === "fulfilled" && bookingsResult.value?.data) {
         const bookings = bookingsResult.value.data;
-        
+
         // Get current month and year
         const currentDate = new Date();
         const currentMonth = currentDate.getMonth();
         const currentYear = currentDate.getFullYear();
-        
+
         // Filter bookings for current month
         const thisMonthBookings = bookings.filter((booking: any) => {
           const bookingDate = new Date(booking.created_at || booking.Booking_Date);
-          return bookingDate.getMonth() === currentMonth && 
-                 bookingDate.getFullYear() === currentYear;
+          return bookingDate.getMonth() === currentMonth && bookingDate.getFullYear() === currentYear;
         });
-        
+
         totalTickets = thisMonthBookings.length || 0;
-        totalRevenue = bookings.reduce((sum: number, booking: any) => 
-          sum + (booking.Total_Amount || 0), 0
-        );
+        totalRevenue = bookings.reduce((sum: number, booking: any) => sum + (booking.Total_Amount || 0), 0);
         // Count unique customers from all bookings (not just this month)
         const allEmails = bookings.map((b: any) => {
           // Try multiple possible email field names
-          return b.CustomerEmail || b.Customer_Email || b.Email || b.email || 
-                 b.customer_email || b.userEmail || b.User_Email;
+          return (
+            b.CustomerEmail || b.Customer_Email || b.Email || b.email || b.customer_email || b.userEmail || b.User_Email
+          );
         });
-        
-        console.log('All emails from bookings:', allEmails);
-        
-        const validEmails = allEmails.filter((email: string) => 
-          email && 
-          email.trim() !== '' && 
-          email.includes('@') &&
-          email.includes('.')
+
+        const validEmails = allEmails.filter(
+          (email: string) => email && email.trim() !== "" && email.includes("@") && email.includes(".")
         );
-        
-        console.log('Valid emails:', validEmails);
-        
+
         const uniqueCustomers = new Set(validEmails);
-        console.log('Unique customers count:', uniqueCustomers.size);
-        
+
         totalCustomers = uniqueCustomers.size;
       }
 
-      if (cinemasResult.status === 'fulfilled') {
+      if (cinemasResult.status === "fulfilled") {
         const cinemas = cinemasResult.value || [];
         totalCinemas = cinemas.length;
-        console.log('Cinema count from service:', totalCinemas);
       } else {
-        console.error('Failed to fetch cinemas:', cinemasResult.reason);
         totalCinemas = 0; // Fallback to known value
       }
 
@@ -223,40 +220,59 @@ const AdminDashboard: React.FC = () => {
         totalTickets,
         totalMovies,
         totalCustomers,
-        totalCinemas // Use dynamic value from cinema service
+        totalCinemas, // Use dynamic value from cinema service
       });
-
     } catch (error) {
-      console.error('Error calculating stats from services:', error);
+      console.error("Error calculating stats from services:", error);
       setDashboardStats({
         totalRevenue: 0,
         totalTickets: 0,
         totalMovies: 0,
         totalCustomers: 0,
-        totalCinemas: 0
+        totalCinemas: 0,
       });
     }
   };
 
   const getRecentActivitiesFromServices = async () => {
     try {
-      // Get recent bookings as activities
-      const bookingsResponse = await getAllBookings(1, 5); // Get latest 5 bookings
-      
+      const bookingsResponse = await getAllBookings(1, 20); // Get more in case some are unconfirmed
+
       if (bookingsResponse?.data) {
-        const activities: RecentActivity[] = bookingsResponse.data.map((booking: any, index: number) => ({
-          id: booking.Booking_ID || `activity-${index}`,
-          description: `Đặt vé phim ${booking.MovieName || 'N/A'} - Khách hàng: ${booking.CustomerName || 'Anonymous'}`,
-          timestamp: new Date(booking.created_at || Date.now() - index * 300000),
-          type: 'booking' as const
-        }));
-        
+        // Parse ISO string as if it's local time (ignoring misleading 'Z')
+        const parseLocalISOString = (isoString: string): Date => {
+          const parts = isoString.split(/[-T:.Z]/).map(Number);
+          return new Date(parts[0], parts[1] - 1, parts[2], parts[3] || 0, parts[4] || 0, parts[5] || 0, parts[6] || 0);
+        };
+
+        // Filter to confirmed bookings
+        const confirmedBookings = bookingsResponse.data.filter(
+          (booking: any) => booking.Status === "Confirmed" || booking.Status === "Đã xác nhận"
+        );
+
+        // Limit to the latest 5 confirmed
+        const latestConfirmed = confirmedBookings.slice(0, 5);
+
+        const activities: RecentActivity[] = latestConfirmed.map((booking: any, index: number) => {
+          const rawTimestamp = booking.Booking_Date || Date.now() - index * 300000;
+          const timestamp =
+            typeof rawTimestamp === "string" ? parseLocalISOString(rawTimestamp) : new Date(rawTimestamp);
+          return {
+            id: booking.Booking_ID || `activity-${index}`,
+            description: `Đặt vé phim ${booking.MovieName || "N/A"} - Khách hàng: ${
+              booking.CustomerName || "Anonymous"
+            }`,
+            timestamp,
+            type: "booking" as const,
+          };
+        });
+
         setRecentActivities(activities);
       } else {
         setRecentActivities([]);
       }
     } catch (error) {
-      console.error('Error fetching recent activities:', error);
+      console.error("Error fetching recent activities:", error);
       setRecentActivities([]);
     }
   };
@@ -304,7 +320,7 @@ const AdminDashboard: React.FC = () => {
       style: "currency",
       currency: "VND",
       notation: "compact",
-      maximumFractionDigits: 1
+      maximumFractionDigits: 1,
     }).format(value);
   };
 
@@ -314,12 +330,8 @@ const AdminDashboard: React.FC = () => {
       return (
         <div className="bg-slate-800 border border-slate-600 rounded-lg p-3 shadow-xl">
           <p className="text-slate-300 text-sm mb-2">{`${label}`}</p>
-          <p className="text-emerald-400 text-sm">
-            {`Doanh thu: ${formatCurrency(payload[0].value)}`}
-          </p>
-          <p className="text-blue-400 text-sm">
-            {`Vé bán: ${payload[0].payload.tickets} vé`}
-          </p>
+          <p className="text-emerald-400 text-sm">{`Doanh thu: ${formatCurrency(payload[0].value)}`}</p>
+          <p className="text-blue-400 text-sm">{`Vé bán: ${payload[0].payload.tickets} vé`}</p>
         </div>
       );
     }
@@ -328,10 +340,14 @@ const AdminDashboard: React.FC = () => {
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case 'booking': return TicketIcon;
-      case 'payment': return CurrencyDollarIcon;
-      case 'cancellation': return FilmIcon;
-      default: return SparklesIcon;
+      case "booking":
+        return TicketIcon;
+      case "payment":
+        return CurrencyDollarIcon;
+      case "cancellation":
+        return FilmIcon;
+      default:
+        return SparklesIcon;
     }
   };
 
@@ -410,9 +426,7 @@ const AdminDashboard: React.FC = () => {
               <h1 className="text-4xl font-bold bg-gradient-to-r from-[#FFD875] via-[#FFC107] to-[#FFD875] bg-clip-text text-transparent mb-2">
                 🌟 Dashboard Quản Trị
               </h1>
-              <p className="text-slate-300 text-lg">
-                Hệ thống quản lý rạp chiếu phim Galaxy Cinema
-              </p>
+              <p className="text-slate-300 text-lg">Hệ thống quản lý rạp chiếu phim Galaxy Cinema</p>
             </div>
             <div className="text-right">
               <div className="text-[#FFD875] text-xl font-semibold">{currentTime.toLocaleTimeString("vi-VN")}</div>
@@ -433,9 +447,7 @@ const AdminDashboard: React.FC = () => {
               <SparklesIcon className="w-5 h-5 text-[#FFD875]" />
               <span>Hệ thống hoạt động ổn định</span>
               <div className="w-2 h-2 rounded-full animate-pulse bg-emerald-400"></div>
-              {error && (
-                <span className="text-red-400 text-xs">⚠️ {error}</span>
-              )}
+              {error && <span className="text-red-400 text-xs">⚠️ {error}</span>}
             </div>
 
             <div className="flex items-center space-x-3">
@@ -505,21 +517,13 @@ const AdminDashboard: React.FC = () => {
                 <AreaChart data={chartData}>
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1}/>
+                      <stop offset="5%" stopColor="#10B981" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#10B981" stopOpacity={0.1} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                  />
-                  <YAxis 
-                    stroke="#9CA3AF"
-                    fontSize={12}
-                    tickFormatter={formatCurrencyForChart}
-                  />
+                  <XAxis dataKey="date" stroke="#9CA3AF" fontSize={12} />
+                  <YAxis stroke="#9CA3AF" fontSize={12} tickFormatter={formatCurrencyForChart} />
                   <Tooltip content={<CustomTooltip />} />
                   <Area
                     type="monotone"
@@ -566,8 +570,9 @@ const AdminDashboard: React.FC = () => {
                   <div key={activity.id} className="flex items-center space-x-3 p-3 bg-slate-700/50 rounded-lg">
                     <ActivityIcon className="w-4 h-4 text-[#FFD875]" />
                     <span className="text-slate-300 text-sm flex-1">{activity.description}</span>
-                    <span className="text-slate-500 text-xs">
-                      {activity.timestamp.toLocaleTimeString("vi-VN")}
+                    <span className="text-slate-500 text-xs flex flex-col text-right leading-tight">
+                      <span>{activity.timestamp.toLocaleTimeString("vi-VN")}</span>
+                      <span className="text-slate-400">{activity.timestamp.toLocaleDateString("vi-VN")}</span>
                     </span>
                   </div>
                 );

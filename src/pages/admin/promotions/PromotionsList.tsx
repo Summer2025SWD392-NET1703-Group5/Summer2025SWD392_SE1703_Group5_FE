@@ -1,7 +1,7 @@
 // src/pages/admin/promotions/PromotionsList.tsx
-import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   PlusIcon,
   FunnelIcon,
@@ -19,13 +19,13 @@ import {
   SparklesIcon,
   PercentBadgeIcon,
   BanknotesIcon,
-  CubeIcon
-} from '@heroicons/react/24/outline';
-import FullScreenLoader from '../../../components/FullScreenLoader';
-import toast from 'react-hot-toast';
-import { getAllPromotions, deletePromotion } from '../../../services/admin/promotionManagementServices';
-import type { Promotion } from '../../../services/admin/promotionManagementServices';
-import { useAuth } from '../../../contexts/SimpleAuthContext';
+  CubeIcon,
+} from "@heroicons/react/24/outline";
+import FullScreenLoader from "../../../components/FullScreenLoader";
+import toast from "react-hot-toast";
+import { deletePromotion, getAllPromotions } from "../../../services/admin/promotionManagementServices";
+import type { Promotion } from "../../../services/admin/promotionManagementServices";
+import { useAuth } from "../../../contexts/SimpleAuthContext";
 
 // Define the promotion type based on the screenshot
 interface PromotionUI extends Promotion {
@@ -40,9 +40,9 @@ const PromotionsList: React.FC = () => {
   const [filteredPromotions, setFilteredPromotions] = useState<PromotionUI[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [typeFilter, setTypeFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [typeFilter, setTypeFilter] = useState("all");
 
   useEffect(() => {
     fetchPromotions();
@@ -56,18 +56,18 @@ const PromotionsList: React.FC = () => {
       const data = await getAllPromotions();
 
       // Map API response to UI format if needed
-      const formattedPromotions: PromotionUI[] = data.map(promo => ({
+      const formattedPromotions: PromotionUI[] = data.map((promo) => ({
         ...promo,
-        applicableMovies: ['all'], // Default value
-        applicableCinemas: ['all'], // Default value
+        applicableMovies: ["all"], // Default value
+        applicableCinemas: ["all"], // Default value
       }));
 
       setPromotions(formattedPromotions);
       setFilteredPromotions(formattedPromotions);
     } catch (err: any) {
-      console.error('Error fetching promotions:', err);
-      setError(err.message || 'Không thể tải danh sách khuyến mãi');
-      toast.error('Không thể tải danh sách khuyến mãi');
+      console.error("Error fetching promotions:", err);
+      setError(err.message || "Không thể tải danh sách khuyến mãi");
+      toast.error("Không thể tải danh sách khuyến mãi");
     } finally {
       setLoading(false);
     }
@@ -77,23 +77,29 @@ const PromotionsList: React.FC = () => {
     let result = promotions;
 
     // Apply status filter
-    if (statusFilter !== 'all') {
-      result = result.filter(promo => promo.Status.toLowerCase() === statusFilter);
+    if (statusFilter !== "all") {
+      if (statusFilter === "inactive") {
+        result = result.filter(
+          (promo) => promo.Status.toLowerCase() === "inactive" || promo.Status.toLowerCase() === "deleted"
+        );
+      } else {
+        result = result.filter((promo) => promo.Status.toLowerCase() === statusFilter);
+      }
     }
 
     // Apply type filter
-    if (typeFilter !== 'all') {
-      result = result.filter(promo => promo.Discount_Type.toLowerCase() === typeFilter);
+    if (typeFilter !== "all") {
+      result = result.filter((promo) => promo.Discount_Type.toLowerCase() === typeFilter);
     }
 
     // Apply search
     if (searchTerm) {
       const lowercasedSearch = searchTerm.toLowerCase();
       result = result.filter(
-        promo =>
-        (promo.Title?.toLowerCase().includes(lowercasedSearch) ||
+        (promo) =>
+          promo.Title?.toLowerCase().includes(lowercasedSearch) ||
           promo.Promotion_Code?.toLowerCase().includes(lowercasedSearch) ||
-          promo.Promotion_Detail?.toLowerCase().includes(lowercasedSearch))
+          promo.Promotion_Detail?.toLowerCase().includes(lowercasedSearch)
       );
     }
 
@@ -101,49 +107,49 @@ const PromotionsList: React.FC = () => {
   }, [promotions, statusFilter, typeFilter, searchTerm]);
 
   const handleDeletePromotion = async (id: number) => {
-    if (!window.confirm('Bạn có chắc chắn muốn ngừng hoạt động khuyến mãi này?')) return;
+    if (!window.confirm("Bạn có chắc chắn muốn ngừng hoạt động khuyến mãi này?")) return;
 
     try {
       // Instead of deleting, we update the status to Inactive
-      const promotion = promotions.find(p => p.Promotion_ID === id);
+      const promotion = promotions.find((p) => p.Promotion_ID === id);
       if (promotion) {
         // Update the promotion status to Inactive
-        const updatedPromotion = { ...promotion, Status: 'Inactive' };
+        await deletePromotion(id.toString());
+
+        const updatedPromotion = { ...promotion, Status: "Inactive" };
 
         // Update local state
-        setPromotions(promotions.map(promo =>
-          promo.Promotion_ID === id ? updatedPromotion : promo
-        ));
+        setPromotions(promotions.map((promo) => (promo.Promotion_ID === id ? updatedPromotion : promo)));
 
-        toast.success('Khuyến mãi đã được ngừng hoạt động');
+        toast.success("Khuyến mãi đã được ngừng hoạt động");
       }
     } catch (err: any) {
-      console.error('Error updating promotion status:', err);
-      toast.error('Không thể ngừng hoạt động khuyến mãi');
+      console.error("Error updating promotion status:", err);
+      toast.error("Không thể ngừng hoạt động khuyến mãi");
     }
   };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('vi-VN', {
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit',
+    return date.toLocaleDateString("vi-VN", {
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
     });
   };
 
   const getStatusIcon = (status: string) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
-      case 'active':
+      case "active":
         return <CheckCircleIcon className="w-4 h-4" />;
-      case 'expired':
+      case "expired":
         return <XCircleIcon className="w-4 h-4" />;
-      case 'scheduled':
+      case "scheduled":
         return <CalendarDaysIcon className="w-4 h-4" />;
-      case 'draft':
+      case "draft":
         return <DocumentTextIcon className="w-4 h-4" />;
-      case 'inactive':
+      case "inactive":
         return <XCircleIcon className="w-4 h-4" />;
       default:
         return null;
@@ -153,34 +159,34 @@ const PromotionsList: React.FC = () => {
   const getStatusBadgeClass = (status: string) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
-      case 'active':
-        return 'bg-green-500/20 text-green-400 border border-green-500/30';
-      case 'expired':
-        return 'bg-red-500/20 text-red-400 border border-red-500/30';
-      case 'scheduled':
-        return 'bg-blue-500/20 text-blue-400 border border-blue-500/30';
-      case 'draft':
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
-      case 'inactive':
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+      case "active":
+        return "bg-green-500/20 text-green-400 border border-green-500/30";
+      case "expired":
+        return "bg-red-500/20 text-red-400 border border-red-500/30";
+      case "scheduled":
+        return "bg-blue-500/20 text-blue-400 border border-blue-500/30";
+      case "draft":
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+      case "inactive":
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
       default:
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
     }
   };
 
   const getStatusText = (status: string) => {
     const statusLower = status.toLowerCase();
     switch (statusLower) {
-      case 'active':
-        return 'Đang hoạt động';
-      case 'expired':
-        return 'Đã hết hạn';
-      case 'scheduled':
-        return 'Đã lên lịch';
-      case 'draft':
-        return 'Bản nháp';
-      case 'inactive':
-        return 'Không hoạt động';
+      case "active":
+        return "Đang hoạt động";
+      case "expired":
+        return "Đã hết hạn";
+      case "scheduled":
+        return "Đã lên lịch";
+      case "deleted":
+        return "Ngừng hoạt động";
+      case "inactive":
+        return "Ngừng hoạt động";
       default:
         return status;
     }
@@ -189,13 +195,13 @@ const PromotionsList: React.FC = () => {
   const getDiscountIcon = (type: string) => {
     const typeLower = type.toLowerCase();
     switch (typeLower) {
-      case 'percentage':
-      case 'percent':
+      case "percentage":
+      case "percent":
         return <PercentBadgeIcon className="w-5 h-5" />;
-      case 'fixed':
-      case 'fix':
+      case "fixed":
+      case "fix":
         return <BanknotesIcon className="w-5 h-5" />;
-      case 'combo':
+      case "combo":
         return <CubeIcon className="w-5 h-5" />;
       default:
         return <TicketIcon className="w-5 h-5" />;
@@ -205,24 +211,24 @@ const PromotionsList: React.FC = () => {
   const getDiscountText = (promotion: PromotionUI) => {
     const discountType = promotion.Discount_Type.toLowerCase();
 
-    if (discountType === 'percentage' || discountType === 'percent') {
+    if (discountType === "percentage" || discountType === "percent") {
       return `${promotion.Discount_Value}%`;
     } else {
-      return `${promotion.Discount_Value.toLocaleString('vi-VN')}đ`;
+      return `${promotion.Discount_Value.toLocaleString("vi-VN")}đ`;
     }
   };
 
   const getDiscountTypeText = (type: string) => {
     const typeLower = type.toLowerCase();
     switch (typeLower) {
-      case 'percentage':
-      case 'percent':
-        return 'Phần trăm';
-      case 'fixed':
-      case 'fix':
-        return 'Số tiền cố định';
-      case 'combo':
-        return 'Combo';
+      case "percentage":
+      case "percent":
+        return "Phần trăm";
+      case "fixed":
+      case "fix":
+        return "Số tiền cố định";
+      case "combo":
+        return "Combo";
       default:
         return type;
     }
@@ -244,7 +250,7 @@ const PromotionsList: React.FC = () => {
             </h1>
             <p className="text-gray-400">Quản lý các chương trình khuyến mãi và ưu đãi của bạn</p>
           </div>
-          {user?.role === 'Admin' && (
+          {user?.role === "Admin" && (
             <Link
               to="/admin/promotions/add"
               className="mt-4 md:mt-0 flex items-center bg-[#FFD875] hover:bg-[#e5c368] text-black px-6 py-3 rounded-lg font-medium transition-all duration-300 shadow-[0_0_15px_0_rgba(255,216,117,0.3)] hover:shadow-[0_0_20px_0_rgba(255,216,117,0.5)]"
@@ -265,8 +271,19 @@ const PromotionsList: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {/* Search */}
             <div className="relative">
-              <svg xmlns="http://www.w3.org/2000/svg" className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875] w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="absolute left-3 top-1/2 transform -translate-y-1/2 text-[#FFD875] w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                />
               </svg>
               <input
                 type="text"
@@ -286,6 +303,7 @@ const PromotionsList: React.FC = () => {
               <option value="all">Tất cả trạng thái</option>
               <option value="active">Hoạt động</option>
               <option value="inactive">Ngừng hoạt động</option>
+              <option value="expired">Đã hết hạn</option>
             </select>
 
             {/* Type Filter */}
@@ -356,13 +374,17 @@ const PromotionsList: React.FC = () => {
                     </div>
 
                     <div className="flex justify-between items-start relative z-10">
-                      <span className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${getStatusBadgeClass(promotion.Status)}`}>
+                      <span
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium flex items-center gap-1.5 ${getStatusBadgeClass(
+                          promotion.Status
+                        )}`}
+                      >
                         {getStatusIcon(promotion.Status)}
                         {getStatusText(promotion.Status)}
                       </span>
 
                       <div className="flex gap-2">
-                        {user?.role === 'Admin' ? (
+                        {user?.role === "Admin" ? (
                           <>
                             <Link
                               to={`/admin/promotions/${promotion.Promotion_ID}`}
@@ -380,17 +402,19 @@ const PromotionsList: React.FC = () => {
                             </button>
                           </>
                         ) : (
-                          <div className="text-gray-500 text-sm px-2 py-1">
-                            Chỉ xem
-                          </div>
+                          <div className="text-gray-500 text-sm px-2 py-1">Chỉ xem</div>
                         )}
                       </div>
                     </div>
                     <div className="relative z-10">
-                      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-[#FFD875] transition-colors duration-300">{promotion.Title}</h3>
+                      <h3 className="text-lg font-bold text-white mb-1 group-hover:text-[#FFD875] transition-colors duration-300">
+                        {promotion.Title}
+                      </h3>
                       <div className="flex items-center">
                         <TagIcon className="w-4 h-4 text-[#FFD875] mr-1.5" />
-                        <span className="text-sm text-[#FFD875] font-mono bg-[#FFD875]/10 px-2 py-0.5 rounded">{promotion.Promotion_Code}</span>
+                        <span className="text-sm text-[#FFD875] font-mono bg-[#FFD875]/10 px-2 py-0.5 rounded">
+                          {promotion.Promotion_Code}
+                        </span>
                       </div>
                     </div>
                   </div>
@@ -401,7 +425,13 @@ const PromotionsList: React.FC = () => {
                       <p className="text-sm text-gray-400 line-clamp-2">{promotion.Promotion_Detail}</p>
                     </div>
 
-                    <div className={`grid ${promotion.Minimum_Purchase != null && promotion.Minimum_Purchase > 0 ? 'grid-cols-2' : 'grid-cols-1'} gap-3 mb-4`}>
+                    <div
+                      className={`grid ${
+                        promotion.Minimum_Purchase != null && promotion.Minimum_Purchase > 0
+                          ? "grid-cols-2"
+                          : "grid-cols-1"
+                      } gap-3 mb-4`}
+                    >
                       <motion.div
                         className="bg-gradient-to-br from-[#FFD875]/20 to-[#FFD875]/10 border border-[#FFD875]/30 rounded-lg p-3 text-center group/discount"
                         whileHover={{ scale: 1.05 }}
@@ -419,7 +449,9 @@ const PromotionsList: React.FC = () => {
                           whileHover={{ scale: 1.05 }}
                         >
                           <BanknotesIcon className="w-5 h-5 text-gray-400 mx-auto mb-1" />
-                          <p className="text-white text-lg font-bold">{promotion.Minimum_Purchase.toLocaleString('vi-VN')}đ</p>
+                          <p className="text-white text-lg font-bold">
+                            {promotion.Minimum_Purchase.toLocaleString("vi-VN")}đ
+                          </p>
                           <p className="text-xs text-gray-400">Đơn tối thiểu</p>
                         </motion.div>
                       )}
@@ -428,7 +460,9 @@ const PromotionsList: React.FC = () => {
                     <div className="space-y-2 text-sm">
                       <div className="flex items-center text-gray-400">
                         <CalendarIcon className="w-4 h-4 mr-2 text-[#FFD875]" />
-                        <span>{formatDate(promotion.Start_Date)} - {formatDate(promotion.End_Date)}</span>
+                        <span>
+                          {formatDate(promotion.Start_Date)} - {formatDate(promotion.End_Date)}
+                        </span>
                       </div>
 
                       <div className="flex items-center justify-between">
@@ -439,7 +473,9 @@ const PromotionsList: React.FC = () => {
                         <div className="flex items-center">
                           <span className="text-white font-medium">{promotion.Current_Usage}</span>
                           <span className="text-gray-400 mx-1">/</span>
-                          <span className="text-gray-400">{promotion.Usage_Limit > 0 ? promotion.Usage_Limit : '∞'}</span>
+                          <span className="text-gray-400">
+                            {promotion.Usage_Limit > 0 ? promotion.Usage_Limit : "∞"}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -468,4 +504,3 @@ const PromotionsList: React.FC = () => {
 };
 
 export default PromotionsList;
-

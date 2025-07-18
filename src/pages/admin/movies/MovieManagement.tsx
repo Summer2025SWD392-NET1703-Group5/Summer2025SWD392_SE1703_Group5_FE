@@ -9,21 +9,15 @@ import {
   FilmIcon,
   ClockIcon,
   CalendarIcon,
-  ArrowLeftIcon,
   EyeIcon,
-  CloudArrowDownIcon
 } from '@heroicons/react/24/outline';
 import { movieService } from '../../../services/movieService';
-import { referenceService } from '../../../services/referenceService';
-import MultiStepMovieForm from '../../../components/admin/forms/MultiStepMovieForm';
 import DataTable from '../../../components/admin/common/DataTable';
 import ConfirmDialog from '../../../components/admin/common/ConfirmDialog';
 import ExcelImportExport from '../../../components/admin/common/ExcelImportExport';
-import TMDBImportModal from './TMDBImportModal';
 import { formatDate } from '../../../utils/dashboardUtils';
 import { toast } from 'react-hot-toast';
 import '../styles/MovieManagement.css';
-import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../../hooks/useAuth';
 
@@ -56,31 +50,15 @@ const MovieManagement: React.FC = () => {
   
   const [movies, setMovies] = useState<MovieAPI[]>([]);
   const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [selectedMovie, setSelectedMovie] = useState<any | undefined>(undefined);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [movieToDelete, setMovieToDelete] = useState<MovieAPI | null>(null);
-  const [importLoading, setImportLoading] = useState(false);
-  const [showTMDBImport, setShowTMDBImport] = useState(false);
-  const [validRatings, setValidRatings] = useState<string[]>([]);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchMovies();
-    fetchValidRatings();
   }, []);
-
-  const fetchValidRatings = async () => {
-    try {
-      const ratings = await referenceService.getValidRatings();
-      setValidRatings(ratings);
-      console.log('Valid ratings from backend:', ratings);
-    } catch (error) {
-      console.error('Error fetching valid ratings:', error);
-    }
-  };
 
   const fetchMovies = async () => {
     setLoading(true);
@@ -95,6 +73,12 @@ const MovieManagement: React.FC = () => {
       setLoading(false);
     }
   };
+
+  const isPremiering = (movie: MovieAPI) => {
+    const today = new Date();
+    const premiereDate = new Date(movie.Premiere_Date || movie.Release_Date);
+    return premiereDate <= today;
+  }
 
   // Callback khi import thành công với ExportImportToolbar
   const handleImportComplete = () => {
@@ -133,11 +117,6 @@ const MovieManagement: React.FC = () => {
     }
     setMovieToDelete(movie);
     setShowDeleteDialog(true);
-  };
-
-  const handleCancelForm = () => {
-    setShowForm(false);
-    setSelectedMovie(undefined);
   };
 
   const confirmDelete = async () => {
@@ -202,185 +181,6 @@ const MovieManagement: React.FC = () => {
     }));
   }, [movies]);
 
-  // Handle TMDB import
-  const handleTMDBImport = async (tmdbMovies: any[]) => {
-    if (!isAdmin) {
-      toast.error('Bạn không có quyền import phim từ TMDB.');
-      return;
-    }
-    
-    setImportLoading(true);
-    const toastId = toast.loading(`Đang import ${tmdbMovies.length} phim từ TMDB...`);
-
-    try {
-      // Convert TMDB movies to your backend format
-      const moviesToAdd = tmdbMovies.map(movie => {
-        // Xử lý Release_Date - nếu phim đã phát hành, set ngày trong tương lai
-        const releaseDate = new Date(movie.releaseDate);
-        const today = new Date();
-        let finalReleaseDate;
-
-        if (releaseDate <= today) {
-          // Nếu phim đã phát hành, set ngày phát hành là 7 ngày sau
-          const futureDate = new Date(today);
-          futureDate.setDate(futureDate.getDate() + 7);
-          finalReleaseDate = futureDate.toISOString().split('T')[0];
-        } else {
-          finalReleaseDate = movie.releaseDate;
-        }
-
-        // Xử lý Rating - sử dụng danh sách rating hợp lệ từ backend
-        let rating = validRatings[0] || 'P'; // Default là giá trị đầu tiên
-        const ageRating = movie.ageRating || '13+';
-
-        // Map TMDB rating sang backend rating
-        if (validRatings.length > 0) {
-          // Tìm rating phù hợp dựa trên số tuổi
-          const age = parseInt(ageRating.replace('+', ''));
-
-          if (age >= 18) {
-            rating = validRatings.find(r => r.includes('18') || r === 'C18') || validRatings[validRatings.length - 1];
-          } else if (age >= 16) {
-            rating = validRatings.find(r => r.includes('16') || r === 'C16') || validRatings[Math.floor(validRatings.length * 0.66)];
-          } else if (age >= 13) {
-            rating = validRatings.find(r => r.includes('13') || r === 'C13') || validRatings[Math.floor(validRatings.length * 0.33)];
-          } else {
-            rating = validRatings.find(r => r === 'P' || r.toLowerCase() === 'g' || r.toLowerCase() === 'pg') || validRatings[0];
-          }
-        }
-
-        return {
-          Movie_Name: movie.title,
-          Release_Date: finalReleaseDate,
-          Director: movie.director || 'Đang cập nhật',
-          Cast: movie.cast?.join(', ') || 'Đang cập nhật',
-          Duration: movie.duration || 120,
-          Genre: movie.genres?.join(', ') || 'Hành động',
-          Rating: rating,
-          Language: movie.language || 'Tiếng Anh - Phụ đề Việt',
-          Country: 'USA',
-          Synopsis: movie.description || 'Đang cập nhật nội dung phim...',
-          Poster_URL: movie.poster,
-          Trailer_Link: movie.trailer || '',
-          Status: 'Coming Soon', // Luôn set Coming Soon cho phim mới
-          Production_Company: 'TMDB Import'
-        };
-      });
-
-      // Try bulk add first if available
-      let successCount = 0;
-      const failedMovies = [];
-
-      try {
-        // Sử dụng bulkAddMovies (sẽ thêm từng phim một)
-        const result = await movieService.bulkAddMovies(moviesToAdd);
-
-        if (result.results) {
-          successCount = result.results.length;
-        }
-
-        if (result.errors && result.errors.length > 0) {
-          result.errors.forEach((err: any) => {
-            const errorDetail = err.error;
-            let errorMessage = 'Lỗi không xác định';
-
-            if (errorDetail?.errors && Array.isArray(errorDetail.errors)) {
-              errorMessage = errorDetail.errors.map((e: any) =>
-                `${e.field}: ${e.message}`
-              ).join(', ');
-            } else if (errorDetail?.message) {
-              errorMessage = errorDetail.message;
-            }
-
-            failedMovies.push({
-              name: err.movie,
-              error: errorMessage,
-              details: errorDetail
-            });
-          });
-        }
-      } catch (bulkError: any) {
-        console.error('Bulk import error:', bulkError);
-
-        // Nếu bulkAddMovies thất bại hoàn toàn, thử thêm từng phim
-        for (const movie of moviesToAdd) {
-          try {
-            await movieService.addMovie(movie);
-            successCount++;
-          } catch (error: any) {
-            console.error(`Failed to add movie: ${movie.Movie_Name}`, error);
-            const errorDetail = error.response?.data;
-            let errorMessage = 'Lỗi không xác định';
-
-            if (errorDetail?.errors && Array.isArray(errorDetail.errors)) {
-              errorMessage = errorDetail.errors.map((e: any) =>
-                `${e.field}: ${e.message}`
-              ).join(', ');
-            } else if (errorDetail?.message) {
-              errorMessage = errorDetail.message;
-            }
-
-            failedMovies.push({
-              name: movie.Movie_Name,
-              error: errorMessage,
-              details: errorDetail
-            });
-          }
-        }
-      }
-
-      if (successCount > 0) {
-        toast.success(`Đã import thành công ${successCount}/${tmdbMovies.length} phim!`, { id: toastId });
-      } else {
-        toast.error('Không thể import phim nào', { id: toastId });
-      }
-
-      // Hiển thị lỗi chi tiết nếu có
-      if (failedMovies.length > 0) {
-        console.error('Failed movies:', failedMovies);
-
-        // Phân tích lỗi để đưa ra gợi ý
-        const hasRatingError = failedMovies.some(f =>
-          f.error.toLowerCase().includes('rating') ||
-          f.error.toLowerCase().includes('xếp hạng')
-        );
-
-        const hasDateError = failedMovies.some(f =>
-          f.error.toLowerCase().includes('date') ||
-          f.error.toLowerCase().includes('ngày')
-        );
-
-        if (hasRatingError) {
-          toast.error('Lỗi: Backend yêu cầu định dạng xếp hạng độ tuổi khác. Vui lòng kiểm tra với admin.', { duration: 7000 });
-        }
-
-        if (hasDateError) {
-          toast.error('Lỗi: Ngày phát hành phải trong tương lai. Đã tự động điều chỉnh nhưng vẫn lỗi.', { duration: 7000 });
-        }
-
-        // Hiển thị chi tiết lỗi cho từng phim
-        failedMovies.slice(0, 3).forEach(failed => {
-          toast.error(`${failed.name}: ${failed.error}`, { duration: 5000 });
-        });
-
-        if (failedMovies.length > 3) {
-          toast.error(`Và ${failedMovies.length - 3} phim khác...`, { duration: 5000 });
-        }
-      }
-
-      // Refresh movie list
-      if (successCount > 0) {
-        fetchMovies();
-      }
-      setShowTMDBImport(false);
-    } catch (error) {
-      console.error('TMDB import error:', error);
-      toast.error('Import phim từ TMDB thất bại', { id: toastId });
-    } finally {
-      setImportLoading(false);
-    }
-  };
-
   const filteredMovies = useMemo(() => {
     return movies
       .filter(movie => {
@@ -396,15 +196,15 @@ const MovieManagement: React.FC = () => {
 
   const columns = [
     {
-      key: 'Poster_URL',
-      title: 'Poster',
+      key: "Poster_URL",
+      title: "Poster",
       render: (movie: MovieAPI) => (
         <div
           className="w-16 h-24 rounded overflow-hidden hover:scale-110 transition-transform duration-300 group cursor-pointer poster-glow"
           onClick={() => handleViewMovie(movie)}
         >
           <img
-            src={movie.Poster_URL || '/placeholder.png'}
+            src={movie.Poster_URL || "/placeholder.png"}
             alt="Poster"
             className="w-full h-full object-cover rounded shadow-md"
             loading="lazy"
@@ -416,18 +216,18 @@ const MovieManagement: React.FC = () => {
       ),
     },
     {
-      key: 'Movie_Name',
-      title: 'Tên phim',
+      key: "Movie_Name",
+      title: "Tên phim",
       render: (movie: MovieAPI) => (
         <div>
           <p className="font-medium text-white">{movie.Movie_Name}</p>
           <p className="text-xs text-gray-400">{movie.Genre}</p>
         </div>
-      )
+      ),
     },
     {
-      key: 'Duration',
-      title: 'Thời lượng',
+      key: "Duration",
+      title: "Thời lượng",
       render: (movie: MovieAPI) => (
         <div className="flex items-center">
           <ClockIcon className="w-4 h-4 text-gray-400 mr-1" />
@@ -436,8 +236,8 @@ const MovieManagement: React.FC = () => {
       ),
     },
     {
-      key: 'Release_Date',
-      title: 'Ngày khởi chiếu',
+      key: "Release_Date",
+      title: "Ngày khởi chiếu",
       render: (movie: MovieAPI) => (
         <div className="flex items-center">
           <CalendarIcon className="w-4 h-4 text-gray-400 mr-1" />
@@ -446,63 +246,65 @@ const MovieManagement: React.FC = () => {
       ),
     },
     {
-      key: 'Premiere_Date',
-      title: 'Ngày công chiếu',
+      key: "Premiere_Date",
+      title: "Ngày công chiếu",
       render: (movie: MovieAPI) => (
         <div className="flex items-center">
           <CalendarIcon className="w-4 h-4 text-gray-400 mr-1" />
-          <span>{movie.Premiere_Date ? formatDate(movie.Premiere_Date) : 'Chưa xác định'}</span>
+          <span>{movie.Premiere_Date ? formatDate(movie.Premiere_Date) : "Chưa xác định"}</span>
         </div>
       ),
     },
     {
-      key: 'End_Date',
-      title: 'Ngày kết thúc',
+      key: "End_Date",
+      title: "Ngày kết thúc",
       render: (movie: MovieAPI) => (
         <div className="flex items-center">
           <CalendarIcon className="w-4 h-4 text-gray-400 mr-1" />
-          <span>{movie.End_Date ? formatDate(movie.End_Date) : 'Chưa xác định'}</span>
+          <span>{movie.End_Date ? formatDate(movie.End_Date) : "Chưa xác định"}</span>
         </div>
       ),
     },
     {
-      key: 'Status',
-      title: 'Trạng thái',
+      key: "Status",
+      title: "Trạng thái",
       render: (movie: MovieAPI) => {
         const statusMap: { [key: string]: { text: string; className: string; icon: React.ReactNode } } = {
-          'Now Showing': {
-            text: 'Đang chiếu',
-            className: 'bg-green-500/20 text-green-400 border border-green-500/30',
-            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />
+          "Now Showing": {
+            text: "Đang chiếu",
+            className: "bg-green-500/20 text-green-400 border border-green-500/30",
+            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />,
           },
-          'Coming Soon': {
-            text: 'Sắp chiếu',
-            className: 'bg-[#FFD875]/20 text-[#FFD875] border border-[#FFD875]/30',
-            icon: <CalendarIcon className="w-3.5 h-3.5 mr-1" />
+          "Coming Soon": {
+            text: "Sắp chiếu",
+            className: "bg-[#FFD875]/20 text-[#FFD875] border border-[#FFD875]/30",
+            icon: <CalendarIcon className="w-3.5 h-3.5 mr-1" />,
           },
-          'Ended': {
-            text: 'Đã kết thúc',
-            className: 'bg-red-500/20 text-red-400 border border-red-500/30',
-            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />
+          Ended: {
+            text: "Đã kết thúc",
+            className: "bg-red-500/20 text-red-400 border border-red-500/30",
+            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />,
           },
-          'Cancelled': {
-            text: 'Đã hủy',
-            className: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />
+          Cancelled: {
+            text: "Đã hủy",
+            className: "bg-gray-500/20 text-gray-400 border border-gray-500/30",
+            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />,
           },
-          'Inactive': {
-            text: 'Không hoạt động',
-            className: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />
+          Inactive: {
+            text: "Không hoạt động",
+            className: "bg-gray-500/20 text-gray-400 border border-gray-500/30",
+            icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />,
           },
         };
         const statusInfo = statusMap[movie.Status] || {
           text: movie.Status,
-          className: 'bg-gray-500/20 text-gray-400 border border-gray-500/30',
-          icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />
+          className: "bg-gray-500/20 text-gray-400 border border-gray-500/30",
+          icon: <FilmIcon className="w-3.5 h-3.5 mr-1" />,
         };
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium flex items-center justify-center ${statusInfo.className}`}>
+          <span
+            className={`px-2 py-1 rounded-full text-xs font-medium flex items-center justify-center ${statusInfo.className}`}
+          >
             {statusInfo.icon}
             {statusInfo.text}
           </span>
@@ -510,8 +312,8 @@ const MovieManagement: React.FC = () => {
       },
     },
     {
-      key: 'Rating',
-      title: 'Đánh giá',
+      key: "Rating",
+      title: "Đánh giá",
       render: (movie: MovieAPI) => (
         <div className="flex items-center">
           <StarIcon className="w-4 h-4 text-[#FFD875] mr-1" />
@@ -521,8 +323,8 @@ const MovieManagement: React.FC = () => {
       ),
     },
     {
-      key: 'actions',
-      title: 'Hành động',
+      key: "actions",
+      title: "Hành động",
       render: (movie: MovieAPI) => (
         <div className="flex space-x-2">
           <button
@@ -532,16 +334,15 @@ const MovieManagement: React.FC = () => {
           >
             <EyeIcon className="w-5 h-5" />
           </button>
-          {movie.Status !== 'Inactive' && movie.Status !== 'Ended' && (
+          {!isPremiering(movie) && movie.Status !== "Inactive" && movie.Status !== "Ended" && isAdmin && (
             <>
               <button
                 onClick={() => isAdmin && handleEditMovie(movie)}
                 className={`p-2 transition-colors duration-300 rounded-full ${
-                  isAdmin 
-                    ? 'text-gray-400 hover:text-[#FFD875] hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)] cursor-pointer'
-                    : 'text-gray-400/50 cursor-not-allowed'
+                  isAdmin
+                    ? "text-gray-400 hover:text-[#FFD875] hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(255,216,117,0.4)] cursor-pointer"
+                    : "text-gray-400/50 cursor-not-allowed"
                 }`}
-                disabled={!isAdmin}
                 title={!isAdmin ? "Chỉ Admin mới có thể chỉnh sửa phim" : "Chỉnh sửa"}
               >
                 <PencilIcon className="w-5 h-5" />
@@ -549,11 +350,10 @@ const MovieManagement: React.FC = () => {
               <button
                 onClick={() => isAdmin && handleDeleteMovie(movie)}
                 className={`p-2 transition-colors duration-300 rounded-full ${
-                  isAdmin 
-                    ? 'text-gray-400 hover:text-red-500 hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)] cursor-pointer'
-                    : 'text-gray-400/50 cursor-not-allowed'
+                  isAdmin
+                    ? "text-gray-400 hover:text-red-500 hover:bg-slate-700 hover:shadow-[0_0_10px_0_rgba(239,68,68,0.4)] cursor-pointer"
+                    : "text-gray-400/50 cursor-not-allowed"
                 }`}
-                disabled={!isAdmin}
                 title={!isAdmin ? "Chỉ Admin mới có thể xóa phim" : "Xóa"}
               >
                 <TrashIcon className="w-5 h-5" />
@@ -564,50 +364,6 @@ const MovieManagement: React.FC = () => {
       ),
     },
   ];
-
-  if (showForm) {
-    return (
-      <div className="min-h-screen bg-slate-900 flex">
-        <div className="flex-1">
-          <main className="p-6">
-            <motion.div
-              className="mb-6 flex items-center"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ duration: 0.3 }}
-            >
-              <button
-                onClick={handleCancelForm}
-                className="mr-4 p-2 rounded-full hover:bg-slate-700 transition-all duration-200 text-gray-400 hover:text-white group"
-              >
-                <ArrowLeftIcon className="h-6 w-6 group-hover:scale-110 transition-transform" />
-              </button>
-              <div>
-                <h1 className="text-2xl font-bold text-white">
-                  {selectedMovie ? 'Chỉnh sửa phim' : 'Thêm phim mới'}
-                </h1>
-                <p className="text-gray-400 mt-1">
-                  {selectedMovie ? 'Cập nhật thông tin phim' : 'Tạo phim mới với các thông tin chi tiết'}
-                </p>
-              </div>
-            </motion.div>
-
-            <motion.div
-              className="fade-in"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.1 }}
-            >
-              <MultiStepMovieForm
-                mode={selectedMovie ? "edit" : "add"}
-                movie={selectedMovie}
-              />
-            </motion.div>
-          </main>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="p-6 bg-slate-900 min-h-screen text-white">
@@ -627,19 +383,6 @@ const MovieManagement: React.FC = () => {
           )}
         </div>
         <div className="flex gap-4">
-          <button
-            onClick={() => isAdmin && setShowTMDBImport(true)}
-            className={`font-bold py-2 px-4 rounded-lg flex items-center transition-all duration-300 shadow-lg ${
-              isAdmin 
-                ? 'bg-purple-600 hover:bg-purple-700 text-white hover:shadow-purple-500/25 cursor-pointer' 
-                : 'bg-purple-600/50 text-white/50 cursor-not-allowed'
-            }`}
-            disabled={importLoading || !isAdmin}
-            title={!isAdmin ? "Chỉ Admin mới có thể import từ TMDB" : "Import từ TMDB"}
-          >
-            <CloudArrowDownIcon className="w-5 h-5 mr-2" />
-            Import từ TMDB
-          </button>
           <div className={!isAdmin ? 'opacity-50 pointer-events-none' : ''}>
             <ExcelImportExport
               data={moviesForExport}
@@ -647,7 +390,7 @@ const MovieManagement: React.FC = () => {
               fileName="movies-list"
               sheetName="Phim"
               headers={excelHeaders}
-              disabled={loading || importLoading || !isAdmin}
+              disabled={loading || !isAdmin}
               useApi={true}
               apiType="movies"
             />
@@ -712,15 +455,6 @@ const MovieManagement: React.FC = () => {
           onConfirm={confirmDelete}
           title="Xác nhận xóa phim"
           message={`Bạn có chắc chắn muốn xóa phim "${movieToDelete?.Movie_Name}" không? Hành động này không thể hoàn tác.`}
-        />
-      )}
-
-      {/* TMDB Import Modal */}
-      {showTMDBImport && (
-        <TMDBImportModal
-          isOpen={showTMDBImport}
-          onClose={() => setShowTMDBImport(false)}
-          onImport={handleTMDBImport}
         />
       )}
     </div>

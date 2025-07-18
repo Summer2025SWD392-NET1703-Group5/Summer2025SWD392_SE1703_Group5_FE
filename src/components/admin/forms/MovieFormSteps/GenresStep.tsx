@@ -216,7 +216,7 @@ const GenresStep: React.FC<GenresStepProps> = ({ references }) => {
                                     ? 'bg-[#FFD875] text-slate-900 font-medium shadow-[0_0_15px_0_rgba(255,216,117,0.4)]'
                                     : 'bg-slate-700 text-white hover:bg-slate-600'}
                             `}
-                            variants={genreVariants}
+                            // variants={genreVariants}
                             whileHover="hover"
                             whileTap="tap"
                             custom={index}

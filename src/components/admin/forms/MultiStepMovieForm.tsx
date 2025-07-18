@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useForm, Controller, FormProvider } from 'react-hook-form';
+import { useForm, FormProvider } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import {
@@ -36,7 +36,7 @@ const movieSchema = yup.object().shape({
             return selectedDate >= tomorrow;
         }),
     Director: yup.string().required('Đạo diễn không được để trống'),
-    Duration: yup.number().typeError('Thời lượng phải là số').min(1, 'Thời lượng phải lớn hơn 0').required('Thời lượng không được để trống'),
+    Duration: yup.number().typeError('Thời lượng phải là số').min(60, 'Thời lượng phải lớn hơn 60 phút').required('Thời lượng không được để trống'),
     Genre: yup.string().required('Phải chọn ít nhất một thể loại'),
     Rating: yup.string().required('Vui lòng chọn phân loại tuổi'),
     Synopsis: yup.string().required('Mô tả không được để trống'),
@@ -141,14 +141,6 @@ const steps = [
     { id: 'media', title: 'Hình ảnh & Trailer' },
 ];
 
-const statusLabels: { [key: string]: string } = {
-    'Coming Soon': 'Sắp chiếu',
-    'Now Showing': 'Đang chiếu',
-    'Ended': 'Đã kết thúc',
-    'Cancelled': 'Đã hủy',
-    'Inactive': 'Không hoạt động',
-};
-
 const MultiStepMovieForm: React.FC<MultiStepMovieFormProps> = ({ movie, mode, additionalData }) => {
     const [currentStep, setCurrentStep] = useState(0);
     const [loading, setLoading] = useState(false);
@@ -193,11 +185,6 @@ const MultiStepMovieForm: React.FC<MultiStepMovieFormProps> = ({ movie, mode, ad
                 if (additionalData.statuses) {
                     data.statuses = additionalData.statuses;
                 }
-            }
-
-            // Nếu là form chỉnh sửa, bỏ trạng thái "Sắp chiếu" khỏi danh sách
-            if (mode === 'edit') {
-                data.statuses = data.statuses.filter(status => status !== 'Coming Soon');
             }
 
             setReferences(data);
@@ -267,6 +254,18 @@ const MultiStepMovieForm: React.FC<MultiStepMovieFormProps> = ({ movie, mode, ad
                 break;
             case 1: // Release info - thêm Language, Country, Premiere_Date, End_Date
                 fieldsToValidate = ['Release_Date', 'Language', 'Country', 'Premiere_Date', 'End_Date'];
+                // In edit mode, if Release_Date is today or in the past, skip validation for Release_Date
+                if (mode === 'edit') {
+                    const releaseDateStr = watch('Release_Date');
+                    if (releaseDateStr) {
+                        const releaseDate = new Date(releaseDateStr);
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        if (releaseDate <= today) {
+                            fieldsToValidate = fieldsToValidate.filter(f => f !== 'Release_Date');
+                        }
+                    }
+                }
                 break;
             case 2: // Cast and crew
                 fieldsToValidate = ['Director', 'Cast'];
@@ -510,7 +509,7 @@ const MultiStepMovieForm: React.FC<MultiStepMovieFormProps> = ({ movie, mode, ad
             }
 
             // Hiển thị lỗi chi tiết
-            toast.error((t) => (
+            toast.error(() => (
                 <div style={{ whiteSpace: 'pre-line', maxWidth: '400px' }}>
                     {errorMessage}
                 </div>
@@ -540,7 +539,7 @@ const MultiStepMovieForm: React.FC<MultiStepMovieFormProps> = ({ movie, mode, ad
             case 0:
                 return <BasicInfoStep references={references} additionalData={additionalData} />;
             case 1:
-                return <ReleaseInfoStep references={references} />;
+                return <ReleaseInfoStep references={references} mode={mode} />;
             case 2:
                 return <CastCrewStep references={references} />;
             case 3:
