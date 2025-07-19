@@ -419,27 +419,60 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
   };
 
   // 🔗 Liên kết booking với member
-  const linkBookingToMember = async (memberId: number) => {
+  const linkBookingToMember = async (memberId: number, memberData?: any) => {
     try {
+      console.log("🔗 Bắt đầu liên kết booking với member:", { memberId, bookingId: bookingSession.bookingId, memberData });
+
       // Tìm member để lấy phone hoặc email làm memberIdentifier
-      const member = selectedMember || memberSearchResults.find((m: any) => m.User_ID === memberId);
+      // Ưu tiên memberData được truyền vào, sau đó selectedMember, cuối cùng memberSearchResults
+      let member = memberData || selectedMember;
+
+      console.log("🔍 Debug linkBookingToMember:", {
+        memberId,
+        memberData,
+        selectedMember,
+        selectedMemberUserId: selectedMember?.User_ID,
+        memberSearchResults: memberSearchResults.length,
+        memberSearchResultsIds: memberSearchResults.map(m => m.User_ID)
+      });
+
+      // Nếu không có memberData và selectedMember không khớp ID, tìm trong memberSearchResults
+      if (!member || member.User_ID !== memberId) {
+        console.log("🔍 member không khớp, tìm trong memberSearchResults...");
+        member = memberSearchResults.find((m: any) => m.User_ID === memberId);
+      }
+
       if (!member) {
+        console.error("❌ Không tìm thấy member với ID:", memberId);
+        console.error("memberData:", memberData);
+        console.error("selectedMember:", selectedMember);
+        console.error("memberSearchResults:", memberSearchResults);
         throw new Error("Không tìm thấy thông tin member");
       }
 
       // Sử dụng phone hoặc email làm memberIdentifier
       const memberIdentifier = member.Phone_Number || member.Email;
       if (!memberIdentifier) {
+        console.error("❌ Member không có phone hoặc email:", member);
         throw new Error("Member không có phone hoặc email");
       }
+
+      console.log("🔗 Thông tin liên kết:", {
+        bookingId: bookingSession.bookingId,
+        memberIdentifier,
+        memberName: member.Full_Name,
+        memberId: member.User_ID
+      });
 
       const response = await api.post("/member/link-member", {
         bookingId: parseInt(bookingSession.bookingId || "0"),
         memberIdentifier: memberIdentifier,
       });
+
+      console.log("✅ Liên kết thành công:", response.data);
       return response.data;
     } catch (error) {
-      console.error("Lỗi liên kết booking với member:", error);
+      console.error("❌ Lỗi liên kết booking với member:", error);
       throw error;
     }
   };
@@ -512,7 +545,8 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
         // Hiển thị kết quả tìm kiếm để user có thể chọn
         console.log("📝 Set member search results:", [memberData]);
         setMemberSearchResults([memberData]);
-        setSelectedMember(null); // Reset selected member để hiển thị kết quả tìm kiếm
+        // Không reset selectedMember nếu đã có member được chọn từ việc tạo mới
+        // setSelectedMember(null); // Reset selected member để hiển thị kết quả tìm kiếm
       } else {
         console.log("❌ Không tìm thấy member hoặc kết quả không hợp lệ:", result);
         setMemberSearchResults([]);
@@ -1163,7 +1197,7 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
                                   // Tự động liên kết booking với member
                                   try {
-                                    await linkBookingToMember(member.User_ID);
+                                    await linkBookingToMember(member.User_ID, member);
                                     toast.success("Đã liên kết đơn hàng với thành viên!");
                                   } catch (error) {
                                     console.error("Lỗi liên kết booking:", error);
@@ -1830,18 +1864,44 @@ const PaymentComponent: React.FC<PaymentComponentProps> = ({
 
                 try {
                   const result = await createNewCustomer(customerData);
-                  if (result.success) {
+                  console.log("🔍 Create customer result:", result);
+
+                  // Handle both old and new response formats
+                  const isSuccess = result.success || (result.user && result.message);
+                  const userData = result.data || result.user;
+
+                  console.log("🔍 Debug response parsing:", {
+                    isSuccess,
+                    userData,
+                    userIdFromData: userData?.User_ID,
+                    resultSuccess: result.success,
+                    resultData: result.data,
+                    resultUser: result.user
+                  });
+
+                  if (isSuccess && userData) {
                     toast.success("Tạo tài khoản thành công!");
                     setShowCreateCustomerModal(false);
 
                     // Tự động chọn customer vừa tạo
-                    setSelectedMember(result.data);
-                    await linkBookingToMember(result.data.User_ID);
-                    toast.success("Đã liên kết đơn hàng với khách hàng mới!");
+                    setSelectedMember(userData);
+                    console.log("🎯 Đã set selectedMember:", userData);
+
+                    // Tự động liên kết booking với member mới tạo
+                    try {
+                      console.log("🔗 Chuẩn bị gọi linkBookingToMember với User_ID:", userData.User_ID);
+                      await linkBookingToMember(userData.User_ID, userData);
+                      toast.success("Đã liên kết đơn hàng với khách hàng mới!");
+                    } catch (linkError) {
+                      console.error("Lỗi liên kết booking:", linkError);
+                      toast.error("Tạo tài khoản thành công nhưng không thể liên kết đơn hàng");
+                    }
                   } else {
+                    console.error("❌ Tạo tài khoản thất bại:", { isSuccess, userData, result });
                     toast.error(result.message || "Có lỗi xảy ra");
                   }
                 } catch (error: any) {
+                  console.error("❌ Create customer error:", error);
                   toast.error(error?.response?.data?.message || "Có lỗi xảy ra khi tạo tài khoản");
                 }
               }}

@@ -17,12 +17,20 @@ class AuthService {
    * @returns Thông tin người dùng
    */
   async login(credentials: LoginCredentials): Promise<User> {
-    const { data } = await api.post<AuthResponse>('/auth/login', credentials);
-    console.log('API Login Response:', data); // DEBUG: Log the entire response from login API
-    setAuthTokens(data.token, '');
-    // Sau khi login, chúng ta sẽ trả về user từ response của API login
-    // và AuthContext sẽ dùng nó, thay vì gọi getProfile một lần nữa.
-    return data.user;
+    try {
+      const { data } = await api.post<AuthResponse>('/auth/login', credentials);
+      setAuthTokens(data.token, '');
+      // Sau khi login, chúng ta sẽ trả về user từ response của API login
+      // và AuthContext sẽ dùng nó, thay vì gọi getProfile một lần nữa.
+      return data.user;
+    } catch (error: any) {
+      // Extract error message from API response
+      const errorMessage = error.response?.data?.message || error.message || 'Đăng nhập thất bại';
+
+      // Throw error with proper message for UI to catch
+      const loginError = new Error(errorMessage);
+      throw loginError;
+    }
   }
 
 

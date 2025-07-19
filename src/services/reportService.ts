@@ -65,38 +65,107 @@ class ReportService {
     try {
       console.log('[ReportService] Lấy báo cáo ngày:', date);
       
-      // TEMP FIX: Chỉ sử dụng movies/cinemas API để debug, tránh realtime API có vấn đề
-      const [moviesResponse, cinemasResponse] = await Promise.all([
+      const targetDate = date || new Date().toISOString().split('T')[0];
+
+      // Gọi API realtime để lấy dữ liệu doanh thu theo giờ thật
+      const [realtimeResponse, moviesResponse, cinemasResponse] = await Promise.all([
+        // API realtime cho dữ liệu theo giờ của ngày hiện tại
+        date && date !== new Date().toISOString().split('T')[0]
+          ? // Nếu không phải ngày hôm nay, gọi API sales-report với ngày cụ thể
+            apiClient.get('/sales-report', {
+              params: {
+                startDate: targetDate,
+                endDate: targetDate,
+                period: 'daily'
+              }
+            })
+          : // Nếu là ngày hôm nay, gọi API realtime
+            apiClient.get('/sales-report/realtime'),
+
+        // API movies và cinemas để lấy thông tin chi tiết
         apiClient.get('/sales-report/movies', {
           params: {
-            startDate: date || new Date().toISOString().split('T')[0],
-            endDate: date || new Date().toISOString().split('T')[0]
+            startDate: targetDate,
+            endDate: targetDate
           }
         }),
         apiClient.get('/sales-report/cinemas', {
           params: {
-            startDate: date || new Date().toISOString().split('T')[0], 
-            endDate: date || new Date().toISOString().split('T')[0]
+            startDate: targetDate,
+            endDate: targetDate
           }
         })
       ]);
 
+      console.log('[ReportService] API responses received');
+
       const moviesData = moviesResponse.data.data.movies || [];
       const cinemasData = cinemasResponse.data.data.cinemas || [];
-      
-      // Tính tổng từ movies data thay vì realtime API
-      const totalRevenue = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_revenue || 0), 0);
-      const totalBookings = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_bookings || 0), 0);
-      const totalTickets = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_tickets || 0), 0);
-      const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
-      // Chuyển đổi dữ liệu từ API sang format của frontend
-      // TEMP: Tạo mock hourly data vì realtime API có vấn đề
-      const hourlyData = {
-        hours: Array.from({length: 24}, (_, i) => `${i}:00`),
-        revenue: Array.from({length: 24}, (_, i) => i === 17 ? totalRevenue : 0), // Giờ 17:00 có doanh thu
-        bookings: Array.from({length: 24}, (_, i) => i === 17 ? totalBookings : 0) // Giờ 17:00 có booking
-      };
+      let totalRevenue = 0;
+      let totalBookings = 0;
+      let totalTickets = 0;
+      let hourlyData: any[] = [];
+
+      // Xử lý dữ liệu từ API realtime hoặc sales-report
+      if (realtimeResponse.data.success) {
+        const realtimeData = realtimeResponse.data.data;
+
+        if (realtimeData.today) {
+          // Dữ liệu từ API realtime
+          totalRevenue = realtimeData.today.total_revenue || 0;
+          totalBookings = realtimeData.today.total_bookings || 0;
+          totalTickets = realtimeData.today.total_tickets || 0;
+
+          // Dữ liệu theo giờ thật từ API
+          hourlyData = (realtimeData.hourly_sales || []).map((hour: any) => ({
+            hour: hour.hour,
+            revenue: hour.total_amount || 0,
+            bookings: hour.total_bookings || 0,
+            tickets: hour.total_tickets || 0
+          }));
+        } else if (realtimeData.total_amount !== undefined) {
+          // Dữ liệu từ API sales-report
+          totalRevenue = realtimeData.total_amount || 0;
+          totalBookings = realtimeData.total_bookings || 0;
+          totalTickets = realtimeData.total_tickets || 0;
+
+          // Tạo hourly data từ period_sales nếu có
+          if (realtimeData.period_sales && realtimeData.period_sales.length > 0) {
+            // Nếu có dữ liệu theo ngày, phân bổ đều cho 24 giờ
+            const dayData = realtimeData.period_sales[0];
+            const hourlyRevenue = (dayData.total_amount || 0) / 24;
+            const hourlyBookings = Math.ceil((dayData.total_bookings || 0) / 24);
+            const hourlyTickets = Math.ceil((dayData.total_tickets || 0) / 24);
+
+            hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+              hour: hour,
+              revenue: hourlyRevenue,
+              bookings: hourlyBookings,
+              tickets: hourlyTickets
+            }));
+          }
+        }
+      }
+
+      // Fallback nếu không có dữ liệu hourly
+      if (hourlyData.length === 0) {
+        hourlyData = Array.from({ length: 24 }, (_, hour) => ({
+          hour: hour,
+          revenue: 0,
+          bookings: 0,
+          tickets: 0
+        }));
+      }
+
+      // Fallback từ movies data nếu realtime không có dữ liệu
+      if (totalRevenue === 0 && moviesData.length > 0) {
+        totalRevenue = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_revenue || 0), 0);
+        totalBookings = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_bookings || 0), 0);
+        totalTickets = moviesData.reduce((sum: number, movie: any) => sum + (movie.total_tickets || 0), 0);
+      }
+
+      const averageBookingValue = totalBookings > 0 ? totalRevenue / totalBookings : 0;
 
       const topMovies = moviesData.slice(0, 5).map((movie: any) => ({
         id: movie.movie_id?.toString() || '',
@@ -131,6 +200,13 @@ class ReportService {
         ];
       }
 
+      // Chuyển đổi hourlyData sang format phù hợp với interface
+      const formattedHourlyData = {
+        hours: hourlyData.map(h => `${h.hour}:00`),
+        revenue: hourlyData.map(h => h.revenue),
+        bookings: hourlyData.map(h => h.bookings)
+      };
+
       const result: DailyReportData = {
         summary: {
           totalRevenue: totalRevenue,
@@ -138,11 +214,18 @@ class ReportService {
           totalCustomers: totalTickets,
           averageTicketPrice: averageBookingValue
         },
-        hourlyData,
+        hourlyData: formattedHourlyData,
         topMovies,
         cinemaPerformance,
         paymentMethods
       };
+
+      console.log('[ReportService] Báo cáo ngày được tạo thành công:', {
+        totalRevenue,
+        totalBookings,
+        hourlyDataLength: hourlyData.length
+      });
+
       return result;
 
     } catch (error) {

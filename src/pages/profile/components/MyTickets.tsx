@@ -16,7 +16,7 @@ import {
     ChevronRightIcon,
     InformationCircleIcon
 } from '@heroicons/react/24/outline';
-import { ticketService, type TicketData } from '../../../services/ticketService';
+import { ticketService, type TicketData, type SeatInfo } from '../../../services/ticketService';
 import { Link } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import PayOSQRModal from '../../../components/PayOSQRModal';
@@ -506,7 +506,12 @@ const MyTickets: React.FC = () => {
                                                     <p className="text-sm text-gray-400 mb-1">Ghế</p>
                                                     <div className="flex items-center text-white">
                                                         <UserGroupIcon className="w-4 h-4 mr-2 text-[#ffd875]" />
-                                                        {ticket.seat_info}
+                                                        {typeof ticket.seat_info === 'object' && ticket.seat_info?.seat_label
+                                                            ? ticket.seat_info.seat_label
+                                                            : typeof ticket.seat_info === 'string'
+                                                                ? ticket.seat_info
+                                                                : 'N/A'
+                                                        }
                                                     </div>
                                                 </div>
                                                 <div>
