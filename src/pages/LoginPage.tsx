@@ -122,6 +122,13 @@ const LoginPage: React.FC = () => {
     };
   }, [error, clearError]);
 
+  // Sync AuthContext error with local formError
+  useEffect(() => {
+    if (error && !formError) {
+      setFormError(error);
+    }
+  }, [error, formError]);
+
   const handleLockoutComplete = () => {
     setLockoutEndTime(0);
     setFailedAttempts(0);
@@ -147,7 +154,8 @@ const LoginPage: React.FC = () => {
       setFailedAttempts(0);
       localStorage.removeItem("loginFailedAttempts");
     } catch (err: any) {
-      const errorMessage = err.response?.data?.message || err.message || "Đã có lỗi xảy ra.";
+      // Try to extract error message from different sources
+      const errorMessage = err.message || err.response?.data?.message || "Đã có lỗi xảy ra.";
 
       // Logic để phân biệt các loại lỗi
       if (errorMessage.toLowerCase().includes("mật khẩu")) {

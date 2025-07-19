@@ -96,8 +96,20 @@ const BookingPage: React.FC = () => {
                 if (paymentState) {
                     const data = JSON.parse(paymentState);
                     if (data.currentView === 'payment' && Date.now() < data.expiresAt) {
-                        console.log('🔄 [INIT] Restoring paymentBookingSession from payment_state');
-                        return data.paymentBookingSession;
+                        // 🔧 FIX: Kiểm tra xem booking đã được thanh toán thành công chưa
+                        // Nếu có bookingId, kiểm tra trạng thái booking trước khi restore
+                        if (data.paymentBookingSession?.bookingId) {
+                            console.log('🔍 [INIT] Found payment state, but need to verify booking status first');
+                            // Sẽ được xử lý trong useEffect để kiểm tra async
+                            return null;
+                        } else {
+                            console.log('🔄 [INIT] Restoring paymentBookingSession from payment_state');
+                            return data.paymentBookingSession;
+                        }
+                    } else if (Date.now() >= data.expiresAt) {
+                        // 🔧 Xóa payment state đã hết hạn
+                        sessionStorage.removeItem(`payment_state_${urlShowtimeId}`);
+                        console.log('🗑️ [INIT] Removed expired payment state');
                     }
                 }
 
@@ -1046,10 +1058,32 @@ const BookingPage: React.FC = () => {
                 console.log(`🗑️ Removed ${sessionKey} from session storage`);
             });
 
-            // Xóa booking session
-            const bookingSessionKey = `booking_session_${paymentBookingSession.showtimeId}`;
-            sessionStorage.removeItem(bookingSessionKey);
-            console.log(`🗑️ Removed ${bookingSessionKey} from session storage`);
+            // 🔧 FIX: Xóa tất cả session keys liên quan đến booking và payment
+            const sessionKeysToRemove = [
+                `booking_session_${paymentBookingSession.showtimeId}`,
+                `payment_state_${paymentBookingSession.showtimeId}`, // 🔧 CRITICAL: Xóa payment state
+                `galaxy_cinema_session_${paymentBookingSession.showtimeId}`,
+                'bookingData'
+            ];
+
+            sessionKeysToRemove.forEach(key => {
+                sessionStorage.removeItem(key);
+                console.log(`🗑️ [PAYMENT_SUCCESS] Removed ${key} from session storage`);
+            });
+        }
+
+        // 🔧 Broadcast cleanup event to other tabs
+        try {
+            const cleanupEvent = {
+                action: 'PAYMENT_SUCCESS_CLEANUP',
+                showtimeId: paymentBookingSession?.showtimeId,
+                timestamp: Date.now()
+            };
+            localStorage.setItem('galaxy_cinema_cleanup_event', JSON.stringify(cleanupEvent));
+            setTimeout(() => localStorage.removeItem('galaxy_cinema_cleanup_event'), 100);
+            console.log('📡 [PAYMENT_SUCCESS] Broadcasted cleanup event to other tabs');
+        } catch (error) {
+            console.warn('⚠️ [PAYMENT_SUCCESS] Failed to broadcast cleanup event:', error);
         }
 
         // Navigate to success page
@@ -1083,6 +1117,70 @@ const BookingPage: React.FC = () => {
 
         checkAuthStatus();
     }, []);
+
+    // 🔧 FIX: Kiểm tra booking status khi có payment state để tránh restore payment đã hoàn thành
+    useEffect(() => {
+        const checkPaymentStateAndBookingStatus = async () => {
+            if (!showtimeId) return;
+
+            const paymentState = sessionStorage.getItem(`payment_state_${showtimeId}`);
+            if (paymentState) {
+                try {
+                    const data = JSON.parse(paymentState);
+                    if (data.currentView === 'payment' && data.paymentBookingSession?.bookingId) {
+                        console.log('🔍 [PAYMENT_CHECK] Checking booking status for:', data.paymentBookingSession.bookingId);
+
+                        // Kiểm tra trạng thái booking
+                        const response = await api.get(`/bookings/${data.paymentBookingSession.bookingId}`);
+
+                        if (response.data?.success && response.data?.booking) {
+                            const booking = response.data.booking;
+                            console.log('📋 [PAYMENT_CHECK] Booking status:', booking.Status);
+
+                            // Nếu booking đã được thanh toán thành công, xóa payment state
+                            if (booking.Status === 'Confirmed' || booking.Status === 'Paid') {
+                                console.log('✅ [PAYMENT_CHECK] Booking already paid, clearing payment state');
+
+                                // Xóa payment state và related session data
+                                const sessionKeys = [
+                                    `payment_state_${showtimeId}`,
+                                    `booking_session_${showtimeId}`,
+                                    `galaxy_cinema_session_${showtimeId}`,
+                                    'bookingData'
+                                ];
+
+                                sessionKeys.forEach(key => {
+                                    sessionStorage.removeItem(key);
+                                    console.log(`🗑️ [PAYMENT_CHECK] Removed ${key}`);
+                                });
+
+                                // Đảm bảo không restore payment view
+                                if (currentView === 'payment') {
+                                    setCurrentView('seats');
+                                    setPaymentBookingSession(null);
+                                }
+
+                                return;
+                            }
+
+                            // Nếu booking chưa thanh toán và chưa hết hạn, restore payment state
+                            if (Date.now() < data.expiresAt) {
+                                console.log('🔄 [PAYMENT_CHECK] Booking still pending, restoring payment state');
+                                setPaymentBookingSession(data.paymentBookingSession);
+                                setCurrentView('payment');
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('❌ [PAYMENT_CHECK] Error checking booking status:', error);
+                    // Nếu có lỗi, xóa payment state để tránh stuck
+                    sessionStorage.removeItem(`payment_state_${showtimeId}`);
+                }
+            }
+        };
+
+        checkPaymentStateAndBookingStatus();
+    }, [showtimeId, currentView]);
 
     // Lấy dữ liệu từ state của location
     const bookingData = location.state || {};
@@ -2237,6 +2335,43 @@ const BookingPage: React.FC = () => {
                         }
 
                         console.log('✅ [CROSS_TAB] Payment state cleared');
+                    }
+
+                    // 🔧 Handle payment success cleanup events
+                    if (data.action === 'PAYMENT_SUCCESS_CLEANUP' && data.showtimeId === showtimeId) {
+                        console.log('🎉 [CROSS_TAB] Processing PAYMENT_SUCCESS_CLEANUP from other tab');
+
+                        // Clear all payment-related session storage
+                        const sessionKeys = [
+                            `booking_session_${showtimeId}`,
+                            `payment_state_${showtimeId}`,
+                            `galaxy_cinema_session_${showtimeId}`,
+                            'bookingData'
+                        ];
+
+                        sessionKeys.forEach(key => {
+                            sessionStorage.removeItem(key);
+                            console.log(`🗑️ [CROSS_TAB] Removed ${key} from session storage`);
+                        });
+
+                        // Reset to seats view and clear payment session
+                        if (currentView === 'payment') {
+                            setCurrentView('seats');
+                            setPaymentBookingSession(null);
+                            console.log('🔄 [CROSS_TAB] Reset to seats view after payment success');
+                        }
+
+                        // Refresh seats to show updated booking status
+                        setTimeout(async () => {
+                            try {
+                                await fetchSeats();
+                                console.log('✅ [CROSS_TAB] Seats refreshed after payment success');
+                            } catch (error) {
+                                console.warn('⚠️ [CROSS_TAB] Failed to refresh seats after payment success:', error);
+                            }
+                        }, 1000);
+
+                        console.log('✅ [CROSS_TAB] Payment success cleanup completed');
                     }
 
                     if ((data.action === 'FORCE_CLEANUP' || data.action === 'RETURN_FROM_PAYMENT') && data.showtimeId === showtimeId) {

@@ -187,7 +187,8 @@ export const SimpleAuthProvider = ({ children }: { children: ReactNode }) => {
         // Don't throw error, just log it
       }
     } catch (error: any) {
-      setError(error.message || "Login failed");
+      const errorMessage = error.message || "Đăng nhập thất bại";
+      setError(errorMessage);
       throw error;
     } finally {
       setIsLoading(false);

@@ -130,8 +130,9 @@ const Security: React.FC = () => {
     setIsSubmitting(true);
     try {
       await userService.changePassword({
-        currentPassword: data.currentPassword,
-        newPassword: data.newPassword,
+        OldPassword: data.currentPassword,
+        NewPassword: data.newPassword,
+        ConfirmNewPassword: data.confirmPassword,
       });
 
       toast.success('Đổi mật khẩu thành công!');
@@ -286,14 +287,13 @@ const Security: React.FC = () => {
             <label className="block text-slate-300 text-sm font-medium mb-3">
               Mật khẩu mới <span className="text-red-400">*</span>
             </label>
-            <div className="relative">
-              <Controller
-                name="newPassword"
-                control={control}
-                render={({ field }) => {
-                  const passwordStrength = getPasswordStrength(field.value);
-                  return (
-                    <div>
+            <div className="space-y-2">
+              <div className="relative">
+                <Controller
+                  name="newPassword"
+                  control={control}
+                  render={({ field }) => (
+                    <>
                       <input
                         {...field}
                         type={showNewPassword ? 'text' : 'password'}
@@ -310,30 +310,37 @@ const Security: React.FC = () => {
                       >
                         {showNewPassword ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
                       </button>
+                    </>
+                  )}
+                />
+              </div>
 
-                      {/* Password Strength Indicator */}
-                      {field.value && (
-                        <div className="mt-2 space-y-2">
-                          <div className="flex items-center justify-between text-xs mb-1">
-                            <span className="text-slate-400">Độ mạnh mật khẩu</span>
-                            <span className={`font-medium ${passwordStrength.strength >= 80 ? 'text-emerald-400' :
-                              passwordStrength.strength >= 60 ? 'text-blue-400' :
-                                passwordStrength.strength >= 40 ? 'text-yellow-400' :
-                                  'text-red-400'
-                              }`}>
-                              {passwordStrength.label}
-                            </span>
-                          </div>
-                          <div className="w-full bg-slate-600 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
-                              style={{ width: `${passwordStrength.strength}%` }}
-                            ></div>
-                          </div>
-                        </div>
-                      )}
+              {/* Password Strength Indicator */}
+              <Controller
+                name="newPassword"
+                control={control}
+                render={({ field }) => {
+                  const passwordStrength = getPasswordStrength(field.value);
+                  return field.value ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between text-xs mb-1">
+                        <span className="text-slate-400">Độ mạnh mật khẩu</span>
+                        <span className={`font-medium ${passwordStrength.strength >= 80 ? 'text-emerald-400' :
+                          passwordStrength.strength >= 60 ? 'text-blue-400' :
+                            passwordStrength.strength >= 40 ? 'text-yellow-400' :
+                              'text-red-400'
+                          }`}>
+                          {passwordStrength.label}
+                        </span>
+                      </div>
+                      <div className="w-full bg-slate-600 rounded-full h-2">
+                        <div
+                          className={`h-2 rounded-full transition-all duration-300 ${passwordStrength.color}`}
+                          style={{ width: `${passwordStrength.strength}%` }}
+                        ></div>
+                      </div>
                     </div>
-                  );
+                  ) : null;
                 }}
               />
             </div>

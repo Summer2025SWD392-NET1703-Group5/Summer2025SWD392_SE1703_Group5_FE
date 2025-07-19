@@ -22,6 +22,20 @@ class BookingService {
     private isCreatingBooking = false;
 
     /**
+     * Kiểm tra pending bookings của user hiện tại
+     * @returns Promise<any>
+     */
+    async checkPendingBookings(): Promise<any> {
+        try {
+            const { data } = await api.get('/bookings/check-pending');
+            return data;
+        } catch (error) {
+            console.error('❌ [BookingService] Error checking pending bookings:', error);
+            throw error;
+        }
+    }
+
+    /**
      * Tạo booking mới - Tối ưu hóa hiệu xuất
      * @param bookingData - Thông tin đặt vé
      * @returns Thông tin booking đã tạo

@@ -9,6 +9,7 @@ import { translateSeatType } from "../utils/seatTypeTranslator";
 import { useWebSocket } from "../hooks/useWebSocket";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../contexts/SimpleAuthContext";
+import { SeatBookingRulesEngine } from "../utils/seatBookingRules";
 
 interface SeatSelectionProps {
   room: CinemaRoom;
@@ -423,6 +424,50 @@ const SeatSelection: React.FC<SeatSelectionProps> = ({
       if (!isCurrentlySelected && currentSelectedSeats.length >= MAX_SEATS) {
         toast.warning(`Bạn chỉ có thể chọn tối đa ${MAX_SEATS} ghế`);
         return;
+      }
+
+      // 🎯 ÁP DỤNG QUY TẮC ĐẶT GHẾ
+      if (!isCurrentlySelected) {
+        // Tạo danh sách ghế hiện tại từ seatLayout
+        const allSeats = seatLayout.flat().filter(s => s && s.type !== 'hidden');
+
+        // Tạo danh sách ghế đã được chọn (bao gồm cả optimistic selections)
+        const currentlySelectedSeatIds = [...optimisticSelectedSeats, ...webSocketSelectedSeats];
+        const occupiedSeatIds = allSeats
+          .filter(s => s.status === 'occupied' || s.status === 'booked')
+          .map(s => s.id);
+
+        // Kiểm tra quy tắc đặt ghế
+        const rulesEngine = new SeatBookingRulesEngine(allSeats, [...currentlySelectedSeatIds, ...occupiedSeatIds]);
+        const validation = rulesEngine.validateSeatSelection(seat.id, currentlySelectedSeatIds);
+
+        if (!validation.isValid) {
+          console.log(`❌ Seat selection violates rules: ${validation.reason}`);
+          toast.error(validation.reason);
+          return;
+        }
+      }
+
+      // 🎯 ÁP DỤNG QUY TẮC ĐẶT GHẾ
+      if (!isCurrentlySelected) {
+        // Tạo danh sách ghế hiện tại từ seatLayout
+        const allSeats = seatLayout.flat().filter(s => s && s.type !== 'hidden');
+
+        // Tạo danh sách ghế đã được chọn (bao gồm cả optimistic selections)
+        const currentlySelectedSeatIds = [...optimisticSelectedSeats, ...webSocketSelectedSeats];
+        const occupiedSeatIds = allSeats
+          .filter(s => s.status === 'occupied' || s.status === 'booked')
+          .map(s => s.id);
+
+        // Kiểm tra quy tắc đặt ghế
+        const rulesEngine = new SeatBookingRulesEngine(allSeats, [...currentlySelectedSeatIds, ...occupiedSeatIds]);
+        const validation = rulesEngine.validateSeatSelection(seat.id, currentlySelectedSeatIds);
+
+        if (!validation.isValid) {
+          console.log(`❌ Seat selection violates rules: ${validation.reason}`);
+          toast.error(validation.reason);
+          return;
+        }
       }
 
       try {

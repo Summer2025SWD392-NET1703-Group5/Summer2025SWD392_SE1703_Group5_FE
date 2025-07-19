@@ -17,6 +17,11 @@ export interface ShowtimeInfo {
     cinema_name: string;
 }
 
+export interface SeatInfo {
+    seat_label: string;
+    [key: string]: any; // Allow for additional properties
+}
+
 export interface TicketData {
     ticket_id: number;
     ticket_code: string;
@@ -27,7 +32,7 @@ export interface TicketData {
     booking_date: string;
     movie_info: MovieInfo;
     showtime_info: ShowtimeInfo;
-    seat_info: string;
+    seat_info: SeatInfo | string; // Can be either object or string
 }
 
 export interface TicketResponse {
@@ -173,7 +178,11 @@ export const ticketService = {
                     ticketCode: ticket.ticket_code,
                     movieTitle: ticket.movie_info?.movie_name || 'Không có tên phim',
                     customerName: `${ticket.room_info?.cinema_name || 'Galaxy Cinema'} - ${ticket.room_info?.room_name || 'Phòng'}`,
-                    seatNumber: ticket.seat_info?.seat_label || 'N/A',
+                    seatNumber: typeof ticket.seat_info === 'object' && ticket.seat_info?.seat_label
+                        ? ticket.seat_info.seat_label
+                        : typeof ticket.seat_info === 'string'
+                            ? ticket.seat_info
+                            : 'N/A',
                         scanTime: ticket.check_in_time || new Date().toISOString(), // Thời điểm quét
                         showtime: movieStartTime, // Giờ chiếu phim
                     status: ticket.is_checked_in ? 'SCANNED' : 'PENDING',

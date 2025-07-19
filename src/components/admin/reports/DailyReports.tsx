@@ -76,19 +76,7 @@ const DailyReports: React.FC = () => {
     }
   };
 
-  const generateHourlyData = () => {
-    const hours = [];
-    const revenue = [];
-    const bookings = [];
-
-    for (let i = 9; i <= 23; i++) {
-      hours.push(`${i}:00`);
-      revenue.push(Math.floor(Math.random() * 20000000) + 5000000);
-      bookings.push(Math.floor(Math.random() * 50) + 5);
-    }
-
-    return { hours, revenue, bookings };
-  };
+  // Removed generateHourlyData() - now using real data from API
 
   const generateTopMovies = () => {
     const movieTitles = [
@@ -483,9 +471,6 @@ const DailyReports: React.FC = () => {
                         <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Lượt đặt vé
                         </th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          Tỷ lệ lấp đầy
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700">
@@ -509,17 +494,6 @@ const DailyReports: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right text-white">
                             {movie.bookings}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end">
-                              <span className="text-white mr-2">{movie.occupancyRate}%</span>
-                              <div className="w-20 bg-slate-700 rounded-full h-2.5">
-                                <div 
-                                  className="bg-[#FFD875] h-2.5 rounded-full" 
-                                  style={{ width: `${movie.occupancyRate}%` }}
-                                ></div>
-                              </div>
-                            </div>
                           </td>
                         </tr>
                       ))}
@@ -562,9 +536,6 @@ const DailyReports: React.FC = () => {
                         <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
                           Lượt đặt vé
                         </th>
-                        <th scope="col" className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">
-                          Tỷ lệ lấp đầy
-                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-700">
@@ -578,17 +549,6 @@ const DailyReports: React.FC = () => {
                           </td>
                           <td className="px-4 py-3 whitespace-nowrap text-right text-white">
                             {cinema.bookings}
-                          </td>
-                          <td className="px-4 py-3 whitespace-nowrap text-right">
-                            <div className="flex items-center justify-end">
-                              <span className="text-white mr-2">{cinema.occupancyRate}%</span>
-                              <div className="w-20 bg-slate-700 rounded-full h-2.5">
-                                <div 
-                                  className="bg-[#FFD875] h-2.5 rounded-full" 
-                                  style={{ width: `${cinema.occupancyRate}%` }}
-                                ></div>
-                              </div>
-                            </div>
                           </td>
                         </tr>
                       ))}
