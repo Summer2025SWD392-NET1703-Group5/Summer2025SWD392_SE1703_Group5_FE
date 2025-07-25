@@ -1,7 +1,7 @@
 // src/pages/admin/bookings/BookingsList.tsx
-import React, { useState, useEffect } from 'react';
-import { format } from 'date-fns';
-import { motion } from 'framer-motion';
+import React, { useState, useEffect } from "react";
+import { format } from "date-fns";
+import { motion } from "framer-motion";
 import {
   TicketIcon,
   ArrowPathIcon,
@@ -13,15 +13,15 @@ import {
   CurrencyDollarIcon,
   CalendarDaysIcon,
   UserIcon,
-  FilmIcon
-} from '@heroicons/react/24/outline';
-import { getAllBookings } from '../../../services/admin/bookingManagementServices';
-import type { Booking } from '../../../services/admin/bookingManagementServices';
+  FilmIcon,
+} from "@heroicons/react/24/outline";
+import { getAllBookings } from "../../../services/admin/bookingManagementServices";
+import type { Booking } from "../../../services/admin/bookingManagementServices";
 
 const BookingsList: React.FC = () => {
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -35,26 +35,28 @@ const BookingsList: React.FC = () => {
     setError(null);
     try {
       console.log(`Đang tải danh sách đặt vé - Trang ${page}, Filter: ${statusFilter}, Search: ${searchTerm}`);
-      
+
       const response = await getAllBookings(page, limit, searchTerm, statusFilter);
 
       if (response && response.data) {
         setBookings(response.data);
         setTotalItems(response.pagination.totalCount);
         setTotalPages(response.pagination.totalPages);
-        
+
         console.log(`Tải thành công ${response.data.length} đơn đặt vé`);
-        console.log(`Tổng số: ${response.pagination.totalCount}, Trang ${response.pagination.currentPage}/${response.pagination.totalPages}`);
+        console.log(
+          `Tổng số: ${response.pagination.totalCount}, Trang ${response.pagination.currentPage}/${response.pagination.totalPages}`
+        );
       } else {
-        setError('Không nhận được phản hồi từ server');
+        setError("Không nhận được phản hồi từ server");
         setBookings([]);
         setTotalItems(0);
         setTotalPages(1);
-        console.error('API response là null:', response);
+        console.error("API response là null:", response);
       }
     } catch (err) {
-      setError('Đã xảy ra lỗi khi tải dữ liệu đặt vé');
-      console.error('Lỗi khi tải danh sách đặt vé:', err);
+      setError("Đã xảy ra lỗi khi tải dữ liệu đặt vé");
+      console.error("Lỗi khi tải danh sách đặt vé:", err);
       setBookings([]);
       setTotalItems(0);
       setTotalPages(1);
@@ -65,7 +67,7 @@ const BookingsList: React.FC = () => {
 
   // Handle refresh
   const handleRefresh = () => {
-    console.log('Làm mới danh sách đặt vé');
+    console.log("Làm mới danh sách đặt vé");
     fetchBookings();
   };
 
@@ -120,72 +122,83 @@ const BookingsList: React.FC = () => {
   }, [searchTerm]);
 
   const getStatusClass = (status: string | null | undefined) => {
-    if (!status) return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+    if (!status) return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
 
     const lowerCaseStatus = status.toLowerCase();
     switch (lowerCaseStatus) {
-      case 'completed':
-      case 'complete':
-      case 'confirmed':
-        return 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]';
-      case 'pending':
-        return 'bg-[#FFD875]/20 text-[#FFD875] border border-[#FFD875]/30 shadow-[0_0_10px_rgba(255,216,117,0.3)]';
-      case 'cancelled':
-      case 'canceled':
-        return 'bg-red-500/20 text-red-400 border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.3)]';
-      case 'refunded':
-        return 'bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.3)]';
+      case "completed":
+      case "complete":
+      case "confirmed":
+        return "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 shadow-[0_0_10px_rgba(16,185,129,0.3)]";
+      case "pending":
+        return "bg-[#FFD875]/20 text-[#FFD875] border border-[#FFD875]/30 shadow-[0_0_10px_rgba(255,216,117,0.3)]";
+      case "cancelled":
+      case "canceled":
+        return "bg-red-500/20 text-red-400 border border-red-500/30 shadow-[0_0_10px_rgba(239,68,68,0.3)]";
+      case "refunded":
+        return "bg-orange-500/20 text-orange-400 border border-orange-500/30 shadow-[0_0_10px_rgba(249,115,22,0.3)]";
       default:
-        return 'bg-gray-500/20 text-gray-400 border border-gray-500/30';
+        return "bg-gray-500/20 text-gray-400 border border-gray-500/30";
+    }
+  };
+
+  const formatVNDate = (dateString: string) => {
+    try {
+      const date = new Date(dateString);
+      date.setHours(date.getHours() - 7); // shift manually
+      return format(date, "dd/MM/yyyy HH:mm");
+    } catch (e) {
+      console.error("Lỗi khi format ngày:", e);
+      return "Không hợp lệ";
     }
   };
 
   const formatShowtime = (booking: Booking) => {
     try {
       if (!booking.Show_Date) {
-        return 'N/A';
+        return "N/A";
       }
 
       // If we have both date and time
-      if (booking.Start_Time && booking.Start_Time !== 'Invalid Date') {
+      if (booking.Start_Time && booking.Start_Time !== "Invalid Date") {
         // Check if Start_Time already includes the date
-        if (booking.Start_Time.includes('T')) {
-          return format(new Date(booking.Start_Time), 'dd/MM/yyyy HH:mm');
+        if (booking.Start_Time.includes("T")) {
+          return format(new Date(booking.Start_Time), "dd/MM/yyyy HH:mm");
         }
 
         // Otherwise combine date and time
-        const dateTimeString = `${booking.Show_Date.split('T')[0]}T${booking.Start_Time}`;
+        const dateTimeString = `${booking.Show_Date.split("T")[0]}T${booking.Start_Time}`;
         const showtimeDate = new Date(dateTimeString);
 
         if (!isNaN(showtimeDate.getTime())) {
-          return format(showtimeDate, 'dd/MM/yyyy HH:mm');
+          return format(showtimeDate, "dd/MM/yyyy HH:mm");
         }
       }
 
       // Fallback to just the date
-      return format(new Date(booking.Show_Date), 'dd/MM/yyyy');
+      return format(new Date(booking.Show_Date), "dd/MM/yyyy");
     } catch (e) {
-      console.error('Lỗi khi format ngày:', e);
-      return 'Không hợp lệ';
+      console.error("Lỗi khi format ngày:", e);
+      return "Không hợp lệ";
     }
   };
 
   const getStatusLabel = (status: string | null | undefined) => {
-    if (!status) return 'N/A';
+    if (!status) return "N/A";
 
     const lowerCaseStatus = status.toLowerCase();
     switch (lowerCaseStatus) {
-      case 'completed':
-      case 'complete':
-      case 'confirmed':
-        return 'Hoàn thành';
-      case 'pending':
-        return 'Đang xử lý';
-      case 'cancelled':
-      case 'canceled':
-        return 'Đã hủy';
-      case 'refunded':
-        return 'Đã hoàn vé';
+      case "completed":
+      case "complete":
+      case "confirmed":
+        return "Hoàn thành";
+      case "pending":
+        return "Đang xử lý";
+      case "cancelled":
+      case "canceled":
+        return "Đã hủy";
+      case "refunded":
+        return "Đã hoàn vé";
       default:
         return status;
     }
@@ -197,9 +210,9 @@ const BookingsList: React.FC = () => {
     visible: {
       opacity: 1,
       transition: {
-        staggerChildren: 0.1
-      }
-    }
+        staggerChildren: 0.1,
+      },
+    },
   };
 
   const itemVariants = {
@@ -209,9 +222,9 @@ const BookingsList: React.FC = () => {
       opacity: 1,
       transition: {
         type: "spring" as const,
-        stiffness: 100
-      }
-    }
+        stiffness: 100,
+      },
+    },
   };
 
   return (
@@ -315,40 +328,70 @@ const BookingsList: React.FC = () => {
           <table className="min-w-full">
             <thead className="bg-gradient-to-r from-slate-700/80 to-slate-600/80 backdrop-blur-sm">
               <tr>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   <div className="flex items-center space-x-2">
                     <TicketIcon className="w-4 h-4" />
                     <span>Mã vé</span>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   <div className="flex items-center space-x-2">
                     <UserIcon className="w-4 h-4" />
                     <span>Khách hàng</span>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   <div className="flex items-center space-x-2">
                     <FilmIcon className="w-4 h-4" />
                     <span>Phim</span>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
+                  <div className="flex items-center space-x-2">
+                    <CalendarDaysIcon className="w-4 h-4" />
+                    <span>Ngày đặt</span>
+                  </div>
+                </th>
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   <div className="flex items-center space-x-2">
                     <CalendarDaysIcon className="w-4 h-4" />
                     <span>Ngày chiếu</span>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   Ghế
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   <div className="flex items-center space-x-2">
                     <CurrencyDollarIcon className="w-4 h-4" />
                     <span>Tổng tiền</span>
                   </div>
                 </th>
-                <th scope="col" className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30">
+                <th
+                  scope="col"
+                  className="px-6 py-4 text-left text-xs font-bold text-[#FFD875] uppercase tracking-wider border-b border-slate-600/30"
+                >
                   Trạng thái
                 </th>
               </tr>
@@ -384,24 +427,31 @@ const BookingsList: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-white font-medium">{booking.CustomerName || 'N/A'}</div>
+                      <div className="text-white font-medium">{booking.CustomerName || "N/A"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-white font-medium">{booking.MovieName || 'N/A'}</div>
+                      <div className="text-white font-medium">{booking.MovieName || "N/A"}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-slate-300">{formatVNDate(booking.Booking_Date)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-slate-300">{formatShowtime(booking)}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-slate-300">{booking.Seats || 'N/A'}</div>
+                      <div className="text-slate-300">{booking.Seats || "N/A"}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-[#FFD875] font-bold">
-                        {booking.Total_Amount ? booking.Total_Amount.toLocaleString('vi-VN') + ' đ' : 'N/A'}
+                        {booking.Total_Amount ? booking.Total_Amount.toLocaleString("vi-VN") + " đ" : "N/A"}
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <span className={`px-3 py-1.5 inline-flex text-xs font-bold rounded-full ${getStatusClass(booking.Status)}`}>
+                      <span
+                        className={`px-3 py-1.5 inline-flex text-xs font-bold rounded-full ${getStatusClass(
+                          booking.Status
+                        )}`}
+                      >
                         {getStatusLabel(booking.Status)}
                       </span>
                     </td>
@@ -428,7 +478,8 @@ const BookingsList: React.FC = () => {
           <div className="flex items-center space-x-2">
             <SparklesIcon className="w-5 h-5 text-[#FFD875]" />
             <span className="text-sm text-slate-300">
-              Hiển thị <span className="font-bold text-[#FFD875]">{bookings ? bookings.length : 0}</span> trong tổng số <span className="font-bold text-[#FFD875]">{totalItems}</span> đơn
+              Hiển thị <span className="font-bold text-[#FFD875]">{bookings ? bookings.length : 0}</span> trong tổng số{" "}
+              <span className="font-bold text-[#FFD875]">{totalItems}</span> đơn
             </span>
             <span className="text-xs text-slate-400 ml-2">
               (Trang {page}/{totalPages})
@@ -453,10 +504,11 @@ const BookingsList: React.FC = () => {
                   key={pageNum}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
-                  className={`min-w-[2.5rem] h-10 rounded-xl transition-all duration-300 font-semibold ${pageNum === page
-                    ? 'bg-gradient-to-r from-[#FFD875] to-[#FFC107] text-black shadow-[0_0_15px_rgba(255,216,117,0.4)]'
-                    : 'bg-slate-600/50 text-white hover:bg-slate-500/50 border border-slate-500/30'
-                    }`}
+                  className={`min-w-[2.5rem] h-10 rounded-xl transition-all duration-300 font-semibold ${
+                    pageNum === page
+                      ? "bg-gradient-to-r from-[#FFD875] to-[#FFC107] text-black shadow-[0_0_15px_rgba(255,216,117,0.4)]"
+                      : "bg-slate-600/50 text-white hover:bg-slate-500/50 border border-slate-500/30"
+                  }`}
                   onClick={() => setPage(pageNum)}
                   disabled={loading}
                 >
